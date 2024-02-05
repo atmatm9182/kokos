@@ -1,11 +1,9 @@
-#+title: Readme
-
 * Features
 ** Language level
 - [X] Arithmetic operators
 - [ ] Floats
 - [ ] UTF-8 strings
-- [ ] Variables
+- [X] Variables
 - [ ] Functions
 - [ ] Macros
 - [ ] Scoped variable bindings

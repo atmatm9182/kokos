@@ -2,8 +2,8 @@
 #include "token.h"
 
 #include <assert.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 static kokos_obj_t* alloc_list(kokos_obj_t** objs, size_t len, kokos_interp_t* interp)
 {
@@ -68,11 +68,11 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
             size_t len;
             size_t cap;
         } gc_objs;
-        DA_INIT(gc_objs, 0, 1);
+        DA_INIT(&gc_objs, 0, 1);
 
         advance(parser);
         while (parser->has_cur && parser->cur.type != TT_RPAREN) {
-            DA_ADD(gc_objs, kokos_parser_next(parser, interp));
+            DA_ADD(&gc_objs, kokos_parser_next(parser, interp));
         }
 
         if (!parser->has_cur) {
@@ -80,7 +80,7 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
             for (size_t i = 0; i < gc_objs.len; i++) {
                 free(gc_objs.items[i]);
             }
-            DA_FREE(gc_objs);
+            DA_FREE(&gc_objs);
             return NULL;
         }
 

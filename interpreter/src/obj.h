@@ -10,6 +10,7 @@ enum kokos_obj_type {
     OBJ_SYMBOL,
     OBJ_LIST,
     OBJ_BUILTIN_FUNC,
+    OBJ_SPECIAL_FORM,
 };
 
 typedef enum kokos_obj_type kokos_obj_type_e;
@@ -30,17 +31,19 @@ typedef kokos_obj_t* (*kokos_builtin_func_t)(struct kokos_interp* interp, kokos_
 
 struct kokos_obj {
     struct kokos_obj* next;
-    unsigned char marked;
-    kokos_obj_type_e type;
+    unsigned char marked : 1;
+    kokos_obj_type_e type : 7;
 
     union {
         int64_t integer;
         char* string;
         char* symbol;
         kokos_obj_list_t list;
-        kokos_builtin_func_t builtin_func;
+        kokos_builtin_func_t builtin;
     };
 };
+
+extern kokos_obj_t kokos_obj_nil;
 
 void kokos_obj_mark(kokos_obj_t* obj);
 

@@ -46,6 +46,11 @@ static bool lex_skip_whitespace(kokos_lexer_t* lex)
     return true;
 }
 
+static inline bool isvalid(char c)
+{
+    return !isspace(c) &&  c != '(' && c != ')';
+}
+
 int kokos_lex_next(kokos_lexer_t* lex, kokos_token_t* token)
 {
     lex_skip_whitespace(lex);
@@ -109,7 +114,7 @@ int kokos_lex_next(kokos_lexer_t* lex, kokos_token_t* token)
         token->type = TT_IDENT;
         size_t start = lex->pos;
         lex_advance(lex);
-        while (lex->pos < lex->contents.size && !isspace(cur_char(lex))) {
+        while (lex->pos < lex->contents.size && isvalid(cur_char(lex))) {
             lex_advance(lex);
         }
         token->value = sv_slice(lex->contents, start, lex->pos - start);

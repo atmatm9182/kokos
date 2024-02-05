@@ -1,8 +1,8 @@
 #ifndef PARSER_H_
 #define PARSER_H_
 
-#include "lexer.h"
 #include "interpreter.h"
+#include "lexer.h"
 
 struct kokos_parser {
     kokos_token_t cur;

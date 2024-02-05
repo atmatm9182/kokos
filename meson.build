@@ -1,6 +1,6 @@
 project('kokos', 'c', default_options : ['werror=true'])
 
-add_global_arguments('-pedantic', language : 'c')
+add_global_arguments('-pedantic', '-Og',language : 'c')
 
 baseinc = include_directories('include')
 

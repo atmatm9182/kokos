@@ -30,35 +30,35 @@ bool sv_eq(string_view a, string_view b);
 
 #define DA_INIT(arr, l, c)                                                                         \
     do {                                                                                           \
-        (arr).items = (__typeof__((arr).items[0])*)malloc(sizeof((arr).items[0]) * c);             \
-        (arr).cap = c;                                                                             \
-        (arr).len = l;                                                                             \
-        memset((arr).items, 0, l * sizeof((arr).items[0]));                                        \
+        (arr)->items = (__typeof__((arr)->items[0])*)malloc(sizeof((arr)->items[0]) * c);             \
+        (arr)->cap = c;                                                                             \
+        (arr)->len = l;                                                                             \
+        memset((arr)->items, 0, l * sizeof((arr)->items[0]));                                        \
     } while (0)
 
 #define DA_RESIZE(arr, c)                                                                          \
     do {                                                                                           \
-        (arr).cap = c;                                                                             \
-        (arr).items = realloc((arr).items, c * sizeof((arr).items[0]));                            \
+        (arr)->cap = c;                                                                             \
+        (arr)->items = realloc((arr)->items, c * sizeof((arr)->items[0]));                            \
     } while (0)
 
 #define DA_GROW(arr)                                                                               \
     do {                                                                                           \
-        (arr).cap *= 2;                                                                            \
-        DA_RESIZE((arr), (arr).cap);                                                               \
+        (arr)->cap *= 2;                                                                            \
+        DA_RESIZE((arr), (arr)->cap);                                                               \
     } while (0)
 
 #define DA_ADD(arr, elem)                                                                          \
     do {                                                                                           \
-        if ((arr).len == (arr).cap) {                                                              \
+        if ((arr)->len == (arr)->cap) {                                                              \
             DA_GROW(arr);                                                                          \
         }                                                                                          \
-        (arr).items[(arr).len++] = elem;                                                           \
+        (arr)->items[(arr)->len++] = elem;                                                           \
     } while (0)
 
 #define DA_FREE(arr)                                                                               \
     do {                                                                                           \
-        free((arr).items);                                                                         \
+        free((arr)->items);                                                                         \
     } while (0)
 
 #ifdef BASE_IMPL

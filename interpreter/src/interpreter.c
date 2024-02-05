@@ -14,11 +14,10 @@ kokos_obj_t* kokos_interp_alloc(kokos_interp_t* interp)
     return obj;
 }
 
-kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, kokos_env_t* env, int top_level)
+kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, int top_level)
 {
-    env = env ? env : &interp->global_env;
-
     kokos_obj_t* result = NULL;
+
     switch (obj->type) {
     case OBJ_INT:
     case OBJ_STRING:
@@ -26,21 +25,43 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, kokos_e
         result = obj;
         break;
     case OBJ_SYMBOL: {
-        kokos_env_pair_t* pair = kenv_find(*env, obj->symbol);
-        assert(pair);
+        printf("searching for %s\n", obj->symbol);
+        kokos_env_pair_t* pair = kokos_env_find(&interp->current_env, obj->symbol);
+        if (!pair) {
+            pair = kokos_env_find(&interp->global_env, obj->symbol);
+            assert(pair);
+        }
         result = pair->value;
         break;
     }
     case OBJ_LIST: {
-        for (size_t i = 0; i < obj->list.len; i++) {
-            obj->list.objs[i] = kokos_interp_eval(interp, obj->list.objs[i], env, 0);
+        kokos_obj_t* head = kokos_interp_eval(interp, obj->list.objs[0], 0);
+        if (head->type == OBJ_BUILTIN_FUNC) {
+            for (size_t i = 1; i < obj->list.len; i++) {
+                obj->list.objs[i] = kokos_interp_eval(interp, obj->list.objs[i], 0);
+            }
+
+            kokos_obj_list_t args = { .objs = obj->list.objs + 1, .len = obj->list.len - 1 };
+            kokos_builtin_func_t func = head->builtin;
+            result = func(interp, args);
+            break;
         }
 
-        kokos_obj_list_t list = { .objs = obj->list.objs + 1, .len = obj->list.len - 1 };
-        kokos_builtin_func_t func = obj->list.objs[0]->builtin_func;
-        result = func(interp, list);
+        if (head->type == OBJ_SPECIAL_FORM) {
+            kokos_obj_list_t args = { .objs = obj->list.objs + 1, .len = obj->list.len - 1 };
+            kokos_builtin_func_t func = head->builtin;
+            result = func(interp, args);
+            break;
+        }
+
+        assert(0
+            && "This should result in an error saying that we cannot call a symbol that is not "
+               "callable");
         break;
     }
+    case OBJ_SPECIAL_FORM:
+        assert(0 && "This should result in an error since evaluating a special form is illegal");
+        break;
     }
 
     if (top_level && interp->obj_count > interp->gc_threshold) {
@@ -49,7 +70,6 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, kokos_e
     }
 
     return result;
-
 }
 
 static kokos_obj_t* builtin_plus(kokos_interp_t* interp, kokos_obj_list_t args)
@@ -94,6 +114,18 @@ static kokos_obj_t* builtin_star(kokos_interp_t* interp, kokos_obj_list_t args)
     return obj;
 }
 
+static kokos_obj_t* sform_def(kokos_interp_t* interp, kokos_obj_list_t args)
+{
+    assert(args.objs[0]->type == OBJ_SYMBOL && "The variable name should be a symbol");
+    for (size_t i = 1; i < args.len - 1; i++) {
+        kokos_interp_eval(interp, args.objs[i], 1);
+    }
+
+    kokos_obj_t* def = kokos_interp_eval(interp, args.objs[args.len - 1], 1);
+    kokos_env_add(&interp->global_env, args.objs[0]->symbol, def);
+    return &kokos_obj_nil;
+}
+
 static kokos_obj_t* builtin_slash(kokos_interp_t* interp, kokos_obj_list_t args)
 {
     int64_t num = args.objs[0]->integer;
@@ -106,62 +138,66 @@ static kokos_obj_t* builtin_slash(kokos_interp_t* interp, kokos_obj_list_t args)
     return obj;
 }
 
-static kokos_obj_t* interp_builtin(kokos_interp_t* interp, kokos_builtin_func_t func)
+static kokos_obj_t* make_builtin(kokos_interp_t* interp, kokos_builtin_func_t func)
 {
     kokos_obj_t* obj = kokos_interp_alloc(interp);
     obj->type = OBJ_BUILTIN_FUNC;
-    obj->builtin_func = func;
+    obj->builtin = func;
+    return obj;
+}
+
+static kokos_obj_t* make_special_form(kokos_interp_t* interp, kokos_builtin_func_t sform)
+{
+    kokos_obj_t* obj = kokos_interp_alloc(interp);
+    obj->type = OBJ_SPECIAL_FORM;
+    obj->builtin = sform;
     return obj;
 }
 
 static kokos_env_t default_env(kokos_interp_t* interp)
 {
-    kokos_env_t env;
-    DA_INIT(env, 0, 1);
+    kokos_env_t env = kokos_env_empty(10);
 
-    kokos_obj_t* plus = interp_builtin(interp, builtin_plus);
-    DA_ADD(env, kokos_env_new("+", plus));
+    // builtins
+    kokos_obj_t* plus = make_builtin(interp, builtin_plus);
+    kokos_env_add(&env, "+", plus);
 
-    kokos_obj_t* minus = interp_builtin(interp, builtin_minus);
-    DA_ADD(env, kokos_env_new("-", minus));
+    kokos_obj_t* minus = make_builtin(interp, builtin_minus);
+    kokos_env_add(&env, "-", minus);
 
-    kokos_obj_t* star = interp_builtin(interp, builtin_star);
-    DA_ADD(env, kokos_env_new("*", star));
+    kokos_obj_t* star = make_builtin(interp, builtin_star);
+    kokos_env_add(&env, "/", star);
 
-    kokos_obj_t* slash = interp_builtin(interp, builtin_slash);
-    DA_ADD(env, kokos_env_new("/", slash));
+    kokos_obj_t* slash = make_builtin(interp, builtin_slash);
+    kokos_env_add(&env, "*", slash);
+
+    // special forms
+    kokos_obj_t* def = make_special_form(interp, sform_def);
+    kokos_env_add(&env, "def", def);
+
     return env;
 }
 
-kokos_interp_t kokos_interp_new(size_t gc_threshold)
+kokos_interp_t* kokos_interp_new(size_t gc_threshold)
 {
-    kokos_interp_t interp
-        = (kokos_interp_t) { .gc_threshold = gc_threshold, .obj_count = 0, .obj_head = NULL };
-    interp.global_env = default_env(&interp);
+    kokos_interp_t* interp = malloc(sizeof(kokos_interp_t));
+    *interp = (kokos_interp_t) { .gc_threshold = gc_threshold, .obj_count = 0, .obj_head = NULL };
+    interp->global_env = default_env(interp);
+    interp->current_env
+        = (kokos_env_t) { .parent = &interp->global_env, .items = NULL, .len = 0, .cap = 0 };
     return interp;
 }
 
-kokos_env_pair_t kokos_env_new(const char* name, kokos_obj_t* obj)
+static inline void mark_all(kokos_env_t* env)
 {
-    return (kokos_env_pair_t) { .name = name, .value = obj };
-}
+    if (env == NULL)
+        return;
 
-kokos_env_pair_t* kenv_find(kokos_env_t env, const char* name)
-{
-    for (size_t i = 0; i < env.len; i++) {
-        if (strcmp(name, env.items[i].name) == 0) {
-            return &env.items[i];
-        }
+    for (size_t i = 0; i < env->len; i++) {
+        kokos_obj_mark(env->items[i].value);
     }
 
-    return NULL;
-}
-
-static inline void mark_all(kokos_env_t env)
-{
-    for (size_t i = 0; i < env.len; i++) {
-        kokos_obj_mark(env.items[i].value);
-    }
+    mark_all(env->parent);
 }
 
 static inline void sweep(kokos_interp_t* interp)
@@ -183,7 +219,7 @@ static inline void sweep(kokos_interp_t* interp)
 void kokos_gc_run(kokos_interp_t* interp)
 {
     size_t num_of_objs = interp->obj_count;
-    mark_all(interp->global_env);
+    mark_all(&interp->current_env);
     sweep(interp);
     interp->gc_threshold = num_of_objs * 2;
 }

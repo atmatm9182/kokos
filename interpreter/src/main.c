@@ -1,9 +1,10 @@
+#include <assert.h>
 #include <stdio.h>
 
 #include "interpreter.h"
 #include "parser.h"
 
-static kokos_interp_t interp;
+static kokos_interp_t* interp;
 
 static kokos_obj_t* read(void)
 {
@@ -13,16 +14,21 @@ static kokos_obj_t* read(void)
 
     kokos_lexer_t lex = kokos_lex_buf(buf, -1);
     kokos_parser_t parser = kokos_parser_of_lexer(lex);
-    return kokos_parser_next(&parser, &interp);
+    return kokos_parser_next(&parser, interp);
 }
 
 static kokos_obj_t* eval(kokos_obj_t* obj)
 {
-    return kokos_interp_eval(&interp, obj, NULL, 1);
+    return kokos_interp_eval(interp, obj, 1);
 }
 
 static void print(kokos_obj_t* obj)
 {
+    if (obj == &kokos_obj_nil) {
+        printf("nil");
+        return;
+    }
+
     switch (obj->type) {
     case OBJ_INT:
         printf("%ld", obj->integer);
@@ -44,8 +50,10 @@ static void print(kokos_obj_t* obj)
         printf(")");
         break;
     case OBJ_BUILTIN_FUNC:
-        printf("<builtin function> addr %p", (void*)obj->builtin_func);
+        printf("<builtin function> addr %p", (void*)obj->builtin);
         break;
+    case OBJ_SPECIAL_FORM:
+        assert(0 && "something went completely wrong");
     }
 }
 
@@ -56,6 +64,7 @@ int main(int argc, char* argv[])
         printf("> ");
 
         kokos_obj_t* obj = read();
+        assert(obj);
         obj = eval(obj);
         print(obj);
 
