@@ -7,9 +7,10 @@ kokos_env_pair_t kokos_env_make_pair(const char* name, kokos_obj_t* obj)
 
 kokos_env_pair_t* kokos_env_find(kokos_env_t* env, const char* name)
 {
-    if (env == NULL || env->len == 0)
+    if (env == NULL)
         return NULL;
 
+    printf("searching for %s in an env of size %lu\n", name, env->len);
     for (size_t i = 0; i < env->len; i++) {
         if (strcmp(name, env->items[i].name) == 0) {
             return &env->items[i];

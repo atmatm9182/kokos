@@ -9,12 +9,12 @@ struct kokos_interp {
     size_t obj_count;
     size_t gc_threshold;
     kokos_env_t global_env;
-    kokos_env_t current_env;
+    kokos_env_t* current_env;
 };
 
 typedef struct kokos_interp kokos_interp_t;
 
-kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, int top_level);
+kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj);
 kokos_obj_t* kokos_interp_alloc(kokos_interp_t* interp);
 kokos_interp_t* kokos_interp_new(size_t gc_threshold);
 void kokos_gc_run(kokos_interp_t* interp);

@@ -19,7 +19,7 @@ static kokos_obj_t* read(void)
 
 static kokos_obj_t* eval(kokos_obj_t* obj)
 {
-    return kokos_interp_eval(interp, obj, 1);
+    return kokos_interp_eval(interp, obj);
 }
 
 static void print(kokos_obj_t* obj)
@@ -49,8 +49,11 @@ static void print(kokos_obj_t* obj)
         }
         printf(")");
         break;
-    case OBJ_BUILTIN_FUNC:
+    case OBJ_BUILTIN_PROC:
         printf("<builtin function> addr %p", (void*)obj->builtin);
+        break;
+    case OBJ_PROCEDURE:
+        printf("<procedure> %p", (void*)obj);
         break;
     case OBJ_SPECIAL_FORM:
         assert(0 && "something went completely wrong");
