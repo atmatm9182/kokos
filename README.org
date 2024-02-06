@@ -4,7 +4,7 @@
 - [ ] Floats
 - [ ] UTF-8 strings
 - [X] Variables
-- [-] Functions
+- [X] Functions
 - [ ] Macros
 - [ ] Scoped variable bindings
 - [ ] Basic equality and comparison operators

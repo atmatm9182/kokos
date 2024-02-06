@@ -1,17 +1,17 @@
 
 # Table of Contents
 
-1.  [Features](#org9dbee91)
-    1.  [Language level](#org4071c4f)
-    2.  [Implementation (software) level](#orgabbd40d)
+1.  [Features](#org5ff033d)
+    1.  [Language level](#orge99bbfb)
+    2.  [Implementation (software) level](#orgdd399c4)
 
 
-<a id="org9dbee91"></a>
+<a id="org5ff033d"></a>
 
 # Features
 
 
-<a id="org4071c4f"></a>
+<a id="orge99bbfb"></a>
 
 ## Language level
 
@@ -19,7 +19,7 @@
 -   [ ] Floats
 -   [ ] UTF-8 strings
 -   [X] Variables
--   [-] Functions
+-   [X] Functions
 -   [ ] Macros
 -   [ ] Scoped variable bindings
 -   [ ] Basic equality and comparison operators
@@ -30,7 +30,7 @@
 -   [ ] File I/O
 
 
-<a id="orgabbd40d"></a>
+<a id="orgdd399c4"></a>
 
 ## Implementation (software) level
 
