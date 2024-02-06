@@ -5,7 +5,7 @@
 #include "obj.h"
 
 struct kokos_env_pair {
-    const char* name;
+    char* name;
     kokos_obj_t* value;
 };
 
@@ -24,5 +24,6 @@ kokos_env_t kokos_env_empty(size_t cap);
 void kokos_env_add(kokos_env_t* env, const char* name, kokos_obj_t* obj);
 kokos_env_pair_t* kokos_env_find(kokos_env_t* env, const char* name);
 kokos_env_pair_t kokos_env_make_pair(const char* name, kokos_obj_t* obj);
+void kokos_env_destroy(kokos_env_t* env);
 
 #endif // ENV_H_

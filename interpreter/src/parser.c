@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "src/obj.h"
 #include "token.h"
 
 #include <assert.h>
@@ -54,12 +55,14 @@ static void advance(kokos_parser_t* parser)
     parser->has_cur = kokos_lex_next(&parser->lex, &parser->cur);
 }
 
-int parse_err = 0;
+kokos_parser_err_e kokos_p_err = 0;
+kokos_token_t kokos_p_err_tok;
 
 kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
 {
-    if (!parser->has_cur)
+    if (!parser->has_cur) {
         return NULL;
+    }
 
     switch (parser->cur.type) {
     case TT_LPAREN: {
@@ -76,7 +79,8 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         }
 
         if (!parser->has_cur) {
-            parse_err = 1;
+            kokos_p_err = ERR_UNMATCHED_PAREN;
+            kokos_p_err_tok = parser->cur;
             for (size_t i = 0; i < gc_objs.len; i++) {
                 free(gc_objs.items[i]);
             }
@@ -85,25 +89,40 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         }
 
         advance(parser);
-        return alloc_list(gc_objs.items, gc_objs.len, interp);
+        kokos_obj_t* list = alloc_list(gc_objs.items, gc_objs.len, interp);
+        list->token = parser->cur;
+        return list;
     }
     case TT_IDENT: {
         kokos_obj_t* ident = alloc_symbol(parser->cur.value, interp);
+        ident->token = parser->cur;
         advance(parser);
         return ident;
     }
     case TT_INT_LIT: {
         kokos_obj_t* integer = alloc_integer(parser->cur.value, interp);
+        integer->token = parser->cur;
         advance(parser);
         return integer;
     }
     case TT_STR_LIT: {
         kokos_obj_t* str = alloc_str(parser->cur.value, interp);
+        str->token = parser->cur;
         advance(parser);
         return str;
     }
-    default:
-        assert(0 && "TODO: implement error handling");
+    case TT_ILLEGAL:
+        kokos_p_err = ERR_ILLEGAL_CHAR;
+        kokos_p_err_tok = parser->cur;
+        return NULL;
+    case TT_RPAREN:
+        kokos_p_err = ERR_UNEXPECTED_TOKEN;
+        kokos_p_err_tok = parser->cur;
+        return NULL;
+    case TT_STR_LIT_UNCLOSED:
+        kokos_p_err = ERR_UNCLOSED_STR;
+        kokos_p_err_tok = parser->cur;
+        return NULL;
     }
 }
 

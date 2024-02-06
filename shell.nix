@@ -1,7 +1,7 @@
 with import <nixpkgs> {};
 
-llvmPackages_13.stdenv.mkDerivation {
+llvmPackages_17.stdenv.mkDerivation {
   name = "c-env";
-  nativeBuildInputs = [ clang-tools meson ninja gdb ];
+  nativeBuildInputs = [ clang-tools_17 meson ninja gdb ];
   hardeningDisable = [ "fortify" ];
 }

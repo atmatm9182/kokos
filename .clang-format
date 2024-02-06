@@ -2,3 +2,9 @@ BasedOnStyle: WebKit
 IndentWidth: 4
 AllowShortFunctionsOnASingleLine: false
 ColumnLimit: 100
+AllowShortCaseLabelsOnASingleLine: true
+AlignConsecutiveShortCaseStatements:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
+  AlignCaseColons: false

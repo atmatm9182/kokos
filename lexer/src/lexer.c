@@ -38,8 +38,7 @@ static bool lex_skip_whitespace(kokos_lexer_t* lex)
                 return false;
             }
             break;
-        default:
-            return true;
+        default: return true;
         }
     }
 
@@ -48,7 +47,7 @@ static bool lex_skip_whitespace(kokos_lexer_t* lex)
 
 static inline bool isvalid(char c)
 {
-    return !isspace(c) &&  c != '(' && c != ')';
+    return !isspace(c) && c != '(' && c != ')';
 }
 
 int kokos_lex_next(kokos_lexer_t* lex, kokos_token_t* token)
@@ -67,10 +66,6 @@ int kokos_lex_next(kokos_lexer_t* lex, kokos_token_t* token)
         break;
     case ')':
         token->type = TT_RPAREN;
-        token->value = sv_slice(lex->contents, lex->pos, 1);
-        break;
-    case ';':
-        token->type = TT_SEMICOLON;
         token->value = sv_slice(lex->contents, lex->pos, 1);
         break;
     case '"': {
@@ -96,8 +91,7 @@ int kokos_lex_next(kokos_lexer_t* lex, kokos_token_t* token)
         token->value = sv_slice(lex->contents, start, lex->pos - start);
         break;
     }
-    case '\0':
-        return 0;
+    case '\0': return 0;
     default:
         if (isdigit(c)) {
             token->type = TT_INT_LIT;

@@ -1,6 +1,7 @@
 #ifndef OBJ_H_
 #define OBJ_H_
 
+#include "token.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -39,6 +40,7 @@ typedef kokos_obj_t* (*kokos_builtin_procedure_t)(
     struct kokos_interp* interp, kokos_obj_list_t args);
 
 struct kokos_obj {
+    kokos_token_t token;
     struct kokos_obj* next;
     unsigned char marked : 1;
     kokos_obj_type_e type : 7;

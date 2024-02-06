@@ -30,15 +30,9 @@ static void print(kokos_obj_t* obj)
     }
 
     switch (obj->type) {
-    case OBJ_INT:
-        printf("%ld", obj->integer);
-        break;
-    case OBJ_STRING:
-        printf("\"%s\"", obj->string);
-        break;
-    case OBJ_SYMBOL:
-        printf("%s", obj->symbol);
-        break;
+    case OBJ_INT:    printf("%ld", obj->integer); break;
+    case OBJ_STRING: printf("\"%s\"", obj->string); break;
+    case OBJ_SYMBOL: printf("%s", obj->symbol); break;
     case OBJ_LIST:
         printf("(");
         for (size_t i = 0; i < obj->list.len; i++) {
@@ -49,15 +43,50 @@ static void print(kokos_obj_t* obj)
         }
         printf(")");
         break;
-    case OBJ_BUILTIN_PROC:
-        printf("<builtin function> addr %p", (void*)obj->builtin);
-        break;
-    case OBJ_PROCEDURE:
-        printf("<procedure> %p", (void*)obj);
-        break;
-    case OBJ_SPECIAL_FORM:
-        assert(0 && "something went completely wrong");
+    case OBJ_BUILTIN_PROC: printf("<builtin function> addr %p", (void*)obj->builtin); break;
+    case OBJ_PROCEDURE:    printf("<procedure> %p", (void*)obj); break;
+    case OBJ_SPECIAL_FORM: assert(0 && "something went completely wrong");
     }
+}
+
+static void print_location(kokos_location_t location)
+{
+    printf("%s:%lu:%lu", location.filename, location.row, location.col);
+}
+
+static void print_parser_error(void)
+{
+    switch (kokos_p_err) {
+    case ERR_NONE: assert(0 && "should never happen");
+    case ERR_ILLEGAL_CHAR:
+        printf("Illegal char '");
+        sv_print(kokos_p_err_tok.value);
+        printf("' at ");
+        print_location(kokos_p_err_tok.location);
+        break;
+    case ERR_UNCLOSED_STR:
+        printf("Unclosed string literal \"");
+        sv_print(kokos_p_err_tok.value);
+        printf("\" at ");
+        print_location(kokos_p_err_tok.location);
+        break;
+    case ERR_UNEXPECTED_TOKEN:
+        printf("Unexpected token '%s' at", kokos_token_type_str(kokos_p_err_tok.type));
+        print_location(kokos_p_err_tok.location);
+        break;
+    case ERR_UNMATCHED_PAREN:
+        printf("Unmatched parenthesis at ");
+        kokos_p_err_tok.location.col += kokos_p_err_tok.value.size;
+        print_location(kokos_p_err_tok.location);
+        break;
+    }
+
+    printf("\n");
+}
+
+static void print_interpreter_error(void)
+{
+    printf("%s\n", kokos_interp_get_error());
 }
 
 int main(int argc, char* argv[])
@@ -67,8 +96,17 @@ int main(int argc, char* argv[])
         printf("> ");
 
         kokos_obj_t* obj = read();
-        assert(obj);
+        if (!obj) {
+            print_parser_error();
+            continue;
+        }
+
         obj = eval(obj);
+        if (!obj) {
+            print_interpreter_error();
+            continue;
+        }
+
         print(obj);
 
         printf("\n");

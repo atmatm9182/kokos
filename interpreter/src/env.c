@@ -2,7 +2,11 @@
 
 kokos_env_pair_t kokos_env_make_pair(const char* name, kokos_obj_t* obj)
 {
-    return (kokos_env_pair_t) { .name = name, .value = obj };
+    size_t name_len = strlen(name);
+    char* str = malloc(sizeof(char) * (name_len + 1));
+    memcpy(str, name, name_len);
+    str[name_len] = '\0';
+    return (kokos_env_pair_t) { .name = str, .value = obj };
 }
 
 kokos_env_pair_t* kokos_env_find(kokos_env_t* env, const char* name)
@@ -10,7 +14,6 @@ kokos_env_pair_t* kokos_env_find(kokos_env_t* env, const char* name)
     if (env == NULL)
         return NULL;
 
-    printf("searching for %s in an env of size %lu\n", name, env->len);
     for (size_t i = 0; i < env->len; i++) {
         if (strcmp(name, env->items[i].name) == 0) {
             return &env->items[i];
@@ -39,4 +42,12 @@ kokos_env_t kokos_env_empty(size_t cap)
     DA_INIT(&env, 0, cap);
     env.parent = NULL;
     return env;
+}
+
+void kokos_env_destroy(kokos_env_t* env)
+{
+    for (size_t i = 0; i < env->len; i++) {
+        free(env->items[i].name);
+    }
+    DA_FREE(env);
 }

@@ -19,5 +19,6 @@ kokos_obj_t* kokos_interp_alloc(kokos_interp_t* interp);
 kokos_interp_t* kokos_interp_new(size_t gc_threshold);
 void kokos_gc_run(kokos_interp_t* interp);
 void kokos_interp_print_stat(const kokos_interp_t* interp);
+const char* kokos_interp_get_error(void);
 
 #endif // INTERPRETER_H_

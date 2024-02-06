@@ -12,11 +12,18 @@ struct kokos_parser {
 
 typedef struct kokos_parser kokos_parser_t;
 
-/**
- * should check the value of this variable after parsing
- * 1 - unmatched paren
- */
-extern int parse_err;
+enum kokos_parser_err {
+    ERR_NONE,
+    ERR_UNMATCHED_PAREN,
+    ERR_ILLEGAL_CHAR,
+    ERR_UNEXPECTED_TOKEN,
+    ERR_UNCLOSED_STR,
+};
+
+typedef enum kokos_parser_err kokos_parser_err_e;
+
+extern kokos_parser_err_e kokos_p_err;
+extern kokos_token_t kokos_p_err_tok;
 
 kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp);
 kokos_parser_t kokos_parser_of_lexer(kokos_lexer_t lexer);

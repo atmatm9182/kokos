@@ -1,8 +1,82 @@
 #include "interpreter.h"
 
 #include <assert.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+
+#define ERR_BUFFER_CAP 2048
+
+static char err_buf[ERR_BUFFER_CAP];
+
+const char* kokos_interp_get_error(void)
+{
+    return err_buf;
+}
+
+static void write_err(kokos_location_t location, const char* format, ...)
+    __attribute__((format(printf, 2, 3)));
+
+static void write_err(kokos_location_t location, const char* format, ...)
+{
+    int len = sprintf(err_buf, "%s:%lu:%lu ", location.filename, location.row, location.col);
+
+    va_list sprintf_args;
+    va_start(sprintf_args, format);
+    vsprintf(err_buf + len, format, sprintf_args);
+}
+
+static const char* str_type(kokos_obj_type_e type)
+{
+    switch (type) {
+    case OBJ_INT:          return "int";
+    case OBJ_SYMBOL:       return "symbol";
+    case OBJ_BUILTIN_PROC: return "builtin procedure";
+    case OBJ_PROCEDURE:    return "procedure";
+    case OBJ_LIST:         return "list";
+    case OBJ_SPECIAL_FORM: return "special form";
+    case OBJ_STRING:       return "string";
+    }
+}
+
+static void type_mismatch(
+    kokos_location_t where, kokos_obj_type_e got, int expected_count, va_list args)
+{
+    string_builder sb = sb_new(25);
+
+    for (int i = 0; i < expected_count; i++) {
+        kokos_obj_type_e t = va_arg(args, kokos_obj_type_e);
+        sb_push_cstr(&sb, str_type(t));
+        if (i != expected_count - 1)
+            sb_push_cstr(&sb, " ");
+    }
+
+    char tmp_buf[512];
+    char* expected_str = sb_to_cstr(&sb);
+    if (expected_count > 1)
+        sprintf(tmp_buf, "one of %s", expected_str);
+    else
+        sprintf(tmp_buf, "%s", expected_str);
+
+    write_err(where, "Type mismatch: got %s, expected %s", str_type(got), tmp_buf);
+}
+
+static bool expect_type(const kokos_obj_t* obj, int expected_count, ...)
+{
+    va_list args;
+    va_start(args, expected_count);
+
+    for (int i = 0; i < expected_count; i++) {
+        if (obj->type == va_arg(args, kokos_obj_type_e)) {
+            va_end(args);
+            return true;
+        }
+    }
+
+    type_mismatch(obj->token.location, obj->type, expected_count, args);
+    va_end(args);
+    return false;
+}
 
 kokos_obj_t* kokos_interp_alloc(kokos_interp_t* interp)
 {
@@ -27,26 +101,34 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj)
     case OBJ_INT:
     case OBJ_STRING:
     case OBJ_BUILTIN_PROC:
-    case OBJ_PROCEDURE:
-        result = obj;
-        break;
-    case OBJ_SYMBOL: {
+    case OBJ_PROCEDURE:    result = obj; break;
+    case OBJ_SYMBOL:       {
         kokos_env_pair_t* pair = kokos_env_find(interp->current_env, obj->symbol);
-        assert(pair);
+        if (!pair) {
+            write_err(obj->token.location, "Undefined symbol %s", obj->symbol);
+            return NULL;
+        }
         result = pair->value;
         break;
     }
     case OBJ_LIST: {
         kokos_obj_t* head = kokos_interp_eval(interp, obj->list.objs[0]);
+        if (!head)
+            return NULL;
         if (head->type == OBJ_BUILTIN_PROC) {
             struct {
                 kokos_obj_t** items;
                 size_t len;
                 size_t cap;
             } args_arr;
+
             DA_INIT(&args_arr, 0, obj->list.len - 1);
             for (size_t i = 1; i < obj->list.len; i++) {
                 kokos_obj_t* evaluated_arg = kokos_interp_eval(interp, obj->list.objs[i]);
+                if (!evaluated_arg) {
+                    DA_FREE(&args_arr);
+                    return NULL;
+                }
                 DA_ADD(&args_arr, evaluated_arg);
             }
 
@@ -68,11 +150,19 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj)
             kokos_obj_procedure_t proc = head->procedure;
 
             kokos_obj_list_t args = list_to_args(obj->list);
-            assert(proc.params.len == args.len);
-
+            if (args.len != proc.params.len) {
+                write_err(obj->token.location,
+                    "Arity mismatch when calling: expected %lu arguments, got %lu", proc.params.len,
+                    args.len);
+                return NULL;
+            }
             kokos_env_t call_env = kokos_env_empty(args.len);
             for (size_t i = 0; i < args.len; i++) {
                 kokos_obj_t* obj = kokos_interp_eval(interp, args.objs[i]);
+                if (!obj) {
+                    return NULL;
+                }
+
                 kokos_env_add(&call_env, proc.params.objs[i]->symbol, obj);
             }
 
@@ -89,14 +179,10 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj)
             break;
         }
 
-        assert(0
-            && "This should result in an error saying that we cannot call a symbol that is not "
-               "callable");
-        break;
+        write_err(obj->token.location, "Object of type '%s' is not callable", str_type(obj->type));
+        return NULL;
     }
-    case OBJ_SPECIAL_FORM:
-        assert(0 && "This should result in an error since evaluating a special form is illegal");
-        break;
+    case OBJ_SPECIAL_FORM: assert(0 && "unreachable!"); break;
     }
 
     if (!interp->current_env->parent && interp->obj_count > interp->gc_threshold) {
@@ -111,6 +197,9 @@ static kokos_obj_t* builtin_plus(kokos_interp_t* interp, kokos_obj_list_t args)
 {
     int64_t num = 0;
     for (size_t i = 0; i < args.len; i++) {
+        if (!expect_type(args.objs[i], 1, OBJ_INT))
+            return NULL;
+
         num += args.objs[i]->integer;
     }
     kokos_obj_t* obj = kokos_interp_alloc(interp);
@@ -131,6 +220,9 @@ static kokos_obj_t* builtin_minus(kokos_interp_t* interp, kokos_obj_list_t args)
     }
 
     for (size_t i = 1; i < args.len; i++) {
+        if (!expect_type(args.objs[i], 1, OBJ_INT))
+            return NULL;
+
         num -= args.objs[i]->integer;
     }
     obj->integer = num;
@@ -141,6 +233,9 @@ static kokos_obj_t* builtin_star(kokos_interp_t* interp, kokos_obj_list_t args)
 {
     int64_t num = args.objs[0]->integer;
     for (size_t i = 1; i < args.len; i++) {
+        if (!expect_type(args.objs[i], 1, OBJ_INT))
+            return NULL;
+
         num *= args.objs[i]->integer;
     }
     kokos_obj_t* obj = kokos_interp_alloc(interp);
@@ -153,6 +248,9 @@ static kokos_obj_t* builtin_slash(kokos_interp_t* interp, kokos_obj_list_t args)
 {
     int64_t num = args.objs[0]->integer;
     for (size_t i = 1; i < args.len; i++) {
+        if (!expect_type(args.objs[i], 1, OBJ_INT))
+            return NULL;
+
         num /= args.objs[i]->integer;
     }
     kokos_obj_t* obj = kokos_interp_alloc(interp);
@@ -163,22 +261,30 @@ static kokos_obj_t* builtin_slash(kokos_interp_t* interp, kokos_obj_list_t args)
 
 static kokos_obj_t* sform_def(kokos_interp_t* interp, kokos_obj_list_t args)
 {
-    assert(args.objs[0]->type == OBJ_SYMBOL && "The variable name should be a symbol");
+    if (!expect_type(args.objs[0], 1, OBJ_SYMBOL))
+        return NULL;
+
     for (size_t i = 1; i < args.len - 1; i++) {
-        kokos_interp_eval(interp, args.objs[i]);
+        if (!kokos_interp_eval(interp, args.objs[i]))
+            return NULL;
     }
 
     kokos_obj_t* def = kokos_interp_eval(interp, args.objs[args.len - 1]);
+    if (!def)
+        return NULL;
+
     kokos_env_add(&interp->global_env, args.objs[0]->symbol, def);
     return &kokos_obj_nil;
 }
 
 static kokos_obj_t* sform_proc(kokos_interp_t* interp, kokos_obj_list_t args)
 {
-    assert(args.objs[0]->type == OBJ_SYMBOL && "The procedure name should be a symbol");
+    if (!expect_type(args.objs[0], 1, OBJ_SYMBOL))
+        return NULL;
 
     kokos_obj_t* params = args.objs[1];
-    assert(params->type == OBJ_LIST && "The params should be a list of symbols");
+    if (!expect_type(params, 1, OBJ_LIST))
+        return NULL;
 
     kokos_obj_list_t body = { .objs = args.objs + 2, .len = args.len - 2 };
     kokos_obj_procedure_t proc = { .params = params->list, .body = body };
