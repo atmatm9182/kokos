@@ -19,7 +19,7 @@ static kokos_obj_t* read(void)
 
 static kokos_obj_t* eval(kokos_obj_t* obj)
 {
-    return kokos_interp_eval(interp, obj);
+    return kokos_interp_eval(interp, obj, 1);
 }
 
 static void print(kokos_obj_t* obj)
@@ -91,7 +91,7 @@ static void print_interpreter_error(void)
 
 int main(int argc, char* argv[])
 {
-    interp = kokos_interp_new(50);
+    interp = kokos_interp_new(5);
     while (1) {
         printf("> ");
 

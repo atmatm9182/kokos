@@ -22,6 +22,7 @@ void kokos_obj_mark(kokos_obj_t* obj)
         for (size_t i = 0; i < obj->procedure.body.len; i++) {
             kokos_obj_mark(obj->procedure.body.objs[i]);
         }
+        break;
     }
 }
 

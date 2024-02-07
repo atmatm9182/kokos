@@ -93,7 +93,7 @@ static kokos_obj_list_t list_to_args(kokos_obj_list_t list)
     return (kokos_obj_list_t) { .objs = list.objs + 1, .len = list.len - 1 };
 }
 
-kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj)
+kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool top_level)
 {
     kokos_obj_t* result = NULL;
 
@@ -112,7 +112,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj)
         break;
     }
     case OBJ_LIST: {
-        kokos_obj_t* head = kokos_interp_eval(interp, obj->list.objs[0]);
+        kokos_obj_t* head = kokos_interp_eval(interp, obj->list.objs[0], 0);
         if (!head)
             return NULL;
         if (head->type == OBJ_BUILTIN_PROC) {
@@ -124,7 +124,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj)
 
             DA_INIT(&args_arr, 0, obj->list.len - 1);
             for (size_t i = 1; i < obj->list.len; i++) {
-                kokos_obj_t* evaluated_arg = kokos_interp_eval(interp, obj->list.objs[i]);
+                kokos_obj_t* evaluated_arg = kokos_interp_eval(interp, obj->list.objs[i], 0);
                 if (!evaluated_arg) {
                     DA_FREE(&args_arr);
                     return NULL;
@@ -156,9 +156,10 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj)
                     args.len);
                 return NULL;
             }
+
             kokos_env_t call_env = kokos_env_empty(args.len);
             for (size_t i = 0; i < args.len; i++) {
-                kokos_obj_t* obj = kokos_interp_eval(interp, args.objs[i]);
+                kokos_obj_t* obj = kokos_interp_eval(interp, args.objs[i], 0);
                 if (!obj) {
                     return NULL;
                 }
@@ -171,10 +172,11 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj)
             interp->current_env = &call_env;
 
             for (size_t i = 0; i < proc.body.len - 1; i++) {
-                kokos_interp_eval(interp, proc.body.objs[i]);
+                if (!kokos_interp_eval(interp, proc.body.objs[i], 0))
+                    return NULL;
             }
 
-            result = kokos_interp_eval(interp, proc.body.objs[proc.body.len - 1]);
+            result = kokos_interp_eval(interp, proc.body.objs[proc.body.len - 1], 0);
             interp->current_env = call_parent;
             break;
         }
@@ -185,7 +187,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj)
     case OBJ_SPECIAL_FORM: assert(0 && "unreachable!"); break;
     }
 
-    if (!interp->current_env->parent && interp->obj_count > interp->gc_threshold) {
+    if (top_level && result && interp->obj_count > interp->gc_threshold) {
         kokos_obj_mark(result);
         kokos_gc_run(interp);
     }
@@ -265,11 +267,11 @@ static kokos_obj_t* sform_def(kokos_interp_t* interp, kokos_obj_list_t args)
         return NULL;
 
     for (size_t i = 1; i < args.len - 1; i++) {
-        if (!kokos_interp_eval(interp, args.objs[i]))
+        if (!kokos_interp_eval(interp, args.objs[i], 1))
             return NULL;
     }
 
-    kokos_obj_t* def = kokos_interp_eval(interp, args.objs[args.len - 1]);
+    kokos_obj_t* def = kokos_interp_eval(interp, args.objs[args.len - 1], 1);
     if (!def)
         return NULL;
 
@@ -377,12 +379,12 @@ static inline void sweep(kokos_interp_t* interp)
     }
 }
 
+// FIXME: there is a bug that occurs really rarely that causes a double-free
+// to happen, howevew i do not even know what causes that bug yet
 void kokos_gc_run(kokos_interp_t* interp)
 {
-    size_t num_of_objs = interp->obj_count;
     mark_all(interp->current_env);
     sweep(interp);
-    interp->gc_threshold = num_of_objs * 2;
 }
 
 void kokos_interp_print_stat(const kokos_interp_t* interp)
