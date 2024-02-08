@@ -10,6 +10,7 @@ enum kokos_token_type {
     TT_IDENT,
     TT_INT_LIT,
     TT_STR_LIT,
+    TT_FLOAT_LIT,
     TT_STR_LIT_UNCLOSED,
     TT_ILLEGAL,
 };
@@ -34,6 +35,7 @@ static inline const char* kokos_token_type_str(kokos_token_type_e tt)
     case TT_INT_LIT:          return "TT_INT_LIT";
     case TT_LPAREN:           return "TT_LPAREN";
     case TT_ILLEGAL:          return "TT_ILLEGAL";
+    case TT_FLOAT_LIT:        return "TT_FLOAT_LIT";
     }
 }
 

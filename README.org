@@ -1,7 +1,7 @@
 * Features
 ** Language level
 - [X] Arithmetic operators
-- [ ] Floats
+- [X] Floats
 - [ ] UTF-8 strings
 - [X] Variables
 - [X] Functions

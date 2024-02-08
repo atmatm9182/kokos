@@ -1,22 +1,22 @@
 
 # Table of Contents
 
-1.  [Features](#org5ff033d)
-    1.  [Language level](#orge99bbfb)
-    2.  [Implementation (software) level](#orgdd399c4)
+1.  [Features](#orgb73b6d7)
+    1.  [Language level](#org62b6fc6)
+    2.  [Implementation (software) level](#orge2c7a43)
 
 
-<a id="org5ff033d"></a>
+<a id="orgb73b6d7"></a>
 
 # Features
 
 
-<a id="orge99bbfb"></a>
+<a id="org62b6fc6"></a>
 
 ## Language level
 
 -   [X] Arithmetic operators
--   [ ] Floats
+-   [X] Floats
 -   [ ] UTF-8 strings
 -   [X] Variables
 -   [X] Functions
@@ -30,7 +30,7 @@
 -   [ ] File I/O
 
 
-<a id="orgdd399c4"></a>
+<a id="orge2c7a43"></a>
 
 ## Implementation (software) level
 

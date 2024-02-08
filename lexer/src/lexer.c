@@ -100,6 +100,16 @@ int kokos_lex_next(kokos_lexer_t* lex, kokos_token_t* token)
             while (lex->pos < lex->contents.size && isdigit(cur_char(lex))) {
                 lex_advance(lex);
             }
+
+            if (lex->pos < lex->contents.size && cur_char(lex) == '.') {
+                token->type = TT_FLOAT_LIT;
+                lex_advance(lex);
+
+                while (lex->pos < lex->contents.size && isdigit(cur_char(lex))) {
+                    lex_advance(lex);
+                }
+            }
+
             token->value = sv_slice(lex->contents, start, lex->pos - start);
             lex->pos--;
             lex->location.col--;

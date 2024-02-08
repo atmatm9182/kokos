@@ -8,6 +8,7 @@
 enum kokos_obj_type {
     OBJ_INT,
     OBJ_STRING,
+    OBJ_FLOAT,
     OBJ_SYMBOL,
     OBJ_LIST,
     OBJ_PROCEDURE,
@@ -47,6 +48,7 @@ struct kokos_obj {
 
     union {
         int64_t integer;
+        double floating;
         char* string;
         char* symbol;
         kokos_obj_list_t list;

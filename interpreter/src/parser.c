@@ -33,11 +33,31 @@ static int64_t sv_atoi(string_view sv)
     return num;
 }
 
+#define DOUBLE_LIT_MAX_LEN 316
+
+static double sv_atof(string_view sv)
+{
+    char tmp[DOUBLE_LIT_MAX_LEN + 1];
+    memcpy(tmp, sv.ptr, sv.size);
+    tmp[sv.size] = '\0';
+    return atof(tmp);
+}
+
+#undef DOUBLE_LIT_MAX_LEN
+
 static kokos_obj_t* alloc_integer(string_view value, kokos_interp_t* interp)
 {
     kokos_obj_t* integer = kokos_interp_alloc(interp);
     integer->type = OBJ_INT;
     integer->integer = sv_atoi(value);
+    return integer;
+}
+
+static kokos_obj_t* alloc_float(string_view value, kokos_interp_t* interp)
+{
+    kokos_obj_t* integer = kokos_interp_alloc(interp);
+    integer->type = OBJ_FLOAT;
+    integer->floating = sv_atof(value);
     return integer;
 }
 
@@ -81,9 +101,6 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         if (!parser->has_cur) {
             kokos_p_err = ERR_UNMATCHED_PAREN;
             kokos_p_err_tok = parser->cur;
-            for (size_t i = 0; i < gc_objs.len; i++) {
-                free(gc_objs.items[i]);
-            }
             DA_FREE(&gc_objs);
             return NULL;
         }
@@ -110,6 +127,12 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         str->token = parser->cur;
         advance(parser);
         return str;
+    }
+    case TT_FLOAT_LIT: {
+        kokos_obj_t* f = alloc_float(parser->cur.value, interp);
+        f->token = parser->cur;
+        advance(parser);
+        return f;
     }
     case TT_ILLEGAL:
         kokos_p_err = ERR_ILLEGAL_CHAR;

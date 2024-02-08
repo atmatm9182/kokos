@@ -9,6 +9,7 @@ void kokos_obj_mark(kokos_obj_t* obj)
     switch (obj->type) {
     case OBJ_INT:
     case OBJ_STRING:
+    case OBJ_FLOAT:
     case OBJ_SYMBOL:
     case OBJ_BUILTIN_PROC:
     case OBJ_SPECIAL_FORM: break;
@@ -41,6 +42,7 @@ void kokos_obj_print(kokos_obj_t* obj)
     switch (obj->type) {
     case OBJ_INT:    printf("%ld", obj->integer); break;
     case OBJ_STRING: printf("\"%s\"", obj->string); break;
+    case OBJ_FLOAT:  printf("%lf", obj->floating); break;
     case OBJ_SYMBOL: printf("%s", obj->symbol); break;
     case OBJ_LIST:
         printf("(");

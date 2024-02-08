@@ -1,6 +1,7 @@
 #include "interpreter.h"
 
 #include <assert.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -30,6 +31,7 @@ static const char* str_type(kokos_obj_type_e type)
 {
     switch (type) {
     case OBJ_INT:          return "int";
+    case OBJ_FLOAT:        return "float";
     case OBJ_SYMBOL:       return "symbol";
     case OBJ_BUILTIN_PROC: return "builtin procedure";
     case OBJ_PROCEDURE:    return "procedure";
@@ -39,7 +41,7 @@ static const char* str_type(kokos_obj_type_e type)
     }
 }
 
-static void type_mismatch(
+static void type_mismatch_va(
     kokos_location_t where, kokos_obj_type_e got, int expected_count, va_list args)
 {
     string_builder sb = sb_new(25);
@@ -61,6 +63,14 @@ static void type_mismatch(
     write_err(where, "Type mismatch: got %s, expected %s", str_type(got), tmp_buf);
 }
 
+static void type_mismatch(kokos_location_t where, kokos_obj_type_e got, int expected_count, ...)
+{
+    va_list expected_types;
+    va_start(expected_types, expected_count);
+    type_mismatch_va(where, got, expected_count, expected_types);
+    va_end(expected_types);
+}
+
 static bool expect_type(const kokos_obj_t* obj, int expected_count, ...)
 {
     va_list args;
@@ -73,7 +83,7 @@ static bool expect_type(const kokos_obj_t* obj, int expected_count, ...)
         }
     }
 
-    type_mismatch(obj->token.location, obj->type, expected_count, args);
+    type_mismatch_va(obj->token.location, obj->type, expected_count, args);
     va_end(args);
     return false;
 }
@@ -119,6 +129,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
     switch (obj->type) {
     case OBJ_INT:
     case OBJ_STRING:
+    case OBJ_FLOAT:
     case OBJ_BUILTIN_PROC:
     case OBJ_PROCEDURE:    result = obj; break;
     case OBJ_SYMBOL:       {
@@ -160,6 +171,9 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
 
         if (head->type == OBJ_SPECIAL_FORM) {
             kokos_obj_list_t args = list_to_args(obj->list);
+            if (!expect_arity(obj->token.location, 3, args.len))
+                return NULL;
+
             kokos_builtin_procedure_t proc = head->builtin;
             result = proc(interp, args);
             break;
@@ -196,7 +210,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
             break;
         }
 
-        write_err(obj->token.location, "Object of type '%s' is not callable", str_type(obj->type));
+        write_err(obj->token.location, "Object of type '%s' is not callable", str_type(head->type));
         return NULL;
     }
     case OBJ_SPECIAL_FORM: assert(0 && "unreachable!"); break;
@@ -212,67 +226,160 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
 
 static kokos_obj_t* builtin_plus(kokos_interp_t* interp, kokos_obj_list_t args)
 {
-    int64_t num = 0;
+    bool use_float = false;
+    int64_t int_res = 0;
+    double float_res = 0;
     for (size_t i = 0; i < args.len; i++) {
-        if (!expect_type(args.objs[i], 1, OBJ_INT))
-            return NULL;
+        kokos_obj_t* obj = args.objs[i];
 
-        num += args.objs[i]->integer;
+        switch (obj->type) {
+        case OBJ_INT: int_res += obj->integer; break;
+        case OBJ_FLOAT:
+            use_float = true;
+            float_res += obj->floating;
+            break;
+        case OBJ_SYMBOL:
+        case OBJ_LIST:
+        case OBJ_STRING:
+        case OBJ_BUILTIN_PROC:
+        case OBJ_PROCEDURE:
+        case OBJ_SPECIAL_FORM:
+            type_mismatch(obj->token.location, obj->type, 2, OBJ_INT, OBJ_FLOAT);
+            return NULL;
+        }
     }
+
     kokos_obj_t* obj = kokos_interp_alloc(interp);
+    if (use_float) {
+        obj->type = OBJ_FLOAT;
+        obj->floating = (double)int_res + float_res;
+        return obj;
+    }
+
     obj->type = OBJ_INT;
-    obj->integer = num;
+    obj->integer = int_res;
     return obj;
 }
 
 static kokos_obj_t* builtin_minus(kokos_interp_t* interp, kokos_obj_list_t args)
 {
-    int64_t num = args.objs[0]->integer;
-    kokos_obj_t* obj = kokos_interp_alloc(interp);
-    obj->type = OBJ_INT;
+    bool use_float = false;
+    int64_t int_res = 0;
+    double float_res = 0;
+    for (size_t i = 0; i < args.len; i++) {
+        kokos_obj_t* obj = args.objs[i];
 
-    if (args.len == 1) {
-        obj->integer = -num;
+        switch (obj->type) {
+        case OBJ_INT: int_res -= obj->integer; break;
+        case OBJ_FLOAT:
+            use_float = true;
+            float_res -= obj->floating;
+            break;
+        case OBJ_SYMBOL:
+        case OBJ_LIST:
+        case OBJ_STRING:
+        case OBJ_BUILTIN_PROC:
+        case OBJ_PROCEDURE:
+        case OBJ_SPECIAL_FORM:
+            type_mismatch(obj->token.location, obj->type, 2, OBJ_INT, OBJ_FLOAT);
+            return NULL;
+        }
+    }
+
+    kokos_obj_t* obj = kokos_interp_alloc(interp);
+    if (use_float) {
+        obj->type = OBJ_FLOAT;
+        obj->floating = (double)int_res + float_res;
         return obj;
     }
 
-    for (size_t i = 1; i < args.len; i++) {
-        if (!expect_type(args.objs[i], 1, OBJ_INT))
-            return NULL;
-
-        num -= args.objs[i]->integer;
-    }
-    obj->integer = num;
+    obj->type = OBJ_INT;
+    obj->integer = int_res;
     return obj;
 }
 
 static kokos_obj_t* builtin_star(kokos_interp_t* interp, kokos_obj_list_t args)
 {
-    int64_t num = args.objs[0]->integer;
-    for (size_t i = 1; i < args.len; i++) {
-        if (!expect_type(args.objs[i], 1, OBJ_INT))
-            return NULL;
+    bool use_float = false;
+    int64_t int_res = 1;
+    double float_res = 1;
+    for (size_t i = 0; i < args.len; i++) {
+        kokos_obj_t* obj = args.objs[i];
 
-        num *= args.objs[i]->integer;
+        switch (obj->type) {
+        case OBJ_INT: int_res *= obj->integer; break;
+        case OBJ_FLOAT:
+            use_float = true;
+            float_res *= obj->floating;
+            break;
+        case OBJ_SYMBOL:
+        case OBJ_LIST:
+        case OBJ_STRING:
+        case OBJ_BUILTIN_PROC:
+        case OBJ_PROCEDURE:
+        case OBJ_SPECIAL_FORM:
+            type_mismatch(obj->token.location, obj->type, 2, OBJ_INT, OBJ_FLOAT);
+            return NULL;
+        }
     }
+
     kokos_obj_t* obj = kokos_interp_alloc(interp);
+    if (use_float) {
+        obj->type = OBJ_FLOAT;
+        obj->floating = (double)int_res + float_res;
+        return obj;
+    }
+
     obj->type = OBJ_INT;
-    obj->integer = num;
+    obj->integer = int_res;
+    return obj;
+}
+
+static kokos_obj_t* alloc_nan(kokos_interp_t* interp)
+{
+    kokos_obj_t* obj = kokos_interp_alloc(interp);
+    obj->type = OBJ_FLOAT;
+    obj->floating = NAN;
     return obj;
 }
 
 static kokos_obj_t* builtin_slash(kokos_interp_t* interp, kokos_obj_list_t args)
 {
-    int64_t num = args.objs[0]->integer;
-    for (size_t i = 1; i < args.len; i++) {
-        if (!expect_type(args.objs[i], 1, OBJ_INT))
-            return NULL;
+    if (args.len == 0)
+        return alloc_nan(interp);
 
-        num /= args.objs[i]->integer;
+    bool use_float = false;
+    int64_t int_res = 1;
+    double float_res = 1;
+    for (size_t i = 0; i < args.len; i++) {
+        kokos_obj_t* obj = args.objs[i];
+
+        switch (obj->type) {
+        case OBJ_INT: int_res /= obj->integer; break;
+        case OBJ_FLOAT:
+            use_float = true;
+            float_res /= obj->floating;
+            break;
+        case OBJ_SYMBOL:
+        case OBJ_LIST:
+        case OBJ_STRING:
+        case OBJ_BUILTIN_PROC:
+        case OBJ_PROCEDURE:
+        case OBJ_SPECIAL_FORM:
+            type_mismatch(obj->token.location, obj->type, 2, OBJ_INT, OBJ_FLOAT);
+            return NULL;
+        }
     }
+
     kokos_obj_t* obj = kokos_interp_alloc(interp);
+    if (use_float) {
+        obj->type = OBJ_FLOAT;
+        obj->floating = (double)int_res + float_res;
+        return obj;
+    }
+
     obj->type = OBJ_INT;
-    obj->integer = num;
+    obj->integer = int_res;
     return obj;
 }
 
@@ -410,8 +517,6 @@ static inline void sweep(kokos_interp_t* interp)
     }
 }
 
-// FIXME: there is a bug that occurs really rarely that causes a double-free
-// to happen, howevew i do not even know what causes that bug yet
 void kokos_gc_run(kokos_interp_t* interp)
 {
     mark_all(interp->current_env);
