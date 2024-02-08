@@ -78,6 +78,25 @@ static bool expect_type(const kokos_obj_t* obj, int expected_count, ...)
     return false;
 }
 
+static bool expect_arity(kokos_location_t location, int expected, int got)
+{
+    if (expected == -1) {
+        if (got == 0) {
+            write_err(location, "Arity mismatch: expected at least one argument");
+            return false;
+        }
+
+        return true;
+    }
+
+    if (expected != got) {
+        write_err(location, "Arity mismatch: expected %d arguments, got %d", expected, got);
+        return false;
+    }
+
+    return true;
+}
+
 kokos_obj_t* kokos_interp_alloc(kokos_interp_t* interp)
 {
     kokos_obj_t* obj = malloc(sizeof(kokos_obj_t));
@@ -150,12 +169,8 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
             kokos_obj_procedure_t proc = head->procedure;
 
             kokos_obj_list_t args = list_to_args(obj->list);
-            if (args.len != proc.params.len) {
-                write_err(obj->token.location,
-                    "Arity mismatch when calling: expected %lu arguments, got %lu", proc.params.len,
-                    args.len);
+            if (!expect_arity(obj->token.location, proc.params.len, args.len))
                 return NULL;
-            }
 
             kokos_env_t call_env = kokos_env_empty(args.len);
             for (size_t i = 0; i < args.len; i++) {
@@ -261,6 +276,19 @@ static kokos_obj_t* builtin_slash(kokos_interp_t* interp, kokos_obj_list_t args)
     return obj;
 }
 
+static kokos_obj_t* builtin_print(kokos_interp_t* interp, kokos_obj_list_t args)
+{
+    for (size_t i = 0; i < args.len; i++) {
+        kokos_obj_print(args.objs[i]);
+        if (i != args.len - 1)
+            printf(" ");
+    }
+
+    printf("\n");
+
+    return &kokos_obj_nil;
+}
+
 static kokos_obj_t* sform_def(kokos_interp_t* interp, kokos_obj_list_t args)
 {
     if (!expect_type(args.objs[0], 1, OBJ_SYMBOL))
@@ -331,6 +359,9 @@ static kokos_env_t default_env(kokos_interp_t* interp)
 
     kokos_obj_t* slash = make_builtin(interp, builtin_slash);
     kokos_env_add(&env, "/", slash);
+
+    kokos_obj_t* print = make_builtin(interp, builtin_print);
+    kokos_env_add(&env, "print", print);
 
     // special forms
     kokos_obj_t* def = make_special_form(interp, sform_def);

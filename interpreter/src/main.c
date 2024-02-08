@@ -22,33 +22,6 @@ static kokos_obj_t* eval(kokos_obj_t* obj)
     return kokos_interp_eval(interp, obj, 1);
 }
 
-static void print(kokos_obj_t* obj)
-{
-    if (obj == &kokos_obj_nil) {
-        printf("nil");
-        return;
-    }
-
-    switch (obj->type) {
-    case OBJ_INT:    printf("%ld", obj->integer); break;
-    case OBJ_STRING: printf("\"%s\"", obj->string); break;
-    case OBJ_SYMBOL: printf("%s", obj->symbol); break;
-    case OBJ_LIST:
-        printf("(");
-        for (size_t i = 0; i < obj->list.len; i++) {
-            print(obj->list.objs[i]);
-            if (i != obj->list.len - 1) {
-                printf(" ");
-            }
-        }
-        printf(")");
-        break;
-    case OBJ_BUILTIN_PROC: printf("<builtin function> addr %p", (void*)obj->builtin); break;
-    case OBJ_PROCEDURE:    printf("<procedure> %p", (void*)obj); break;
-    case OBJ_SPECIAL_FORM: assert(0 && "something went completely wrong");
-    }
-}
-
 static void print_location(kokos_location_t location)
 {
     printf("%s:%lu:%lu", location.filename, location.row, location.col);
@@ -107,7 +80,7 @@ int main(int argc, char* argv[])
             continue;
         }
 
-        print(obj);
+        kokos_obj_print(obj);
 
         printf("\n");
     }

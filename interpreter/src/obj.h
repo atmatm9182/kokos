@@ -58,5 +58,6 @@ struct kokos_obj {
 extern kokos_obj_t kokos_obj_nil;
 
 void kokos_obj_mark(kokos_obj_t* obj);
+void kokos_obj_print(kokos_obj_t* obj);
 
 #endif // OBJ_H_
