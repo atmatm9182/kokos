@@ -12,6 +12,7 @@ enum kokos_obj_type {
     OBJ_BOOL,
     OBJ_SYMBOL,
     OBJ_LIST,
+    OBJ_VEC,
     OBJ_PROCEDURE,
     OBJ_BUILTIN_PROC,
     OBJ_SPECIAL_FORM,
@@ -28,6 +29,14 @@ struct kokos_obj_list {
 };
 
 typedef struct kokos_obj_list kokos_obj_list_t;
+
+struct kokos_obj_vec {
+    kokos_obj_t** items;
+    size_t len;
+    size_t cap;
+};
+
+typedef struct kokos_obj_vec kokos_obj_vec_t;
 
 struct kokos_obj_procedure {
     kokos_obj_list_t params;
@@ -53,6 +62,7 @@ struct kokos_obj {
         char* string;
         char* symbol;
         kokos_obj_list_t list;
+        kokos_obj_vec_t vec;
         kokos_builtin_procedure_t builtin;
         kokos_obj_procedure_t procedure;
     };

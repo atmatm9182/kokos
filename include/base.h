@@ -41,7 +41,8 @@ char* sb_to_cstr(string_builder* sb);
 
 #define DA_INIT(arr, l, c)                                                                         \
     do {                                                                                           \
-        (arr)->items = (__typeof__((arr)->items[0])*)malloc(sizeof((arr)->items[0]) * c);          \
+        (arr)->items                                                                               \
+            = (__typeof__((arr)->items[0])*)malloc(sizeof((arr)->items[0]) * (c ? c : 1));         \
         (arr)->cap = c;                                                                            \
         (arr)->len = l;                                                                            \
         memset((arr)->items, 0, l * sizeof((arr)->items[0]));                                      \

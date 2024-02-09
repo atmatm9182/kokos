@@ -8,7 +8,7 @@
 - [ ] Macros
 - [X] Scoped variable bindings
 - [X] Basic equality and comparison operators
-- [ ] Dynamic arrays
+- [X] Dynamic arrays
 - [ ] Maps
 - [ ] Lambdas
 - [ ] Lazy evaluation

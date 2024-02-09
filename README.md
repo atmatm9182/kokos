@@ -1,17 +1,17 @@
 
 # Table of Contents
 
-1.  [Features](#org5b9c90c)
-    1.  [Language level](#orgc3d5e4c)
-    2.  [Implementation (software) level](#org4c59a9b)
+1.  [Features](#org5d736a9)
+    1.  [Language level](#orgf407be0)
+    2.  [Implementation (software) level](#orgc209e64)
 
 
-<a id="org5b9c90c"></a>
+<a id="org5d736a9"></a>
 
 # Features
 
 
-<a id="orgc3d5e4c"></a>
+<a id="orgf407be0"></a>
 
 ## Language level
 
@@ -23,14 +23,14 @@
 -   [ ] Macros
 -   [X] Scoped variable bindings
 -   [X] Basic equality and comparison operators
--   [ ] Dynamic arrays
+-   [X] Dynamic arrays
 -   [ ] Maps
 -   [ ] Lambdas
 -   [ ] Lazy evaluation
 -   [ ] File I/O
 
 
-<a id="org4c59a9b"></a>
+<a id="orgc209e64"></a>
 
 ## Implementation (software) level
 

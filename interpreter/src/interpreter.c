@@ -41,6 +41,7 @@ static const char* str_type(kokos_obj_type_e type)
     case OBJ_BUILTIN_PROC: return "builtin procedure";
     case OBJ_PROCEDURE:    return "procedure";
     case OBJ_LIST:         return "list";
+    case OBJ_VEC:          return "vector";
     case OBJ_SPECIAL_FORM: return "special form";
     default:               assert(0 && "unreachable!");
     }
@@ -155,6 +156,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
     case OBJ_STRING:
     case OBJ_FLOAT:
     case OBJ_BOOL:
+    case OBJ_VEC:
     case OBJ_BUILTIN_PROC:
     case OBJ_PROCEDURE:    result = obj; break;
     case OBJ_SYMBOL:       {
@@ -614,6 +616,52 @@ static kokos_obj_t* builtin_gte(
     return NULL;
 }
 
+static kokos_obj_t* builtin_vec(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    kokos_obj_t* result = kokos_interp_alloc(interp);
+    result->type = OBJ_VEC;
+
+    kokos_obj_vec_t vec;
+    DA_INIT(&vec, 0, args.len);
+    for (size_t i = 0; i < args.len; i++)
+        DA_ADD(&vec, args.objs[i]);
+
+    result->vec = vec;
+    return result;
+}
+
+static kokos_obj_t* builtin_push(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 2, args.len, P_AT_LEAST))
+        return NULL;
+
+    if (!expect_type(args.objs[0], 1, OBJ_VEC))
+        return NULL;
+
+    kokos_obj_vec_t* vec = &args.objs[0]->vec;
+    for (size_t i = 1; i < args.len; i++)
+        DA_ADD(vec, args.objs[i]);
+
+    return &kokos_obj_nil;
+}
+
+static kokos_obj_t* builtin_nth(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 2, args.len, P_EQ))
+        return NULL;
+
+    if (!expect_type(args.objs[0], 1, OBJ_VEC) || !expect_type(args.objs[1], 1, OBJ_INT))
+        return NULL;
+
+    kokos_obj_vec_t vec = args.objs[0]->vec;
+    int64_t idx = args.objs[1]->integer;
+
+    return idx >= vec.len ? &kokos_obj_nil : vec.items[idx];
+}
+
 static kokos_obj_t* sform_def(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
@@ -785,6 +833,15 @@ static kokos_env_t default_env(kokos_interp_t* interp)
     kokos_obj_t* type = make_builtin(interp, builtin_type);
     kokos_env_add(&env, "type", type);
 
+    kokos_obj_t* vec = make_builtin(interp, builtin_vec);
+    kokos_env_add(&env, "vec", vec);
+
+    kokos_obj_t* push = make_builtin(interp, builtin_push);
+    kokos_env_add(&env, "push", push);
+
+    kokos_obj_t* nth = make_builtin(interp, builtin_nth);
+    kokos_env_add(&env, "nth", nth);
+
     // special forms
     kokos_obj_t* def = make_special_form(interp, sform_def);
     kokos_env_add(&env, "def", def);
@@ -830,6 +887,7 @@ static inline void obj_free(kokos_obj_t* obj)
     case OBJ_BOOL:
     case OBJ_BUILTIN_PROC:
     case OBJ_SPECIAL_FORM: break;
+    case OBJ_VEC:          DA_FREE(&obj->vec); break;
     case OBJ_LIST:         free(obj->list.objs); break;
     case OBJ_STRING:       free(obj->string); break;
     case OBJ_SYMBOL:       free(obj->symbol); break;

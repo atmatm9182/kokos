@@ -15,18 +15,19 @@ void kokos_obj_mark(kokos_obj_t* obj)
     case OBJ_BUILTIN_PROC:
     case OBJ_SPECIAL_FORM: break;
     case OBJ_LIST:
-        for (size_t i = 0; i < obj->list.len; i++) {
+        for (size_t i = 0; i < obj->list.len; i++)
             kokos_obj_mark(obj->list.objs[i]);
-        }
+        break;
+    case OBJ_VEC:
+        for (size_t i = 0; i < obj->vec.len; i++)
+            kokos_obj_mark(obj->vec.items[i]);
         break;
     case OBJ_PROCEDURE:
-        for (size_t i = 0; i < obj->procedure.params.len; i++) {
+        for (size_t i = 0; i < obj->procedure.params.len; i++)
             kokos_obj_mark(obj->procedure.params.objs[i]);
-        }
 
-        for (size_t i = 0; i < obj->procedure.body.len; i++) {
+        for (size_t i = 0; i < obj->procedure.body.len; i++)
             kokos_obj_mark(obj->procedure.body.objs[i]);
-        }
         break;
     }
 }
@@ -58,6 +59,16 @@ void kokos_obj_print(kokos_obj_t* obj)
             }
         }
         printf(")");
+        break;
+    case OBJ_VEC:
+        printf("[");
+        for (size_t i = 0; i < obj->vec.len; i++) {
+            kokos_obj_print(obj->vec.items[i]);
+            if (i != obj->vec.len - 1) {
+                printf(" ");
+            }
+        }
+        printf("]");
         break;
     case OBJ_BUILTIN_PROC: printf("<builtin function> addr %p", (void*)obj->builtin); break;
     case OBJ_PROCEDURE:    printf("<procedure> %p", (void*)obj); break;
