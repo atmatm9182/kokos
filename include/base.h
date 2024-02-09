@@ -125,7 +125,7 @@ bool sv_eq(string_view a, string_view b)
     return strncmp(a.ptr, b.ptr, a.size) == 0;
 }
 
-bool sv_eq_cstr(string_view sv, const char *str)
+bool sv_eq_cstr(string_view sv, const char* str)
 {
     return strncmp(sv.ptr, str, sv.size) == 0;
 }

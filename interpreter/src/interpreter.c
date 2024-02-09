@@ -55,7 +55,7 @@ static void type_mismatch_va(
         kokos_obj_type_e t = va_arg(args, kokos_obj_type_e);
         sb_push_cstr(&sb, str_type(t));
         if (i != expected_count - 1)
-            sb_push_cstr(&sb, " ");
+            sb_push_cstr(&sb, ", ");
     }
 
     char tmp_buf[512];
@@ -135,6 +135,17 @@ static kokos_obj_list_t list_to_args(kokos_obj_list_t list)
     return (kokos_obj_list_t) { .objs = list.objs + 1, .len = list.len - 1 };
 }
 
+static void push_env(kokos_interp_t* interp, kokos_env_t* env)
+{
+    env->parent = interp->current_env;
+    interp->current_env = env;
+}
+
+static void pop_env(kokos_interp_t* interp)
+{
+    interp->current_env = interp->current_env->parent;
+}
+
 kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool top_level)
 {
     kokos_obj_t* result = NULL;
@@ -208,17 +219,15 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
                 kokos_env_add(&call_env, proc.params.objs[i]->symbol, obj);
             }
 
-            kokos_env_t* call_parent = interp->current_env;
-            call_env.parent = call_parent;
-            interp->current_env = &call_env;
-
+            push_env(interp, &call_env);
             for (size_t i = 0; i < proc.body.len - 1; i++) {
                 if (!kokos_interp_eval(interp, proc.body.objs[i], 0))
                     return NULL;
             }
 
             result = kokos_interp_eval(interp, proc.body.objs[proc.body.len - 1], 0);
-            interp->current_env = call_parent;
+
+            pop_env(interp);
             kokos_env_destroy(&call_env);
             break;
         }
@@ -252,15 +261,7 @@ static kokos_obj_t* builtin_plus(
             use_float = true;
             float_res += obj->floating;
             break;
-        case OBJ_BOOL:
-        case OBJ_SYMBOL:
-        case OBJ_LIST:
-        case OBJ_STRING:
-        case OBJ_BUILTIN_PROC:
-        case OBJ_PROCEDURE:
-        case OBJ_SPECIAL_FORM:
-            type_mismatch(obj->token.location, obj->type, 2, OBJ_INT, OBJ_FLOAT);
-            return NULL;
+        default: type_mismatch(obj->token.location, obj->type, 2, OBJ_INT, OBJ_FLOAT); return NULL;
         }
     }
 
@@ -306,15 +307,7 @@ static kokos_obj_t* builtin_minus(
             use_float = true;
             float_res -= obj->floating;
             break;
-        case OBJ_BOOL:
-        case OBJ_SYMBOL:
-        case OBJ_LIST:
-        case OBJ_STRING:
-        case OBJ_BUILTIN_PROC:
-        case OBJ_PROCEDURE:
-        case OBJ_SPECIAL_FORM:
-            type_mismatch(obj->token.location, obj->type, 2, OBJ_INT, OBJ_FLOAT);
-            return NULL;
+        default: type_mismatch(obj->token.location, obj->type, 2, OBJ_INT, OBJ_FLOAT); return NULL;
         }
     }
 
@@ -345,15 +338,7 @@ static kokos_obj_t* builtin_star(
             use_float = true;
             float_res *= obj->floating;
             break;
-        case OBJ_BOOL:
-        case OBJ_SYMBOL:
-        case OBJ_LIST:
-        case OBJ_STRING:
-        case OBJ_BUILTIN_PROC:
-        case OBJ_PROCEDURE:
-        case OBJ_SPECIAL_FORM:
-            type_mismatch(obj->token.location, obj->type, 2, OBJ_INT, OBJ_FLOAT);
-            return NULL;
+        default: type_mismatch(obj->token.location, obj->type, 2, OBJ_INT, OBJ_FLOAT); return NULL;
         }
     }
 
@@ -383,39 +368,27 @@ static kokos_obj_t* builtin_slash(
     if (args.len == 0)
         return alloc_nan(interp);
 
-    bool use_float = false;
-    int64_t int_res = 1;
-    double float_res = 1;
-    for (size_t i = 0; i < args.len; i++) {
-        kokos_obj_t* obj = args.objs[i];
+    kokos_obj_t* first = args.objs[0];
+    double result;
+    switch (args.objs[0]->type) {
+    case OBJ_FLOAT: result = first->floating; break;
+    case OBJ_INT:   result = (double)first->integer; break;
+    default:        type_mismatch(first->token.location, first->type, 2, OBJ_INT, OBJ_FLOAT); return NULL;
+    }
 
+    for (size_t i = 1; i < args.len; i++) {
+        kokos_obj_t* obj = args.objs[i];
         switch (obj->type) {
-        case OBJ_INT: int_res /= obj->integer; break;
-        case OBJ_FLOAT:
-            use_float = true;
-            float_res /= obj->floating;
-            break;
-        case OBJ_BOOL:
-        case OBJ_SYMBOL:
-        case OBJ_LIST:
-        case OBJ_STRING:
-        case OBJ_BUILTIN_PROC:
-        case OBJ_PROCEDURE:
-        case OBJ_SPECIAL_FORM:
-            type_mismatch(obj->token.location, obj->type, 2, OBJ_INT, OBJ_FLOAT);
-            return NULL;
+        case OBJ_FLOAT: result /= obj->floating; break;
+        case OBJ_INT:   result /= (double)obj->integer; break;
+        default:        type_mismatch(obj->token.location, obj->type, 2, OBJ_INT, OBJ_FLOAT); return NULL;
         }
     }
 
     kokos_obj_t* obj = kokos_interp_alloc(interp);
-    if (use_float) {
-        obj->type = OBJ_FLOAT;
-        obj->floating = (double)int_res + float_res;
-        return obj;
-    }
+    obj->type = OBJ_FLOAT;
+    obj->floating = result;
 
-    obj->type = OBJ_INT;
-    obj->integer = int_res;
     return obj;
 }
 
@@ -713,6 +686,51 @@ static kokos_obj_t* sform_if(
     return &kokos_obj_nil;
 }
 
+static kokos_obj_t* sform_let(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 1, args.len, P_AT_LEAST))
+        return NULL;
+
+    if (!expect_type(args.objs[0], 1, OBJ_LIST))
+        return NULL;
+
+    kokos_obj_list_t binding_pairs = args.objs[0]->list;
+    if (binding_pairs.len % 2 != 0) {
+        write_err(args.objs[0]->token.location, "expected an even number of arguments");
+        return NULL;
+    }
+
+    kokos_env_t env = kokos_env_empty(binding_pairs.len / 2);
+    for (size_t i = 0; i < binding_pairs.len; i += 2) {
+        kokos_obj_t* name = binding_pairs.objs[i];
+        if (!expect_type(name, 1, OBJ_SYMBOL)) {
+            kokos_env_destroy(&env);
+            return NULL;
+        }
+
+        kokos_obj_t* value = kokos_interp_eval(interp, binding_pairs.objs[i + 1], 0);
+        if (!value) {
+            kokos_env_destroy(&env);
+            return NULL;
+        }
+
+        kokos_env_add(&env, name->symbol, value);
+    }
+
+    push_env(interp, &env);
+    kokos_obj_t* result = &kokos_obj_nil;
+    for (size_t i = 1; i < args.len; i++) {
+        result = kokos_interp_eval(interp, args.objs[i], 0);
+        if (!result)
+            return NULL;
+    }
+
+    pop_env(interp);
+    kokos_env_destroy(&env);
+    return result;
+}
+
 static kokos_obj_t* make_builtin(kokos_interp_t* interp, kokos_builtin_procedure_t proc)
 {
     kokos_obj_t* obj = kokos_interp_alloc(interp);
@@ -777,6 +795,9 @@ static kokos_env_t default_env(kokos_interp_t* interp)
     kokos_obj_t* if_ = make_special_form(interp, sform_if);
     kokos_env_add(&env, "if", if_);
 
+    kokos_obj_t* let = make_special_form(interp, sform_let);
+    kokos_env_add(&env, "let", let);
+
     return env;
 }
 
@@ -808,13 +829,10 @@ static inline void obj_free(kokos_obj_t* obj)
     case OBJ_FLOAT:
     case OBJ_BOOL:
     case OBJ_BUILTIN_PROC:
-    case OBJ_SPECIAL_FORM:
-        break;
-    case OBJ_LIST:
-        free(obj->list.objs);
-        break;
-    case OBJ_STRING: free(obj->string); break;
-    case OBJ_SYMBOL: free(obj->symbol); break;
+    case OBJ_SPECIAL_FORM: break;
+    case OBJ_LIST:         free(obj->list.objs); break;
+    case OBJ_STRING:       free(obj->string); break;
+    case OBJ_SYMBOL:       free(obj->symbol); break;
     case OBJ_PROCEDURE:
         free(obj->procedure.params.objs);
         free(obj->procedure.body.objs);
