@@ -6,7 +6,7 @@
 - [X] Variables
 - [X] Functions
 - [ ] Macros
-- [ ] Scoped variable bindings
+- [X] Scoped variable bindings
 - [X] Basic equality and comparison operators
 - [ ] Dynamic arrays
 - [ ] Maps
