@@ -70,11 +70,7 @@ int kokos_lex_next(kokos_lexer_t* lex, kokos_token_t* token)
         break;
     case '"': {
         token->type = TT_STR_LIT;
-        if (!lex_advance(lex)) {
-            token->type = TT_STR_LIT_UNCLOSED;
-            token->value = sv_slice(lex->contents, lex->pos, 1);
-            return 0;
-        }
+        lex_advance(lex);
 
         size_t start = lex->pos;
         while (lex->pos < lex->contents.size && lex->contents.ptr[lex->pos] != '"') {
@@ -83,8 +79,8 @@ int kokos_lex_next(kokos_lexer_t* lex, kokos_token_t* token)
 
         if (lex->pos == lex->contents.size) {
             token->type = TT_STR_LIT_UNCLOSED;
-            token->value = sv_slice(lex->contents, start - 1, 1);
-            return 0;
+            token->value = sv_slice(lex->contents, start, lex->pos - start);
+            break;
         }
 
         token->type = TT_STR_LIT;

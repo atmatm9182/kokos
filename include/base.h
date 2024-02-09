@@ -18,6 +18,7 @@ string_view sv_slice_end(string_view sv, size_t start);
 bool sv_starts_with(string_view sv, const char* prefix);
 bool sv_starts_with_sv(string_view sv, string_view prefix);
 bool sv_eq(string_view a, string_view b);
+bool sv_eq_cstr(string_view sv, const char* str);
 
 typedef struct {
     char* items;
@@ -26,6 +27,7 @@ typedef struct {
 } string_builder;
 
 string_builder sb_new(size_t cap);
+void sb_destroy(string_builder* sb);
 void sb_push_cstr(string_builder* sb, const char* str);
 char* sb_to_cstr(string_builder* sb);
 
@@ -123,6 +125,12 @@ bool sv_eq(string_view a, string_view b)
     return strncmp(a.ptr, b.ptr, a.size) == 0;
 }
 
+bool sv_eq_cstr(string_view sv, const char *str)
+{
+    return strncmp(sv.ptr, str, sv.size) == 0;
+}
+
+// STRING BUILDER
 string_builder sb_new(size_t cap)
 {
     string_builder sb;
@@ -141,6 +149,11 @@ char* sb_to_cstr(string_builder* sb)
 {
     DA_ADD(sb, '\0');
     return sb->items;
+}
+
+void sb_destroy(string_builder* sb)
+{
+    DA_FREE(sb);
 }
 
 #endif

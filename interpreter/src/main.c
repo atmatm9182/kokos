@@ -5,12 +5,15 @@
 #include "parser.h"
 
 static kokos_interp_t* interp;
+static bool eof = false;
 
 static kokos_obj_t* read(void)
 {
     static char buf[1024];
-    if (!fgets(buf, 1024, stdin))
-        exit(0);
+    if (!fgets(buf, 1024, stdin)) {
+        eof = true;
+        return NULL;
+    }
 
     kokos_lexer_t lex = kokos_lex_buf(buf, -1);
     kokos_parser_t parser = kokos_parser_of_lexer(lex);
@@ -64,12 +67,15 @@ static void print_interpreter_error(void)
 
 int main(int argc, char* argv[])
 {
-    interp = kokos_interp_new(5);
+    interp = kokos_interp_new(500);
     while (1) {
         printf("> ");
 
         kokos_obj_t* obj = read();
         if (!obj) {
+            if (eof)
+                break;
+
             print_parser_error();
             continue;
         }
@@ -84,5 +90,8 @@ int main(int argc, char* argv[])
 
         printf("\n");
     }
+
+    kokos_interp_destroy(interp);
+
     return 0;
 }

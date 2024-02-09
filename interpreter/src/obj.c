@@ -65,6 +65,52 @@ void kokos_obj_print(kokos_obj_t* obj)
     }
 }
 
+kokos_obj_t* kokos_interp_alloc(struct kokos_interp*);
+
+kokos_obj_list_t kokos_list_dup(struct kokos_interp* interp, kokos_obj_list_t list)
+{
+    kokos_obj_list_t result;
+    struct {
+        kokos_obj_t** items;
+        size_t len;
+        size_t cap;
+    } objs_arr;
+    DA_INIT(&objs_arr, 0, list.len);
+
+    for (size_t i = 0; i < list.len; i++)
+        DA_ADD(&objs_arr, kokos_obj_dup(interp, list.objs[i]));
+
+    result.len = objs_arr.len;
+    result.objs = objs_arr.items;
+
+    return result;
+}
+
+kokos_obj_t* kokos_obj_dup(struct kokos_interp* interp, kokos_obj_t* obj)
+{
+    if (obj->type == OBJ_BOOL) // we don't clone anything because all boolean values are variables
+                               // with static lifetime
+        return obj;
+
+    kokos_obj_t* result = kokos_interp_alloc(interp);
+    result->type = obj->type;
+
+    switch (obj->type) {
+    case OBJ_INT:    result->integer = obj->integer; break;
+    case OBJ_FLOAT:  result->floating = obj->floating; break;
+    case OBJ_SYMBOL: result->symbol = strdup(obj->symbol); break;
+    case OBJ_STRING: result->string = strdup(obj->symbol); break;
+    case OBJ_LIST:   result->list = kokos_list_dup(interp, obj->list); break;
+    case OBJ_PROCEDURE:
+        result->procedure.body = kokos_list_dup(interp, obj->procedure.body);
+        result->procedure.params = kokos_list_dup(interp, obj->procedure.params);
+        break;
+    default: assert(0 && "unreachable!");
+    }
+
+    return result;
+}
+
 kokos_obj_t kokos_obj_nil = { 0 };
 kokos_obj_t kokos_obj_false = { .type = OBJ_BOOL };
 kokos_obj_t kokos_obj_true = { .type = OBJ_BOOL };

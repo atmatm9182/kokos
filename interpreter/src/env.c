@@ -2,11 +2,7 @@
 
 kokos_env_pair_t kokos_env_make_pair(const char* name, kokos_obj_t* obj)
 {
-    size_t name_len = strlen(name);
-    char* str = malloc(sizeof(char) * (name_len + 1));
-    memcpy(str, name, name_len);
-    str[name_len] = '\0';
-    return (kokos_env_pair_t) { .name = str, .value = obj };
+    return (kokos_env_pair_t) { .name = strdup(name), .value = obj };
 }
 
 kokos_env_pair_t* kokos_env_find(kokos_env_t* env, const char* name)

@@ -65,4 +65,7 @@ extern kokos_obj_t kokos_obj_true;
 void kokos_obj_mark(kokos_obj_t* obj);
 void kokos_obj_print(kokos_obj_t* obj);
 
+kokos_obj_list_t kokos_list_dup(struct kokos_interp* interp, kokos_obj_list_t list);
+kokos_obj_t* kokos_obj_dup(struct kokos_interp* interp, kokos_obj_t* obj);
+
 #endif // OBJ_H_

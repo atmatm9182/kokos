@@ -1,5 +1,7 @@
 #include "interpreter.h"
 #include "location.h"
+#include "src/env.h"
+#include "src/obj.h"
 
 #include <assert.h>
 #include <math.h>
@@ -40,6 +42,7 @@ static const char* str_type(kokos_obj_type_e type)
     case OBJ_PROCEDURE:    return "procedure";
     case OBJ_LIST:         return "list";
     case OBJ_SPECIAL_FORM: return "special form";
+    default:               assert(0 && "unreachable!");
     }
 }
 
@@ -63,6 +66,7 @@ static void type_mismatch_va(
         sprintf(tmp_buf, "%s", expected_str);
 
     write_err(where, "Type mismatch: got %s, expected %s", str_type(got), tmp_buf);
+    sb_destroy(&sb);
 }
 
 static void type_mismatch(kokos_location_t where, kokos_obj_type_e got, int expected_count, ...)
@@ -176,6 +180,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
 
             kokos_builtin_procedure_t proc = head->builtin;
             result = proc(interp, args, head->token.location);
+            DA_FREE(&args_arr);
             break;
         }
 
@@ -195,11 +200,10 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
                 return NULL;
 
             kokos_env_t call_env = kokos_env_empty(args.len);
-            for (size_t i = 0; i < args.len; i++) {
+            for (size_t i = 0; i < proc.params.len; i++) {
                 kokos_obj_t* obj = kokos_interp_eval(interp, args.objs[i], 0);
-                if (!obj) {
+                if (!obj)
                     return NULL;
-                }
 
                 kokos_env_add(&call_env, proc.params.objs[i]->symbol, obj);
             }
@@ -215,6 +219,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
 
             result = kokos_interp_eval(interp, proc.body.objs[proc.body.len - 1], 0);
             interp->current_env = call_parent;
+            kokos_env_destroy(&call_env);
             break;
         }
 
@@ -500,6 +505,7 @@ static kokos_obj_t* builtin_eq(
     case OBJ_SYMBOL:       assert(0 && "unreachable!");
     case OBJ_SPECIAL_FORM:
     case OBJ_BUILTIN_PROC: return bool_to_obj(left->builtin == right->builtin);
+    default:               assert(0 && "unreachable!");
     }
 }
 
@@ -646,7 +652,7 @@ static kokos_obj_t* sform_def(
             return NULL;
     }
 
-    kokos_obj_t* def = kokos_interp_eval(interp, args.objs[args.len - 1], 1);
+    kokos_obj_t* def = kokos_interp_eval(interp, args.objs[args.len - 1], 0);
     if (!def)
         return NULL;
 
@@ -665,7 +671,16 @@ static kokos_obj_t* sform_proc(
         return NULL;
 
     kokos_obj_list_t body = { .objs = args.objs + 2, .len = args.len - 2 };
-    kokos_obj_procedure_t proc = { .params = params->list, .body = body };
+
+    // to prevent the garbage collector from collecting params and
+    // the body of a procedure we actually need to duplicate everything
+    // since if we tried to slice those lists the object from which we would've sliced
+    // would've become unreachable and thus would get collected leaving us with pointers to freed
+    // memory
+    kokos_obj_list_t params_list = kokos_list_dup(interp, params->list);
+    body = kokos_list_dup(interp, body);
+
+    kokos_obj_procedure_t proc = { .params = params_list, .body = body };
 
     kokos_obj_t* result = kokos_interp_alloc(interp);
     result->type = OBJ_PROCEDURE;
@@ -786,6 +801,28 @@ static inline void mark_all(kokos_env_t* env)
     mark_all(env->parent);
 }
 
+static inline void obj_free(kokos_obj_t* obj)
+{
+    switch (obj->type) {
+    case OBJ_INT:
+    case OBJ_FLOAT:
+    case OBJ_BOOL:
+    case OBJ_BUILTIN_PROC:
+    case OBJ_SPECIAL_FORM:
+        break;
+    case OBJ_LIST:
+        free(obj->list.objs);
+        break;
+    case OBJ_STRING: free(obj->string); break;
+    case OBJ_SYMBOL: free(obj->symbol); break;
+    case OBJ_PROCEDURE:
+        free(obj->procedure.params.objs);
+        free(obj->procedure.body.objs);
+        break;
+    }
+    free(obj);
+}
+
 static inline void sweep(kokos_interp_t* interp)
 {
     kokos_obj_t** cur = &interp->obj_head;
@@ -793,7 +830,7 @@ static inline void sweep(kokos_interp_t* interp)
         if (!(*cur)->marked) {
             kokos_obj_t* obj = *cur;
             *cur = (*cur)->next;
-            free(obj);
+            obj_free(obj);
             interp->obj_count--;
         } else {
             (*cur)->marked = 0;
@@ -812,4 +849,18 @@ void kokos_interp_print_stat(const kokos_interp_t* interp)
 {
     printf("ALLOCATED OBJECTS: %lu\n", interp->obj_count);
     printf("GC THRESHOLD: %lu\n", interp->gc_threshold);
+}
+
+void kokos_interp_destroy(kokos_interp_t* interp)
+{
+    kokos_obj_t* cur = interp->obj_head;
+    while (cur) {
+        kokos_obj_t* obj = cur;
+        cur = cur->next;
+        printf("freeing object at addr %p\n", (void*)obj);
+        obj_free(obj);
+    }
+
+    kokos_env_destroy(&interp->global_env);
+    free(interp);
 }

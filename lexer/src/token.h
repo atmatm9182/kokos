@@ -1,6 +1,8 @@
 #ifndef TOKEN_H_
 #define TOKEN_H_
 
+#include <assert.h>
+
 #include "base.h"
 #include "location.h"
 
@@ -36,6 +38,7 @@ static inline const char* kokos_token_type_str(kokos_token_type_e tt)
     case TT_LPAREN:           return "TT_LPAREN";
     case TT_ILLEGAL:          return "TT_ILLEGAL";
     case TT_FLOAT_LIT:        return "TT_FLOAT_LIT";
+    default: assert(0 && "unreachable!");
     }
 }
 

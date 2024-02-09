@@ -19,7 +19,7 @@ static kokos_obj_t* alloc_symbol(string_view value, kokos_interp_t* interp)
     kokos_obj_t* sym = kokos_interp_alloc(interp);
     sym->type = OBJ_SYMBOL;
     sym->symbol = malloc(sizeof(char) * (value.size + 1));
-    memcpy(sym->symbol, value.ptr, value.size);
+    memcpy(sym->symbol, value.ptr, value.size * sizeof(char));
     sym->symbol[value.size] = '\0';
     return sym;
 }
@@ -66,7 +66,7 @@ static kokos_obj_t* alloc_str(string_view value, kokos_interp_t* interp)
     kokos_obj_t* str = kokos_interp_alloc(interp);
     str->type = OBJ_STRING;
     str->string = malloc(sizeof(char) * (value.size + 1));
-    memcpy(str->string, value.ptr, value.size);
+    memcpy(str->string, value.ptr, value.size * sizeof(char));
     str->string[value.size] = '\0';
     return str;
 }
@@ -93,23 +93,23 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
             kokos_obj_t** items;
             size_t len;
             size_t cap;
-        } gc_objs;
-        DA_INIT(&gc_objs, 0, 1);
+        } objs;
+        DA_INIT(&objs, 0, 1);
 
         advance(parser);
         while (parser->has_cur && parser->cur.type != TT_RPAREN) {
-            DA_ADD(&gc_objs, kokos_parser_next(parser, interp));
+            DA_ADD(&objs, kokos_parser_next(parser, interp));
         }
 
         if (!parser->has_cur) {
             kokos_p_err = ERR_UNMATCHED_PAREN;
             kokos_p_err_tok = parser->cur;
-            DA_FREE(&gc_objs);
+            DA_FREE(&objs);
             return NULL;
         }
 
         advance(parser);
-        kokos_obj_t* list = alloc_list(gc_objs.items, gc_objs.len, interp);
+        kokos_obj_t* list = alloc_list(objs.items, objs.len, interp);
         list->token = list_token;
         return list;
     }
@@ -149,6 +149,7 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         kokos_p_err = ERR_UNCLOSED_STR;
         kokos_p_err_tok = parser->cur;
         return NULL;
+    default: assert(0 && "unreachable!");
     }
 }
 
