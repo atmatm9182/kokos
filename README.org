@@ -7,7 +7,7 @@
 - [X] Functions
 - [ ] Macros
 - [ ] Scoped variable bindings
-- [ ] Basic equality and comparison operators
+- [X] Basic equality and comparison operators
 - [ ] Dynamic arrays
 - [ ] Maps
 - [ ] Lambdas
@@ -21,3 +21,4 @@
 - [ ] Virtual machine (?)
 - [ ] C embedding (?)
 - [ ] C FFI
+- [ ] Tail call optimization

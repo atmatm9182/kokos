@@ -274,10 +274,25 @@ static kokos_obj_t* builtin_plus(
 static kokos_obj_t* builtin_minus(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
+    if (args.len == 0)
+        return 0;
+
     bool use_float = false;
     int64_t int_res = 0;
     double float_res = 0;
-    for (size_t i = 0; i < args.len; i++) {
+
+    switch (args.objs[0]->type) {
+    case OBJ_INT: int_res = args.objs[0]->integer; break;
+    case OBJ_FLOAT:
+        float_res = args.objs[0]->floating;
+        use_float = true;
+        break;
+    default:
+        type_mismatch(args.objs[0]->token.location, args.objs[0]->type, 2, OBJ_INT, OBJ_FLOAT);
+        return NULL;
+    }
+
+    for (size_t i = 1; i < args.len; i++) {
         kokos_obj_t* obj = args.objs[i];
 
         switch (obj->type) {
@@ -488,6 +503,138 @@ static kokos_obj_t* builtin_eq(
     }
 }
 
+static kokos_obj_t* builtin_lt(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 2, args.len, P_EQ))
+        return NULL;
+
+    kokos_obj_t* left = args.objs[0];
+    kokos_obj_t* right = args.objs[1];
+
+    switch (left->type) {
+    case OBJ_INT:
+        switch (right->type) {
+        case OBJ_INT:   return bool_to_obj(left->integer < right->integer);
+        case OBJ_FLOAT: return bool_to_obj((double)left->integer < right->floating);
+        default:
+            type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
+            return NULL;
+        }
+    case OBJ_FLOAT:
+        switch (right->type) {
+        case OBJ_INT:   return bool_to_obj(left->floating < (double)right->integer);
+        case OBJ_FLOAT: return bool_to_obj(left->floating < right->floating);
+        default:
+            type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
+            return NULL;
+        }
+    default: break;
+    }
+
+    type_mismatch(left->token.location, left->type, 2, OBJ_INT, OBJ_FLOAT);
+    return NULL;
+}
+
+static kokos_obj_t* builtin_gt(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 2, args.len, P_EQ))
+        return NULL;
+
+    kokos_obj_t* left = args.objs[0];
+    kokos_obj_t* right = args.objs[1];
+
+    switch (left->type) {
+    case OBJ_INT:
+        switch (right->type) {
+        case OBJ_INT:   return bool_to_obj(left->integer > right->integer);
+        case OBJ_FLOAT: return bool_to_obj((double)left->integer > right->floating);
+        default:
+            type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
+            return NULL;
+        }
+    case OBJ_FLOAT:
+        switch (right->type) {
+        case OBJ_INT:   return bool_to_obj(left->floating > (double)right->integer);
+        case OBJ_FLOAT: return bool_to_obj(left->floating > right->floating);
+        default:
+            type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
+            return NULL;
+        }
+    default: break;
+    }
+
+    type_mismatch(left->token.location, left->type, 2, OBJ_INT, OBJ_FLOAT);
+    return NULL;
+}
+
+static kokos_obj_t* builtin_lte(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 2, args.len, P_EQ))
+        return NULL;
+
+    kokos_obj_t* left = args.objs[0];
+    kokos_obj_t* right = args.objs[1];
+
+    switch (left->type) {
+    case OBJ_INT:
+        switch (right->type) {
+        case OBJ_INT:   return bool_to_obj(left->integer <= right->integer);
+        case OBJ_FLOAT: return bool_to_obj((double)left->integer <= right->floating);
+        default:
+            type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
+            return NULL;
+        }
+    case OBJ_FLOAT:
+        switch (right->type) {
+        case OBJ_INT:   return bool_to_obj(left->floating <= (double)right->integer);
+        case OBJ_FLOAT: return bool_to_obj(left->floating <= right->floating);
+        default:
+            type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
+            return NULL;
+        }
+    default: break;
+    }
+
+    type_mismatch(left->token.location, left->type, 2, OBJ_INT, OBJ_FLOAT);
+    return NULL;
+}
+
+static kokos_obj_t* builtin_gte(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 2, args.len, P_EQ))
+        return NULL;
+
+    kokos_obj_t* left = args.objs[0];
+    kokos_obj_t* right = args.objs[1];
+
+    switch (left->type) {
+    case OBJ_INT:
+        switch (right->type) {
+        case OBJ_INT:   return bool_to_obj(left->integer >= right->integer);
+        case OBJ_FLOAT: return bool_to_obj((double)left->integer >= right->floating);
+        default:
+            type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
+            return NULL;
+        }
+    case OBJ_FLOAT:
+        switch (right->type) {
+        case OBJ_INT:   return bool_to_obj(left->floating >= (double)right->integer);
+        case OBJ_FLOAT: return bool_to_obj(left->floating >= right->floating);
+        default:
+            type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
+            return NULL;
+        }
+    default: break;
+    }
+
+    type_mismatch(left->token.location, left->type, 2, OBJ_INT, OBJ_FLOAT);
+    return NULL;
+}
+
 static kokos_obj_t* sform_def(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
@@ -586,6 +733,18 @@ static kokos_env_t default_env(kokos_interp_t* interp)
 
     kokos_obj_t* eq = make_builtin(interp, builtin_eq);
     kokos_env_add(&env, "=", eq);
+
+    kokos_obj_t* lt = make_builtin(interp, builtin_lt);
+    kokos_env_add(&env, "<", lt);
+
+    kokos_obj_t* gt = make_builtin(interp, builtin_gt);
+    kokos_env_add(&env, ">", gt);
+
+    kokos_obj_t* lte = make_builtin(interp, builtin_lte);
+    kokos_env_add(&env, "<=", lte);
+
+    kokos_obj_t* gte = make_builtin(interp, builtin_gte);
+    kokos_env_add(&env, ">=", gte);
 
     kokos_obj_t* print = make_builtin(interp, builtin_print);
     kokos_env_add(&env, "print", print);

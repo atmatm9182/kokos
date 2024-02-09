@@ -1,17 +1,17 @@
 
 # Table of Contents
 
-1.  [Features](#orgb73b6d7)
-    1.  [Language level](#org62b6fc6)
-    2.  [Implementation (software) level](#orge2c7a43)
+1.  [Features](#org05bd070)
+    1.  [Language level](#org19854e4)
+    2.  [Implementation (software) level](#orgc5cadf0)
 
 
-<a id="orgb73b6d7"></a>
+<a id="org05bd070"></a>
 
 # Features
 
 
-<a id="org62b6fc6"></a>
+<a id="org19854e4"></a>
 
 ## Language level
 
@@ -22,7 +22,7 @@
 -   [X] Functions
 -   [ ] Macros
 -   [ ] Scoped variable bindings
--   [ ] Basic equality and comparison operators
+-   [X] Basic equality and comparison operators
 -   [ ] Dynamic arrays
 -   [ ] Maps
 -   [ ] Lambdas
@@ -30,7 +30,7 @@
 -   [ ] File I/O
 
 
-<a id="orge2c7a43"></a>
+<a id="orgc5cadf0"></a>
 
 ## Implementation (software) level
 
@@ -40,4 +40,5 @@
 -   [ ] Virtual machine (?)
 -   [ ] C embedding (?)
 -   [ ] C FFI
+-   [ ] Tail call optimization
 
