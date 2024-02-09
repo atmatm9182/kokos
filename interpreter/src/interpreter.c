@@ -675,7 +675,7 @@ static kokos_obj_t* sform_proc(
     // to prevent the garbage collector from collecting params and
     // the body of a procedure we actually need to duplicate everything
     // since if we tried to slice those lists the object from which we would've sliced
-    // would've become unreachable and thus would get collected leaving us with pointers to freed
+    // would become unreachable and thus would get collected leaving us with pointers to freed
     // memory
     kokos_obj_list_t params_list = kokos_list_dup(interp, params->list);
     body = kokos_list_dup(interp, body);

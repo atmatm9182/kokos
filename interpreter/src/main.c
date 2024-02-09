@@ -33,7 +33,7 @@ static void print_location(kokos_location_t location)
 static void print_parser_error(void)
 {
     switch (kokos_p_err) {
-    case ERR_NONE: assert(0 && "should never happen");
+    case ERR_NONE: return;
     case ERR_ILLEGAL_CHAR:
         printf("Illegal char '");
         sv_print(kokos_p_err_tok.value);
