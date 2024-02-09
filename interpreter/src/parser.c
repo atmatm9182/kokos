@@ -67,6 +67,7 @@ static kokos_obj_t* alloc_str(string_view value, kokos_interp_t* interp)
     str->type = OBJ_STRING;
     str->string = malloc(sizeof(char) * (value.size + 1));
     memcpy(str->string, value.ptr, value.size);
+    str->string[value.size] = '\0';
     return str;
 }
 
@@ -86,6 +87,8 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
 
     switch (parser->cur.type) {
     case TT_LPAREN: {
+        kokos_token_t list_token = parser->cur;
+
         struct {
             kokos_obj_t** items;
             size_t len;
@@ -107,7 +110,7 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
 
         advance(parser);
         kokos_obj_t* list = alloc_list(gc_objs.items, gc_objs.len, interp);
-        list->token = parser->cur;
+        list->token = list_token;
         return list;
     }
     case TT_IDENT: {

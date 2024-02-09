@@ -9,6 +9,7 @@ enum kokos_obj_type {
     OBJ_INT,
     OBJ_STRING,
     OBJ_FLOAT,
+    OBJ_BOOL,
     OBJ_SYMBOL,
     OBJ_LIST,
     OBJ_PROCEDURE,
@@ -38,7 +39,7 @@ typedef struct kokos_obj_procedure kokos_obj_procedure_t;
 struct kokos_interp;
 
 typedef kokos_obj_t* (*kokos_builtin_procedure_t)(
-    struct kokos_interp* interp, kokos_obj_list_t args);
+    struct kokos_interp* interp, kokos_obj_list_t args, kokos_location_t called_from);
 
 struct kokos_obj {
     kokos_token_t token;
@@ -58,6 +59,8 @@ struct kokos_obj {
 };
 
 extern kokos_obj_t kokos_obj_nil;
+extern kokos_obj_t kokos_obj_false;
+extern kokos_obj_t kokos_obj_true;
 
 void kokos_obj_mark(kokos_obj_t* obj);
 void kokos_obj_print(kokos_obj_t* obj);
