@@ -9,7 +9,7 @@
 - [X] Scoped variable bindings
 - [X] Basic equality and comparison operators
 - [X] Dynamic arrays
-- [ ] Maps
+- [X] Maps
 - [ ] Lambdas
 - [ ] Lazy evaluation
 - [ ] File I/O
@@ -17,7 +17,7 @@
 ** Implementation (software) level
 - [X] Repl
 - [X] Garbage collector
-- [-] Fully working interpreter
+- [X] Fully working interpreter
 - [ ] Virtual machine (?)
 - [ ] C embedding (?)
 - [ ] C FFI

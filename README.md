@@ -1,17 +1,17 @@
 
 # Table of Contents
 
-1.  [Features](#org5d736a9)
-    1.  [Language level](#orgf407be0)
-    2.  [Implementation (software) level](#orgc209e64)
+1.  [Features](#org69e9346)
+    1.  [Language level](#org3fc7983)
+    2.  [Implementation (software) level](#org74c61ad)
 
 
-<a id="org5d736a9"></a>
+<a id="org69e9346"></a>
 
 # Features
 
 
-<a id="orgf407be0"></a>
+<a id="org3fc7983"></a>
 
 ## Language level
 
@@ -24,19 +24,19 @@
 -   [X] Scoped variable bindings
 -   [X] Basic equality and comparison operators
 -   [X] Dynamic arrays
--   [ ] Maps
+-   [X] Maps
 -   [ ] Lambdas
 -   [ ] Lazy evaluation
 -   [ ] File I/O
 
 
-<a id="orgc209e64"></a>
+<a id="org74c61ad"></a>
 
 ## Implementation (software) level
 
 -   [X] Repl
 -   [X] Garbage collector
--   [-] Fully working interpreter
+-   [X] Fully working interpreter
 -   [ ] Virtual machine (?)
 -   [ ] C embedding (?)
 -   [ ] C FFI
