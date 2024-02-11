@@ -3,6 +3,7 @@ interpreterlib_sources = [
   'src/interpreter.c',
   'src/obj.c',
   'src/env.c',
+  'src/map.c',
 ]
 
 interpreter_sources = [
@@ -13,6 +14,7 @@ interpreterlibinc = [lexerinc, baseinc]
 interpreterlib = library('kokosinterpreter',
                          interpreterlib_sources,
                          include_directories : interpreterlibinc,
+                         c_args: ['-DBASE_IMPL', '-DBASE_STATIC'],
                          link_with : lexerlib)
 
 interpreterinc = include_directories('src')

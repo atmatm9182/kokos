@@ -1,6 +1,7 @@
-#include <assert.h>
 #include <stdio.h>
 
+#define BASE_IMPL
+#include "base.h"
 #include "interpreter.h"
 #include "parser.h"
 
@@ -16,6 +17,7 @@ static kokos_obj_t* read(void)
     }
 
     kokos_lexer_t lex = kokos_lex_buf(buf, -1);
+    lex.location.filename = "repl";
     kokos_parser_t parser = kokos_parser_of_lexer(lex);
     return kokos_parser_next(&parser, interp);
 }

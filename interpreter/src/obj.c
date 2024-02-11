@@ -29,6 +29,18 @@ void kokos_obj_mark(kokos_obj_t* obj)
         for (size_t i = 0; i < obj->procedure.body.len; i++)
             kokos_obj_mark(obj->procedure.body.objs[i]);
         break;
+    case OBJ_MAP:
+        for (size_t i = 0; i < obj->map.cap; i++) {
+            ht_bucket* bucket = obj->map.buckets[i];
+            if (!bucket)
+                continue;
+
+            for (size_t j = 0; j < bucket->len; j++) {
+                kokos_obj_mark((kokos_obj_t*)bucket->items[j].key);
+                kokos_obj_mark((kokos_obj_t*)bucket->items[j].value);
+            }
+        }
+        break;
     }
 }
 
@@ -41,7 +53,7 @@ void kokos_obj_print(kokos_obj_t* obj)
 
     switch (obj->type) {
     case OBJ_INT:    printf("%ld", obj->integer); break;
-    case OBJ_STRING: printf("%s", obj->string); break;
+    case OBJ_STRING: printf("\"%s\"", obj->string); break;
     case OBJ_FLOAT:  printf("%lf", obj->floating); break;
     case OBJ_BOOL:
         if (obj == &kokos_obj_false)
@@ -61,17 +73,31 @@ void kokos_obj_print(kokos_obj_t* obj)
         printf(")");
         break;
     case OBJ_VEC:
-        printf("[");
+        printf("[ ");
         for (size_t i = 0; i < obj->vec.len; i++) {
             kokos_obj_print(obj->vec.items[i]);
-            if (i != obj->vec.len - 1) {
-                printf(" ");
-            }
+            printf(" ");
         }
-        printf("]");
+        printf(" ]");
         break;
-    case OBJ_BUILTIN_PROC: printf("<builtin function> addr %p", (void*)obj->builtin); break;
-    case OBJ_PROCEDURE:    printf("<procedure> %p", (void*)obj); break;
+    case OBJ_MAP:
+        printf("{ ");
+        for (size_t i = 0; i < obj->map.cap; i++) {
+            ht_bucket* bucket = obj->map.buckets[i];
+            if (!bucket)
+                continue;
+
+            for (size_t j = 0; j < bucket->len; j++) {
+                kokos_obj_print((kokos_obj_t*)bucket->items[j].key);
+                printf(" ");
+                kokos_obj_print((kokos_obj_t*)bucket->items[j].value);
+            }
+            printf(" ");
+        }
+        printf("}");
+        break;
+    case OBJ_BUILTIN_PROC: printf("<builtin function>"); break;
+    case OBJ_PROCEDURE:    printf("<procedure>"); break;
     case OBJ_SPECIAL_FORM: assert(0 && "something went completely wrong");
     }
 }
@@ -120,6 +146,45 @@ kokos_obj_t* kokos_obj_dup(struct kokos_interp* interp, kokos_obj_t* obj)
     }
 
     return result;
+}
+
+bool kokos_obj_to_bool(const kokos_obj_t* obj)
+{
+    return obj != &kokos_obj_false && obj != &kokos_obj_nil;
+}
+
+kokos_obj_t* kokos_bool_to_obj(bool b)
+{
+    return b ? &kokos_obj_true : &kokos_obj_false;
+}
+
+bool kokos_obj_eq(const kokos_obj_t* left, const kokos_obj_t* right)
+{
+    if (left->type != right->type)
+        return false;
+
+    switch (left->type) {
+    case OBJ_FLOAT:     return left->floating == right->floating;
+    case OBJ_INT:       return left->integer == right->integer;
+    case OBJ_BOOL:      return kokos_obj_to_bool(left) == kokos_obj_to_bool(right);
+    case OBJ_PROCEDURE: return left == right;
+    case OBJ_LIST:      {
+        if (left->list.len != right->list.len)
+            return kokos_bool_to_obj(false);
+
+        for (size_t i = 0; i < left->list.len; i++) {
+            if (kokos_obj_eq(left->list.objs[i], right->list.objs[i]))
+                return kokos_bool_to_obj(false);
+        }
+
+        return kokos_bool_to_obj(true);
+    }
+    case OBJ_STRING:       return strcmp(left->string, right->string) == 0;
+    case OBJ_SYMBOL:       assert(0 && "unreachable!");
+    case OBJ_SPECIAL_FORM:
+    case OBJ_BUILTIN_PROC: return left->builtin == right->builtin;
+    default:               assert(0 && "unreachable!");
+    }
 }
 
 kokos_obj_t kokos_obj_nil = { 0 };

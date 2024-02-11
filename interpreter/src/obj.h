@@ -2,6 +2,7 @@
 #define OBJ_H_
 
 #include "token.h"
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -13,6 +14,7 @@ enum kokos_obj_type {
     OBJ_SYMBOL,
     OBJ_LIST,
     OBJ_VEC,
+    OBJ_MAP,
     OBJ_PROCEDURE,
     OBJ_BUILTIN_PROC,
     OBJ_SPECIAL_FORM,
@@ -50,6 +52,10 @@ struct kokos_interp;
 typedef kokos_obj_t* (*kokos_builtin_procedure_t)(
     struct kokos_interp* interp, kokos_obj_list_t args, kokos_location_t called_from);
 
+typedef hash_table kokos_obj_map_t;
+
+typedef struct kokos_obj kokos_obj_t;
+
 struct kokos_obj {
     kokos_token_t token;
     struct kokos_obj* next;
@@ -63,6 +69,7 @@ struct kokos_obj {
         char* symbol;
         kokos_obj_list_t list;
         kokos_obj_vec_t vec;
+        kokos_obj_map_t map;
         kokos_builtin_procedure_t builtin;
         kokos_obj_procedure_t procedure;
     };
@@ -77,5 +84,10 @@ void kokos_obj_print(kokos_obj_t* obj);
 
 kokos_obj_list_t kokos_list_dup(struct kokos_interp* interp, kokos_obj_list_t list);
 kokos_obj_t* kokos_obj_dup(struct kokos_interp* interp, kokos_obj_t* obj);
+
+bool kokos_obj_eq(const kokos_obj_t* left, const kokos_obj_t* right);
+
+bool kokos_obj_to_bool(const kokos_obj_t* obj);
+kokos_obj_t* kokos_bool_to_obj(bool b);
 
 #endif // OBJ_H_

@@ -1,4 +1,3 @@
-#define BASE_IMPL
 #include "lexer.h"
 #include "token.h"
 #include <ctype.h>

@@ -1,7 +1,7 @@
-#include "lexer.h"
-
+#define BASE_STATIC
 #define BASE_IMPL
 #include "base.h"
+#include "lexer.h"
 
 int test_empty()
 {

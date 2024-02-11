@@ -1,6 +1,7 @@
 #include "interpreter.h"
 #include "location.h"
 #include "src/env.h"
+#include "src/map.h"
 #include "src/obj.h"
 
 #include <assert.h>
@@ -10,6 +11,7 @@
 #include <string.h>
 
 #define ERR_BUFFER_CAP 2048
+#define DEFAULT_MAP_CAPACITY 11
 
 static char err_buf[ERR_BUFFER_CAP];
 
@@ -96,14 +98,14 @@ static bool expect_type(const kokos_obj_t* obj, int expected_count, ...)
 }
 
 typedef enum {
-    P_EQ,
+    P_EQUAL,
     P_AT_LEAST,
 } arity_predicate_e;
 
 static bool expect_arity(kokos_location_t location, int expected, int got, arity_predicate_e pred)
 {
     switch (pred) {
-    case P_EQ:
+    case P_EQUAL:
         if (expected != got) {
             write_err(location, "Arity mismatch: expected %d arguments, got %d", expected, got);
             return false;
@@ -157,6 +159,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
     case OBJ_FLOAT:
     case OBJ_BOOL:
     case OBJ_VEC:
+    case OBJ_MAP:
     case OBJ_BUILTIN_PROC:
     case OBJ_PROCEDURE:    result = obj; break;
     case OBJ_SYMBOL:       {
@@ -209,7 +212,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
             kokos_obj_procedure_t proc = head->procedure;
 
             kokos_obj_list_t args = list_to_args(obj->list);
-            if (!expect_arity(obj->token.location, proc.params.len, args.len, P_EQ))
+            if (!expect_arity(obj->token.location, proc.params.len, args.len, P_EQUAL))
                 return NULL;
 
             kokos_env_t call_env = kokos_env_empty(args.len);
@@ -411,23 +414,13 @@ static kokos_obj_t* builtin_print(
 static kokos_obj_t* builtin_type(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
-    if (!expect_arity(called_from, 1, args.len, P_EQ))
+    if (!expect_arity(called_from, 1, args.len, P_EQUAL))
         return NULL;
 
     kokos_obj_t* res = kokos_interp_alloc(interp);
     res->type = OBJ_STRING;
     res->string = strdup(str_type(args.objs[0]->type));
     return res;
-}
-
-static bool obj_to_bool(kokos_obj_t* obj)
-{
-    return obj != &kokos_obj_false && obj != &kokos_obj_nil;
-}
-
-static kokos_obj_t* bool_to_obj(bool b)
-{
-    return b ? &kokos_obj_true : &kokos_obj_false;
 }
 
 // TODO: allow comparing integers and floats
@@ -452,42 +445,13 @@ static kokos_obj_t* builtin_eq(
             return NULL;
     }
 
-    if (left->type != right->type)
-        return &kokos_obj_false;
-
-    switch (left->type) {
-    case OBJ_FLOAT:     return bool_to_obj(left->floating == right->floating);
-    case OBJ_INT:       return bool_to_obj(left->integer == right->integer);
-    case OBJ_BOOL:      return bool_to_obj(obj_to_bool(left) == obj_to_bool(right));
-    case OBJ_PROCEDURE: return bool_to_obj(left == right);
-    case OBJ_LIST:      {
-        if (left->list.len != right->list.len)
-            return bool_to_obj(false);
-
-        kokos_obj_t* tmp_arr[2];
-        kokos_obj_list_t args = { .objs = tmp_arr, .len = 2 };
-
-        for (size_t i = 0; i < left->list.len; i++) {
-            args.objs[0] = left->list.objs[i];
-            args.objs[1] = right->list.objs[i];
-            if (!builtin_eq(interp, args, called_from))
-                return bool_to_obj(false);
-        }
-
-        return bool_to_obj(true);
-    }
-    case OBJ_STRING:       return bool_to_obj(strcmp(left->string, right->string) == 0);
-    case OBJ_SYMBOL:       assert(0 && "unreachable!");
-    case OBJ_SPECIAL_FORM:
-    case OBJ_BUILTIN_PROC: return bool_to_obj(left->builtin == right->builtin);
-    default:               assert(0 && "unreachable!");
-    }
+    return kokos_bool_to_obj(kokos_obj_eq(left, right));
 }
 
 static kokos_obj_t* builtin_lt(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
-    if (!expect_arity(called_from, 2, args.len, P_EQ))
+    if (!expect_arity(called_from, 2, args.len, P_EQUAL))
         return NULL;
 
     kokos_obj_t* left = args.objs[0];
@@ -496,16 +460,16 @@ static kokos_obj_t* builtin_lt(
     switch (left->type) {
     case OBJ_INT:
         switch (right->type) {
-        case OBJ_INT:   return bool_to_obj(left->integer < right->integer);
-        case OBJ_FLOAT: return bool_to_obj((double)left->integer < right->floating);
+        case OBJ_INT:   return kokos_bool_to_obj(left->integer < right->integer);
+        case OBJ_FLOAT: return kokos_bool_to_obj((double)left->integer < right->floating);
         default:
             type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
             return NULL;
         }
     case OBJ_FLOAT:
         switch (right->type) {
-        case OBJ_INT:   return bool_to_obj(left->floating < (double)right->integer);
-        case OBJ_FLOAT: return bool_to_obj(left->floating < right->floating);
+        case OBJ_INT:   return kokos_bool_to_obj(left->floating < (double)right->integer);
+        case OBJ_FLOAT: return kokos_bool_to_obj(left->floating < right->floating);
         default:
             type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
             return NULL;
@@ -520,7 +484,7 @@ static kokos_obj_t* builtin_lt(
 static kokos_obj_t* builtin_gt(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
-    if (!expect_arity(called_from, 2, args.len, P_EQ))
+    if (!expect_arity(called_from, 2, args.len, P_EQUAL))
         return NULL;
 
     kokos_obj_t* left = args.objs[0];
@@ -529,16 +493,16 @@ static kokos_obj_t* builtin_gt(
     switch (left->type) {
     case OBJ_INT:
         switch (right->type) {
-        case OBJ_INT:   return bool_to_obj(left->integer > right->integer);
-        case OBJ_FLOAT: return bool_to_obj((double)left->integer > right->floating);
+        case OBJ_INT:   return kokos_bool_to_obj(left->integer > right->integer);
+        case OBJ_FLOAT: return kokos_bool_to_obj((double)left->integer > right->floating);
         default:
             type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
             return NULL;
         }
     case OBJ_FLOAT:
         switch (right->type) {
-        case OBJ_INT:   return bool_to_obj(left->floating > (double)right->integer);
-        case OBJ_FLOAT: return bool_to_obj(left->floating > right->floating);
+        case OBJ_INT:   return kokos_bool_to_obj(left->floating > (double)right->integer);
+        case OBJ_FLOAT: return kokos_bool_to_obj(left->floating > right->floating);
         default:
             type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
             return NULL;
@@ -553,7 +517,7 @@ static kokos_obj_t* builtin_gt(
 static kokos_obj_t* builtin_lte(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
-    if (!expect_arity(called_from, 2, args.len, P_EQ))
+    if (!expect_arity(called_from, 2, args.len, P_EQUAL))
         return NULL;
 
     kokos_obj_t* left = args.objs[0];
@@ -562,16 +526,16 @@ static kokos_obj_t* builtin_lte(
     switch (left->type) {
     case OBJ_INT:
         switch (right->type) {
-        case OBJ_INT:   return bool_to_obj(left->integer <= right->integer);
-        case OBJ_FLOAT: return bool_to_obj((double)left->integer <= right->floating);
+        case OBJ_INT:   return kokos_bool_to_obj(left->integer <= right->integer);
+        case OBJ_FLOAT: return kokos_bool_to_obj((double)left->integer <= right->floating);
         default:
             type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
             return NULL;
         }
     case OBJ_FLOAT:
         switch (right->type) {
-        case OBJ_INT:   return bool_to_obj(left->floating <= (double)right->integer);
-        case OBJ_FLOAT: return bool_to_obj(left->floating <= right->floating);
+        case OBJ_INT:   return kokos_bool_to_obj(left->floating <= (double)right->integer);
+        case OBJ_FLOAT: return kokos_bool_to_obj(left->floating <= right->floating);
         default:
             type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
             return NULL;
@@ -586,7 +550,7 @@ static kokos_obj_t* builtin_lte(
 static kokos_obj_t* builtin_gte(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
-    if (!expect_arity(called_from, 2, args.len, P_EQ))
+    if (!expect_arity(called_from, 2, args.len, P_EQUAL))
         return NULL;
 
     kokos_obj_t* left = args.objs[0];
@@ -595,16 +559,16 @@ static kokos_obj_t* builtin_gte(
     switch (left->type) {
     case OBJ_INT:
         switch (right->type) {
-        case OBJ_INT:   return bool_to_obj(left->integer >= right->integer);
-        case OBJ_FLOAT: return bool_to_obj((double)left->integer >= right->floating);
+        case OBJ_INT:   return kokos_bool_to_obj(left->integer >= right->integer);
+        case OBJ_FLOAT: return kokos_bool_to_obj((double)left->integer >= right->floating);
         default:
             type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
             return NULL;
         }
     case OBJ_FLOAT:
         switch (right->type) {
-        case OBJ_INT:   return bool_to_obj(left->floating >= (double)right->integer);
-        case OBJ_FLOAT: return bool_to_obj(left->floating >= right->floating);
+        case OBJ_INT:   return kokos_bool_to_obj(left->floating >= (double)right->integer);
+        case OBJ_FLOAT: return kokos_bool_to_obj(left->floating >= right->floating);
         default:
             type_mismatch(right->token.location, right->type, 2, OBJ_INT, OBJ_FLOAT);
             return NULL;
@@ -616,7 +580,7 @@ static kokos_obj_t* builtin_gte(
     return NULL;
 }
 
-static kokos_obj_t* builtin_vec(
+static kokos_obj_t* builtin_make_vec(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
     kokos_obj_t* result = kokos_interp_alloc(interp);
@@ -650,7 +614,7 @@ static kokos_obj_t* builtin_push(
 static kokos_obj_t* builtin_nth(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
-    if (!expect_arity(called_from, 2, args.len, P_EQ))
+    if (!expect_arity(called_from, 2, args.len, P_EQUAL))
         return NULL;
 
     if (!expect_type(args.objs[0], 1, OBJ_VEC) || !expect_type(args.objs[1], 1, OBJ_INT))
@@ -660,6 +624,51 @@ static kokos_obj_t* builtin_nth(
     int64_t idx = args.objs[1]->integer;
 
     return idx >= vec.len ? &kokos_obj_nil : vec.items[idx];
+}
+
+static kokos_obj_t* builtin_make_map(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    kokos_obj_t* map = kokos_interp_alloc(interp);
+    map->type = OBJ_MAP;
+    map->map = kokos_obj_map_make(DEFAULT_MAP_CAPACITY);
+
+    if (args.len % 2 != 0) {
+        write_err(called_from, "expected an even number of arguments");
+        return NULL;
+    }
+
+    for (size_t i = 0; i < args.len; i += 2) {
+        kokos_obj_map_add(&map->map, args.objs[i], args.objs[i + 1]);
+    }
+
+    return map;
+}
+
+static kokos_obj_t* builtin_add_map(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 3, args.len, P_EQUAL))
+        return NULL;
+
+    if (!expect_type(args.objs[0], 1, OBJ_MAP))
+        return NULL;
+
+    kokos_obj_map_add(&args.objs[0]->map, args.objs[1], args.objs[2]);
+    return &kokos_obj_nil;
+}
+
+static kokos_obj_t* builtin_find_map(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 2, args.len, P_EQUAL))
+        return NULL;
+
+    if (!expect_type(args.objs[0], 1, OBJ_MAP))
+        return NULL;
+
+    kokos_obj_t* obj = kokos_obj_map_find(&args.objs[0]->map, args.objs[1]);
+    return obj ? obj : &kokos_obj_nil;
 }
 
 static kokos_obj_t* sform_def(
@@ -724,9 +733,8 @@ static kokos_obj_t* sform_if(
     }
 
     kokos_obj_t* cond = kokos_interp_eval(interp, args.objs[0], 0);
-    if (obj_to_bool(cond)) {
+    if (kokos_obj_to_bool(cond))
         return kokos_interp_eval(interp, args.objs[1], 0);
-    }
 
     if (args.len > 2)
         return kokos_interp_eval(interp, args.objs[2], 0);
@@ -833,14 +841,23 @@ static kokos_env_t default_env(kokos_interp_t* interp)
     kokos_obj_t* type = make_builtin(interp, builtin_type);
     kokos_env_add(&env, "type", type);
 
-    kokos_obj_t* vec = make_builtin(interp, builtin_vec);
-    kokos_env_add(&env, "vec", vec);
+    kokos_obj_t* make_vec = make_builtin(interp, builtin_make_vec);
+    kokos_env_add(&env, "make-vec", make_vec);
 
     kokos_obj_t* push = make_builtin(interp, builtin_push);
     kokos_env_add(&env, "push", push);
 
     kokos_obj_t* nth = make_builtin(interp, builtin_nth);
     kokos_env_add(&env, "nth", nth);
+
+    kokos_obj_t* make_map = make_builtin(interp, builtin_make_map);
+    kokos_env_add(&env, "make-map", make_map);
+
+    kokos_obj_t* add_map = make_builtin(interp, builtin_add_map);
+    kokos_env_add(&env, "add-map", add_map);
+
+    kokos_obj_t* find_map = make_builtin(interp, builtin_find_map);
+    kokos_env_add(&env, "find-map", find_map);
 
     // special forms
     kokos_obj_t* def = make_special_form(interp, sform_def);
@@ -888,6 +905,7 @@ static inline void obj_free(kokos_obj_t* obj)
     case OBJ_BUILTIN_PROC:
     case OBJ_SPECIAL_FORM: break;
     case OBJ_VEC:          DA_FREE(&obj->vec); break;
+    case OBJ_MAP:          kokos_obj_map_destroy(&obj->map); break;
     case OBJ_LIST:         free(obj->list.objs); break;
     case OBJ_STRING:       free(obj->string); break;
     case OBJ_SYMBOL:       free(obj->symbol); break;
@@ -933,7 +951,6 @@ void kokos_interp_destroy(kokos_interp_t* interp)
     while (cur) {
         kokos_obj_t* obj = cur;
         cur = cur->next;
-        printf("freeing object at addr %p\n", (void*)obj);
         obj_free(obj);
     }
 
