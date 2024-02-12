@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 enum kokos_obj_type {
+    OBJ_NIL,
     OBJ_INT,
     OBJ_STRING,
     OBJ_FLOAT,

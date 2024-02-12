@@ -7,6 +7,7 @@ void kokos_obj_mark(kokos_obj_t* obj)
 {
     obj->marked = 1;
     switch (obj->type) {
+    case OBJ_NIL:
     case OBJ_INT:
     case OBJ_STRING:
     case OBJ_FLOAT:
@@ -46,12 +47,8 @@ void kokos_obj_mark(kokos_obj_t* obj)
 
 void kokos_obj_print(kokos_obj_t* obj)
 {
-    if (obj == &kokos_obj_nil) {
-        printf("nil");
-        return;
-    }
-
     switch (obj->type) {
+    case OBJ_NIL:    printf("nil"); break;
     case OBJ_INT:    printf("%ld", obj->integer); break;
     case OBJ_STRING: printf("\"%s\"", obj->string); break;
     case OBJ_FLOAT:  printf("%lf", obj->floating); break;
@@ -148,42 +145,58 @@ kokos_obj_t* kokos_obj_dup(struct kokos_interp* interp, kokos_obj_t* obj)
     return result;
 }
 
-bool kokos_obj_to_bool(const kokos_obj_t* obj)
+inline bool kokos_obj_to_bool(const kokos_obj_t* obj)
 {
     return obj != &kokos_obj_false && obj != &kokos_obj_nil;
 }
 
-kokos_obj_t* kokos_bool_to_obj(bool b)
+inline kokos_obj_t* kokos_bool_to_obj(bool b)
 {
     return b ? &kokos_obj_true : &kokos_obj_false;
 }
 
 bool kokos_obj_eq(const kokos_obj_t* left, const kokos_obj_t* right)
 {
+    if (left == right)
+        return true;
+
     if (left->type != right->type)
         return false;
 
     switch (left->type) {
     case OBJ_FLOAT:     return left->floating == right->floating;
     case OBJ_INT:       return left->integer == right->integer;
-    case OBJ_BOOL:      return kokos_obj_to_bool(left) == kokos_obj_to_bool(right);
+    case OBJ_BOOL:      return false;
     case OBJ_PROCEDURE: return left == right;
     case OBJ_LIST:      {
         if (left->list.len != right->list.len)
-            return kokos_bool_to_obj(false);
+            return false;
 
         for (size_t i = 0; i < left->list.len; i++) {
             if (kokos_obj_eq(left->list.objs[i], right->list.objs[i]))
-                return kokos_bool_to_obj(false);
+                return false;
         }
 
-        return kokos_bool_to_obj(true);
+        return true;
+    }
+    case OBJ_VEC:
+        if (left->vec.len != right->vec.len)
+            return false;
+
+        for (size_t i = 0; i < left->vec.len; i++) {
+            if (kokos_obj_eq(left->vec.items[i], right->vec.items[i]))
+                return false;
+        }
+
+        return true;
+    case OBJ_MAP: {
+        return false; // TODO: find a way to compare two maps
     }
     case OBJ_STRING:       return strcmp(left->string, right->string) == 0;
     case OBJ_SYMBOL:       assert(0 && "unreachable!");
     case OBJ_SPECIAL_FORM:
     case OBJ_BUILTIN_PROC: return left->builtin == right->builtin;
-    default:               assert(0 && "unreachable!");
+    case OBJ_NIL:          __builtin_unreachable();
     }
 }
 

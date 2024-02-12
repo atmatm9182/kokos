@@ -114,10 +114,20 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         return list;
     }
     case TT_IDENT: {
-        kokos_obj_t* ident = alloc_symbol(parser->cur.value, interp);
-        ident->token = parser->cur;
+        kokos_obj_t* result = NULL;
+
+        if (sv_eq_cstr(parser->cur.value, "true"))
+            result = &kokos_obj_true;
+        else if (sv_eq_cstr(parser->cur.value, "false"))
+            result = &kokos_obj_false;
+        else if (sv_eq_cstr(parser->cur.value, "nil"))
+            result = &kokos_obj_nil;
+        else
+            result = alloc_symbol(parser->cur.value, interp);
+
+        result->token = parser->cur;
         advance(parser);
-        return ident;
+        return result;
     }
     case TT_INT_LIT: {
         kokos_obj_t* integer = alloc_integer(parser->cur.value, interp);

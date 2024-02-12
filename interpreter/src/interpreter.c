@@ -35,6 +35,7 @@ static void write_err(kokos_location_t location, const char* format, ...)
 static const char* str_type(kokos_obj_type_e type)
 {
     switch (type) {
+    case OBJ_NIL:          return "nil";
     case OBJ_INT:          return "int";
     case OBJ_FLOAT:        return "float";
     case OBJ_STRING:       return "string";
@@ -44,9 +45,11 @@ static const char* str_type(kokos_obj_type_e type)
     case OBJ_PROCEDURE:    return "procedure";
     case OBJ_LIST:         return "list";
     case OBJ_VEC:          return "vector";
+    case OBJ_MAP:          return "map";
     case OBJ_SPECIAL_FORM: return "special form";
-    default:               assert(0 && "unreachable!");
     }
+
+    __builtin_unreachable();
 }
 
 static void type_mismatch_va(
@@ -154,6 +157,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
     kokos_obj_t* result = NULL;
 
     switch (obj->type) {
+    case OBJ_NIL:
     case OBJ_INT:
     case OBJ_STRING:
     case OBJ_FLOAT:
@@ -913,6 +917,7 @@ static inline void obj_free(kokos_obj_t* obj)
         free(obj->procedure.params.objs);
         free(obj->procedure.body.objs);
         break;
+    case OBJ_NIL: return;
     }
     free(obj);
 }

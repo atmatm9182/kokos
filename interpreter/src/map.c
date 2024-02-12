@@ -19,6 +19,7 @@ unsigned long djb2(unsigned char* str)
 int64_t hash(const kokos_obj_t* obj)
 {
     switch (obj->type) {
+    case OBJ_NIL:          return (int64_t)obj;
     case OBJ_INT:          return obj->integer;
     case OBJ_FLOAT:        return (int64_t)obj->floating;
     case OBJ_SYMBOL:       return djb2((unsigned char*)obj->symbol);
@@ -26,7 +27,7 @@ int64_t hash(const kokos_obj_t* obj)
     case OBJ_PROCEDURE:
     case OBJ_BUILTIN_PROC:
     case OBJ_SPECIAL_FORM:
-    case OBJ_MAP:
+    case OBJ_MAP:          // TODO: calculate map hash differently
     case OBJ_BOOL:         return (int64_t)obj;
     case OBJ_LIST:         {
         int64_t sum = 0;
@@ -58,7 +59,7 @@ void kokos_obj_map_add(kokos_obj_map_t* map, kokos_obj_t* key, kokos_obj_t* valu
     ht_add(map, key, value);
 }
 
-void kokos_obj_map_destroy(kokos_obj_map_t *map)
+void kokos_obj_map_destroy(kokos_obj_map_t* map)
 {
     ht_destroy(map);
 }
