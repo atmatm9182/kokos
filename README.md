@@ -1,17 +1,17 @@
 
 # Table of Contents
 
-1.  [Features](#org69e9346)
-    1.  [Language level](#org3fc7983)
-    2.  [Implementation (software) level](#org74c61ad)
+1.  [Features](#orgf1cdcaa)
+    1.  [Language level](#org98c4675)
+    2.  [Implementation (software) level](#orgbef5bd6)
 
 
-<a id="org69e9346"></a>
+<a id="orgf1cdcaa"></a>
 
 # Features
 
 
-<a id="org3fc7983"></a>
+<a id="org98c4675"></a>
 
 ## Language level
 
@@ -25,12 +25,12 @@
 -   [X] Basic equality and comparison operators
 -   [X] Dynamic arrays
 -   [X] Maps
--   [ ] Lambdas
+-   [X] Lambdas
 -   [ ] Lazy evaluation
 -   [ ] File I/O
 
 
-<a id="org74c61ad"></a>
+<a id="orgbef5bd6"></a>
 
 ## Implementation (software) level
 

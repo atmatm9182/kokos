@@ -24,9 +24,6 @@ void kokos_obj_mark(kokos_obj_t* obj)
             kokos_obj_mark(obj->vec.items[i]);
         break;
     case OBJ_PROCEDURE:
-        for (size_t i = 0; i < obj->procedure.params.len; i++)
-            kokos_obj_mark(obj->procedure.params.objs[i]);
-
         for (size_t i = 0; i < obj->procedure.body.len; i++)
             kokos_obj_mark(obj->procedure.body.objs[i]);
         break;
@@ -130,15 +127,20 @@ kokos_obj_t* kokos_obj_dup(struct kokos_interp* interp, kokos_obj_t* obj)
     result->type = obj->type;
 
     switch (obj->type) {
-    case OBJ_INT:    result->integer = obj->integer; break;
-    case OBJ_FLOAT:  result->floating = obj->floating; break;
-    case OBJ_SYMBOL: result->symbol = strdup(obj->symbol); break;
-    case OBJ_STRING: result->string = strdup(obj->symbol); break;
-    case OBJ_LIST:   result->list = kokos_list_dup(interp, obj->list); break;
-    case OBJ_PROCEDURE:
+    case OBJ_INT:       result->integer = obj->integer; break;
+    case OBJ_FLOAT:     result->floating = obj->floating; break;
+    case OBJ_SYMBOL:    result->symbol = strdup(obj->symbol); break;
+    case OBJ_STRING:    result->string = strdup(obj->symbol); break;
+    case OBJ_LIST:      result->list = kokos_list_dup(interp, obj->list); break;
+    case OBJ_PROCEDURE: {
         result->procedure.body = kokos_list_dup(interp, obj->procedure.body);
-        result->procedure.params = kokos_list_dup(interp, obj->procedure.params);
+        char** names = malloc(sizeof(char*) * obj->procedure.params.len);
+        for (size_t i = 0; i < obj->procedure.params.len; i++)
+            names[i] = strdup(obj->procedure.params.names[i]);
+        result->procedure.params.names = names;
+        result->procedure.params.len = obj->procedure.params.len;
         break;
+    }
     default: assert(0 && "unreachable!");
     }
 

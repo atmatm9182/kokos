@@ -42,7 +42,10 @@ struct kokos_obj_vec {
 typedef struct kokos_obj_vec kokos_obj_vec_t;
 
 struct kokos_obj_procedure {
-    kokos_obj_list_t params;
+    struct {
+        size_t len;
+        char** names;
+    } params;
     kokos_obj_list_t body;
 };
 

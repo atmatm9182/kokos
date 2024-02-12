@@ -165,11 +165,15 @@ BASEDEF bool sv_starts_with_sv(string_view sv, string_view prefix)
 
 BASEDEF bool sv_eq(string_view a, string_view b)
 {
+    if (a.size != b.size)
+        return false;
     return strncmp(a.ptr, b.ptr, a.size) == 0;
 }
 
 BASEDEF bool sv_eq_cstr(string_view sv, const char* str)
 {
+    if (sv.size != strlen(str))
+        return false;
     return strncmp(sv.ptr, str, sv.size) == 0;
 }
 

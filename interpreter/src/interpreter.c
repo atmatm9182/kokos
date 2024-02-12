@@ -8,6 +8,7 @@
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define ERR_BUFFER_CAP 2048
@@ -225,7 +226,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
                 if (!obj)
                     return NULL;
 
-                kokos_env_add(&call_env, proc.params.objs[i]->symbol, obj);
+                kokos_env_add(&call_env, proc.params.names[i], obj);
             }
 
             push_env(interp, &call_env);
@@ -678,6 +679,9 @@ static kokos_obj_t* builtin_find_map(
 static kokos_obj_t* sform_def(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
+    if (!expect_arity(called_from, 2, args.len, P_EQUAL))
+        return NULL;
+
     if (!expect_type(args.objs[0], 1, OBJ_SYMBOL))
         return NULL;
 
@@ -692,6 +696,28 @@ static kokos_obj_t* sform_def(
 
     kokos_env_add(&interp->global_env, args.objs[0]->symbol, def);
     return &kokos_obj_nil;
+}
+
+static kokos_obj_t* lambda(kokos_interp_t* interp, kokos_obj_list_t params, kokos_obj_list_t body)
+{
+    kokos_obj_t* result = kokos_interp_alloc(interp);
+    result->type = OBJ_PROCEDURE;
+
+    char** names = malloc(sizeof(char*) * params.len);
+    for (size_t i = 0; i < params.len; i++) {
+        if (!expect_type(params.objs[i], 1, OBJ_SYMBOL)) {
+            free(names);
+            return NULL;
+        }
+
+        names[i] = strdup(params.objs[i]->symbol);
+    }
+
+    result->procedure.params.len = params.len;
+    result->procedure.params.names = names;
+    result->procedure.body = body;
+
+    return result;
 }
 
 static kokos_obj_t* sform_proc(
@@ -711,17 +737,27 @@ static kokos_obj_t* sform_proc(
     // since if we tried to slice those lists the object from which we would've sliced
     // would become unreachable and thus would get collected leaving us with pointers to freed
     // memory
-    kokos_obj_list_t params_list = kokos_list_dup(interp, params->list);
     body = kokos_list_dup(interp, body);
 
-    kokos_obj_procedure_t proc = { .params = params_list, .body = body };
-
-    kokos_obj_t* result = kokos_interp_alloc(interp);
-    result->type = OBJ_PROCEDURE;
-    result->procedure = proc;
-
-    kokos_env_add(interp->current_env, args.objs[0]->symbol, result);
+    kokos_obj_t* result = lambda(interp, params->list, body);
+    if (result)
+        kokos_env_add(interp->current_env, args.objs[0]->symbol, result);
     return result;
+}
+
+static kokos_obj_t* sform_fn(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 2, args.len, P_AT_LEAST))
+        return NULL;
+
+    kokos_obj_t* params = args.objs[0];
+    if (!expect_type(params, 1, OBJ_LIST))
+        return NULL;
+
+    kokos_obj_list_t body = { .objs = args.objs + 1, .len = args.len - 1 };
+    body = kokos_list_dup(interp, body);
+    return lambda(interp, params->list, body);
 }
 
 static kokos_obj_t* sform_if(
@@ -870,6 +906,9 @@ static kokos_env_t default_env(kokos_interp_t* interp)
     kokos_obj_t* proc = make_special_form(interp, sform_proc);
     kokos_env_add(&env, "proc", proc);
 
+    kokos_obj_t* fn = make_special_form(interp, sform_fn);
+    kokos_env_add(&env, "fn", fn);
+
     kokos_obj_t* if_ = make_special_form(interp, sform_if);
     kokos_env_add(&env, "if", if_);
 
@@ -914,7 +953,9 @@ static inline void obj_free(kokos_obj_t* obj)
     case OBJ_STRING:       free(obj->string); break;
     case OBJ_SYMBOL:       free(obj->symbol); break;
     case OBJ_PROCEDURE:
-        free(obj->procedure.params.objs);
+        for (size_t i = 0; i < obj->procedure.params.len; i++)
+            free(obj->procedure.params.names[i]);
+        free(obj->procedure.params.names);
         free(obj->procedure.body.objs);
         break;
     case OBJ_NIL: return;

@@ -10,7 +10,7 @@
 - [X] Basic equality and comparison operators
 - [X] Dynamic arrays
 - [X] Maps
-- [ ] Lambdas
+- [X] Lambdas
 - [ ] Lazy evaluation
 - [ ] File I/O
 
