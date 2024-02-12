@@ -1,8 +1,8 @@
-#include "parser.h"
+#include "src/parser.h"
+#include "src/map.h"
 #include "src/obj.h"
 #include "token.h"
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -102,7 +102,7 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         }
 
         if (!parser->has_cur) {
-            kokos_p_err = ERR_UNMATCHED_PAREN;
+            kokos_p_err = ERR_UNMATCHED_DELIMITER;
             kokos_p_err_tok = parser->cur;
             DA_FREE(&objs);
             return NULL;
@@ -112,6 +112,62 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         kokos_obj_t* list = alloc_list(objs.items, objs.len, interp);
         list->token = list_token;
         return list;
+    }
+    case TT_LBRACKET: {
+        kokos_token_t start_token = parser->cur;
+
+        kokos_obj_vec_t objs;
+        DA_INIT(&objs, 0, 1);
+
+        advance(parser);
+        while (parser->has_cur && parser->cur.type != TT_RBRACKET) {
+            DA_ADD(&objs, kokos_parser_next(parser, interp));
+        }
+
+        if (!parser->has_cur) {
+            kokos_p_err = ERR_UNMATCHED_DELIMITER;
+            kokos_p_err_tok = parser->cur;
+            DA_FREE(&objs);
+            return NULL;
+        }
+
+        advance(parser);
+        kokos_obj_t* vec = kokos_interp_alloc(interp);
+        vec->token = start_token;
+        vec->type = OBJ_VEC;
+        vec->vec = objs;
+        return vec;
+    }
+    case TT_LBRACE: {
+        kokos_token_t start_token = parser->cur;
+
+        kokos_obj_map_t map = kokos_obj_map_make(11);
+
+        advance(parser);
+        while (parser->has_cur && parser->cur.type != TT_RBRACE) {
+            kokos_obj_t* key = kokos_parser_next(parser, interp);
+            if (!key)
+                return NULL;
+            kokos_obj_t* value = kokos_parser_next(parser, interp);
+            if (!value)
+                return NULL;
+
+            kokos_obj_map_add(&map, key, value);
+        }
+
+        if (!parser->has_cur) {
+            kokos_p_err = ERR_UNMATCHED_DELIMITER;
+            kokos_p_err_tok = parser->cur;
+            kokos_obj_map_destroy(&map);
+            return NULL;
+        }
+
+        advance(parser);
+        kokos_obj_t* result = kokos_interp_alloc(interp);
+        result->token = start_token;
+        result->type = OBJ_MAP;
+        result->map = map;
+        return result;
     }
     case TT_IDENT: {
         kokos_obj_t* result = NULL;
@@ -151,15 +207,16 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         kokos_p_err = ERR_ILLEGAL_CHAR;
         kokos_p_err_tok = parser->cur;
         return NULL;
+    case TT_RBRACKET:
+    case TT_RBRACE:
     case TT_RPAREN:
         kokos_p_err = ERR_UNEXPECTED_TOKEN;
         kokos_p_err_tok = parser->cur;
         return NULL;
     case TT_STR_LIT_UNCLOSED:
-        kokos_p_err = ERR_UNCLOSED_STR;
+        kokos_p_err = ERR_UNMATCHED_DELIMITER;
         kokos_p_err_tok = parser->cur;
         return NULL;
-    default: assert(0 && "unreachable!");
     }
 }
 

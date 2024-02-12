@@ -42,18 +42,12 @@ static void print_parser_error(void)
         printf("' at ");
         print_location(kokos_p_err_tok.location);
         break;
-    case ERR_UNCLOSED_STR:
-        printf("Unclosed string literal \"");
-        sv_print(kokos_p_err_tok.value);
-        printf("\" at ");
-        print_location(kokos_p_err_tok.location);
-        break;
     case ERR_UNEXPECTED_TOKEN:
         printf("Unexpected token '%s' at", kokos_token_type_str(kokos_p_err_tok.type));
         print_location(kokos_p_err_tok.location);
         break;
-    case ERR_UNMATCHED_PAREN:
-        printf("Unmatched parenthesis at ");
+    case ERR_UNMATCHED_DELIMITER:
+        printf("Unmatched delimiter at ");
         kokos_p_err_tok.location.col += kokos_p_err_tok.value.size;
         print_location(kokos_p_err_tok.location);
         break;

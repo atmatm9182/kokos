@@ -9,6 +9,11 @@
 enum kokos_token_type {
     TT_LPAREN,
     TT_RPAREN,
+    TT_LBRACKET,
+    TT_RBRACKET,
+    TT_LBRACE,
+    TT_RBRACE,
+
     TT_IDENT,
     TT_INT_LIT,
     TT_STR_LIT,
@@ -38,8 +43,13 @@ static inline const char* kokos_token_type_str(kokos_token_type_e tt)
     case TT_LPAREN:           return "TT_LPAREN";
     case TT_ILLEGAL:          return "TT_ILLEGAL";
     case TT_FLOAT_LIT:        return "TT_FLOAT_LIT";
-    default:                  assert(0 && "unreachable!");
+    case TT_RBRACKET:         return "TT_RBRACKET";
+    case TT_LBRACKET:         return "TT_LBRACKET";
+    case TT_RBRACE:           return "TT_RBRACE";
+    case TT_LBRACE:           return "TT_LBRACE";
     }
+
+    __builtin_unreachable();
 }
 
 #endif // TOKEN_H_

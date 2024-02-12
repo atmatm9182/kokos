@@ -67,6 +67,22 @@ int kokos_lex_next(kokos_lexer_t* lex, kokos_token_t* token)
         token->type = TT_RPAREN;
         token->value = sv_slice(lex->contents, lex->pos, 1);
         break;
+    case '[':
+        token->type = TT_LBRACKET;
+        token->value = sv_slice(lex->contents, lex->pos, 1);
+        break;
+    case ']':
+        token->type = TT_RBRACKET;
+        token->value = sv_slice(lex->contents, lex->pos, 1);
+        break;
+    case '{':
+        token->type = TT_LBRACE;
+        token->value = sv_slice(lex->contents, lex->pos, 1);
+        break;
+    case '}':
+        token->type = TT_RBRACE;
+        token->value = sv_slice(lex->contents, lex->pos, 1);
+        break;
     case '"': {
         token->type = TT_STR_LIT;
         lex_advance(lex);

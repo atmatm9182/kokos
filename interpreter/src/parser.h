@@ -14,10 +14,9 @@ typedef struct kokos_parser kokos_parser_t;
 
 enum kokos_parser_err {
     ERR_NONE,
-    ERR_UNMATCHED_PAREN,
+    ERR_UNMATCHED_DELIMITER,
     ERR_ILLEGAL_CHAR,
     ERR_UNEXPECTED_TOKEN,
-    ERR_UNCLOSED_STR,
 };
 
 typedef enum kokos_parser_err kokos_parser_err_e;
