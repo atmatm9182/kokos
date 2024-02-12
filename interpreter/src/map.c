@@ -5,9 +5,9 @@
 #include <stdint.h>
 
 // TODO: replace this by a better hash function
-unsigned long djb2(unsigned char* str)
+int64_t djb2(const char* str)
 {
-    unsigned long hash = 5381;
+    int64_t hash = 5381;
     int c;
 
     while ((c = *str++))
@@ -22,8 +22,8 @@ int64_t hash(const kokos_obj_t* obj)
     case OBJ_NIL:          return (int64_t)obj;
     case OBJ_INT:          return obj->integer;
     case OBJ_FLOAT:        return (int64_t)obj->floating;
-    case OBJ_SYMBOL:       return djb2((unsigned char*)obj->symbol);
-    case OBJ_STRING:       return djb2((unsigned char*)obj->string);
+    case OBJ_SYMBOL:       return djb2(obj->symbol);
+    case OBJ_STRING:       return djb2(obj->string);
     case OBJ_PROCEDURE:
     case OBJ_BUILTIN_PROC:
     case OBJ_SPECIAL_FORM:

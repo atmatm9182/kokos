@@ -238,9 +238,10 @@ BASEDEF void ht_add(hash_table* ht, void* key, void* value)
 
     if (!bucket) {
         bucket = malloc(sizeof(ht_bucket));
+        DA_INIT(bucket, 0, 2);
+        DA_ADD(bucket, pair);
         ht->buckets[idx] = bucket;
         ht->len++;
-        DA_ADD(bucket, pair);
         return;
     }
 
