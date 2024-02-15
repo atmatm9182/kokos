@@ -153,6 +153,30 @@ static void pop_env(kokos_interp_t* interp)
     interp->current_env = interp->current_env->parent;
 }
 
+static kokos_obj_t* call_proc(
+    kokos_interp_t* interp, kokos_obj_procedure_t proc, kokos_obj_list_t args)
+{
+    kokos_env_t call_env = kokos_env_empty(args.len);
+    for (size_t i = 0; i < proc.params.len; i++) {
+        kokos_obj_t* obj = kokos_interp_eval(interp, args.objs[i], 0);
+        if (!obj)
+            return NULL;
+
+        kokos_env_add(&call_env, proc.params.names[i], obj);
+    }
+
+    push_env(interp, &call_env);
+    for (size_t i = 0; i < proc.body.len - 1; i++) {
+        if (!kokos_interp_eval(interp, proc.body.objs[i], 0))
+            return NULL;
+    }
+
+    kokos_obj_t* result = kokos_interp_eval(interp, proc.body.objs[proc.body.len - 1], 0);
+    pop_env(interp);
+    kokos_env_destroy(&call_env);
+    return result;
+}
+
 kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool top_level)
 {
     kokos_obj_t* result = NULL;
@@ -220,25 +244,8 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
             if (!expect_arity(obj->token.location, proc.params.len, args.len, P_EQUAL))
                 return NULL;
 
-            kokos_env_t call_env = kokos_env_empty(args.len);
-            for (size_t i = 0; i < proc.params.len; i++) {
-                kokos_obj_t* obj = kokos_interp_eval(interp, args.objs[i], 0);
-                if (!obj)
-                    return NULL;
+            call_proc(interp, proc, args);
 
-                kokos_env_add(&call_env, proc.params.names[i], obj);
-            }
-
-            push_env(interp, &call_env);
-            for (size_t i = 0; i < proc.body.len - 1; i++) {
-                if (!kokos_interp_eval(interp, proc.body.objs[i], 0))
-                    return NULL;
-            }
-
-            result = kokos_interp_eval(interp, proc.body.objs[proc.body.len - 1], 0);
-
-            pop_env(interp);
-            kokos_env_destroy(&call_env);
             break;
         }
 
@@ -676,6 +683,53 @@ static kokos_obj_t* builtin_find_map(
     return obj ? obj : &kokos_obj_nil;
 }
 
+static kokos_obj_t* builtin_map(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 2, args.len, P_EQUAL))
+        return NULL;
+
+    kokos_obj_t* proc = args.objs[0];
+    if (!expect_type(proc, 2, OBJ_PROCEDURE, OBJ_BUILTIN_PROC))
+        return NULL;
+
+    if (!expect_arity(proc->token.location, 1, proc->procedure.params.len, P_EQUAL))
+        return NULL;
+
+    kokos_obj_t* collection = args.objs[1];
+    kokos_obj_t* result;
+    switch (collection->type) {
+    case OBJ_VEC: {
+        kokos_obj_vec_t vec = collection->vec;
+        kokos_obj_vec_t result_vec;
+        DA_INIT(&result_vec, 0, vec.len);
+
+        for (size_t i = 0; i < vec.len; i++) {
+            kokos_obj_list_t args = { .len = 1, .objs = &vec.items[i] };
+            kokos_obj_t* obj = call_proc(interp, proc->procedure, args);
+            if (!obj)
+                return NULL;
+
+            DA_ADD(&result_vec, obj);
+        }
+
+        result = kokos_interp_alloc(interp);
+        result->type = OBJ_VEC;
+        result->vec = result_vec;
+        result->token = collection->token; // TODO: change the location token of resulting vector
+        break;
+    }
+    case OBJ_STRING:
+        assert(0 && "todo"); // TODO: implement map for strings when the char type is added
+    default:
+        type_mismatch(collection->token.location, collection->type, 2, OBJ_VEC, OBJ_STRING);
+        result = NULL;
+        break;
+    }
+
+    return result;
+}
+
 static kokos_obj_t* sform_def(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
@@ -898,6 +952,9 @@ static kokos_env_t default_env(kokos_interp_t* interp)
 
     kokos_obj_t* find_map = make_builtin(interp, builtin_find_map);
     kokos_env_add(&env, "find-map", find_map);
+	
+    kokos_obj_t* map = make_builtin(interp, builtin_map);
+    kokos_env_add(&env, "map", map);
 
     // special forms
     kokos_obj_t* def = make_special_form(interp, sform_def);
