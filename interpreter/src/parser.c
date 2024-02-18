@@ -103,7 +103,7 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
 
         if (!parser->has_cur) {
             kokos_p_err = ERR_UNMATCHED_DELIMITER;
-            kokos_p_err_tok = parser->cur;
+            kokos_p_err_tok = list_token;
             DA_FREE(&objs);
             return NULL;
         }
@@ -126,7 +126,7 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
 
         if (!parser->has_cur) {
             kokos_p_err = ERR_UNMATCHED_DELIMITER;
-            kokos_p_err_tok = parser->cur;
+            kokos_p_err_tok = start_token;
             DA_FREE(&objs);
             return NULL;
         }
@@ -146,18 +146,25 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         advance(parser);
         while (parser->has_cur && parser->cur.type != TT_RBRACE) {
             kokos_obj_t* key = kokos_parser_next(parser, interp);
-            if (!key)
+            if (!key) {
+                kokos_p_err = ERR_UNMATCHED_DELIMITER;
+                kokos_p_err_tok = start_token;
                 return NULL;
+            }
+
             kokos_obj_t* value = kokos_parser_next(parser, interp);
-            if (!value)
+            if (!value) {
+                kokos_p_err = ERR_UNMATCHED_DELIMITER;
+                kokos_p_err_tok = start_token;
                 return NULL;
+            }
 
             kokos_obj_map_add(&map, key, value);
         }
 
         if (!parser->has_cur) {
             kokos_p_err = ERR_UNMATCHED_DELIMITER;
-            kokos_p_err_tok = parser->cur;
+            kokos_p_err_tok = start_token;
             kokos_obj_map_destroy(&map);
             return NULL;
         }
@@ -206,16 +213,19 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
     case TT_ILLEGAL:
         kokos_p_err = ERR_ILLEGAL_CHAR;
         kokos_p_err_tok = parser->cur;
+        advance(parser);
         return NULL;
     case TT_RBRACKET:
     case TT_RBRACE:
     case TT_RPAREN:
         kokos_p_err = ERR_UNEXPECTED_TOKEN;
         kokos_p_err_tok = parser->cur;
+        advance(parser);
         return NULL;
     case TT_STR_LIT_UNCLOSED:
         kokos_p_err = ERR_UNMATCHED_DELIMITER;
         kokos_p_err_tok = parser->cur;
+        advance(parser);
         return NULL;
     }
 }

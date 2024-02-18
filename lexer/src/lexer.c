@@ -94,7 +94,7 @@ int kokos_lex_next(kokos_lexer_t* lex, kokos_token_t* token)
 
         if (lex->pos == lex->contents.size) {
             token->type = TT_STR_LIT_UNCLOSED;
-            token->value = sv_slice(lex->contents, start, lex->pos - start);
+            token->value = sv_slice(lex->contents, start - 1, lex->pos - start + 1);
             break;
         }
 

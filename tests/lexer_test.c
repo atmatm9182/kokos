@@ -43,7 +43,7 @@ int test_simple()
 
     assert(kokos_lex_next(&lexer, &token));
     assert(token.type == TT_STR_LIT_UNCLOSED);
-    assert(sv_eq_cstr(token.value, "i am unclosed"));
+    assert(sv_eq_cstr(token.value, "\"i am unclosed"));
 
     assert(!kokos_lex_next(&lexer, &token));
 
