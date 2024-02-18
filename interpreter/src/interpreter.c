@@ -734,21 +734,44 @@ static kokos_obj_t* builtin_map(
 static kokos_obj_t* builtin_read_file(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
-	if (!expect_arity(called_from, 1, args.len, P_EQUAL))
-		return NULL;
+    if (!expect_arity(called_from, 1, args.len, P_EQUAL))
+        return NULL;
 
-	if (!expect_type(args.objs[0], 1, OBJ_STRING))
-		return NULL;
+    if (!expect_type(args.objs[0], 1, OBJ_STRING))
+        return NULL;
 
-	const char* filename = args.objs[0]->string;
-	if (access(filename, F_OK) != 0)
-		return &kokos_obj_nil;
+    const char* filename = args.objs[0]->string;
+    if (access(filename, F_OK) != 0)
+        return &kokos_obj_nil;
 
-	char* contents = read_whole_file(filename);
-	kokos_obj_t* result = kokos_interp_alloc(interp);
-	result->type = OBJ_STRING;
-	result->string = contents;
-	return result;
+    char* contents = read_whole_file(filename);
+    kokos_obj_t* result = kokos_interp_alloc(interp);
+    result->type = OBJ_STRING;
+    result->string = contents;
+    return result;
+}
+
+static kokos_obj_t* builtin_write_file(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 2, args.len, P_EQUAL))
+        return NULL;
+
+    if (!expect_type(args.objs[0], 1, OBJ_STRING))
+        return NULL;
+
+    if (!expect_type(args.objs[1], 1, OBJ_STRING))
+        return NULL;
+
+    const char* filename = args.objs[0]->string;
+    const char* contents = args.objs[1]->string;
+    size_t contents_len = strlen(contents);
+
+    FILE* f = fopen(filename, "wb");
+    fwrite(contents, contents_len, sizeof(char), f);
+    fclose(f);
+
+    return kokos_bool_to_obj(true);
 }
 
 static kokos_obj_t* sform_def(
@@ -977,8 +1000,11 @@ static kokos_env_t default_env(kokos_interp_t* interp)
     kokos_obj_t* map = make_builtin(interp, builtin_map);
     kokos_env_add(&env, "map", map);
 
-	kokos_obj_t* read_file = make_builtin(interp, builtin_read_file);
+    kokos_obj_t* read_file = make_builtin(interp, builtin_read_file);
     kokos_env_add(&env, "read-file", read_file);
+
+    kokos_obj_t* write_file = make_builtin(interp, builtin_write_file);
+    kokos_env_add(&env, "write-file", write_file);
 
     // special forms
     kokos_obj_t* def = make_special_form(interp, sform_def);
