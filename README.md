@@ -1,17 +1,17 @@
 
 # Table of Contents
 
-1.  [Features](#orgf1cdcaa)
-    1.  [Language level](#org98c4675)
-    2.  [Implementation (software) level](#orgbef5bd6)
+1.  [Features](#org2326cbe)
+    1.  [Language level](#orgbe62d07)
+    2.  [Implementation (software) level](#orgcdc6f11)
 
 
-<a id="orgf1cdcaa"></a>
+<a id="org2326cbe"></a>
 
 # Features
 
 
-<a id="org98c4675"></a>
+<a id="orgbe62d07"></a>
 
 ## Language level
 
@@ -27,10 +27,10 @@
 -   [X] Maps
 -   [X] Lambdas
 -   [ ] Lazy evaluation
--   [ ] File I/O
+-   [-] File I/O
 
 
-<a id="orgbef5bd6"></a>
+<a id="orgcdc6f11"></a>
 
 ## Implementation (software) level
 

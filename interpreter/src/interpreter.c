@@ -3,6 +3,7 @@
 #include "src/env.h"
 #include "src/map.h"
 #include "src/obj.h"
+#include "src/util.h"
 
 #include <assert.h>
 #include <math.h>
@@ -10,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define ERR_BUFFER_CAP 2048
 #define DEFAULT_MAP_CAPACITY 11
@@ -716,7 +718,6 @@ static kokos_obj_t* builtin_map(
         result = kokos_interp_alloc(interp);
         result->type = OBJ_VEC;
         result->vec = result_vec;
-        result->token = collection->token; // TODO: change the location token of resulting vector
         break;
     }
     case OBJ_STRING:
@@ -728,6 +729,26 @@ static kokos_obj_t* builtin_map(
     }
 
     return result;
+}
+
+static kokos_obj_t* builtin_read_file(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+	if (!expect_arity(called_from, 1, args.len, P_EQUAL))
+		return NULL;
+
+	if (!expect_type(args.objs[0], 1, OBJ_STRING))
+		return NULL;
+
+	const char* filename = args.objs[0]->string;
+	if (access(filename, F_OK) != 0)
+		return &kokos_obj_nil;
+
+	char* contents = read_whole_file(filename);
+	kokos_obj_t* result = kokos_interp_alloc(interp);
+	result->type = OBJ_STRING;
+	result->string = contents;
+	return result;
 }
 
 static kokos_obj_t* sform_def(
@@ -952,9 +973,12 @@ static kokos_env_t default_env(kokos_interp_t* interp)
 
     kokos_obj_t* find_map = make_builtin(interp, builtin_find_map);
     kokos_env_add(&env, "find-map", find_map);
-	
+
     kokos_obj_t* map = make_builtin(interp, builtin_map);
     kokos_env_add(&env, "map", map);
+
+	kokos_obj_t* read_file = make_builtin(interp, builtin_read_file);
+    kokos_env_add(&env, "read-file", read_file);
 
     // special forms
     kokos_obj_t* def = make_special_form(interp, sform_def);

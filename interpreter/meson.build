@@ -4,6 +4,7 @@ interpreterlib_sources = [
   'src/obj.c',
   'src/env.c',
   'src/map.c',
+  'src/util.c',
 ]
 
 interpreter_sources = [

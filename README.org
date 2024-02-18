@@ -12,7 +12,7 @@
 - [X] Maps
 - [X] Lambdas
 - [ ] Lazy evaluation
-- [ ] File I/O
+- [-] File I/O
 
 ** Implementation (software) level
 - [X] Repl
