@@ -1,6 +1,7 @@
 #include "obj.h"
 
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 
 void kokos_obj_mark(kokos_obj_t* obj)
@@ -166,7 +167,11 @@ bool kokos_obj_eq(const kokos_obj_t* left, const kokos_obj_t* right)
         return false;
 
     switch (left->type) {
-    case OBJ_FLOAT:     return left->floating == right->floating;
+    case OBJ_FLOAT:
+        if (isnan(left->floating))
+            return isnan(right->floating);
+        
+        return left->floating == right->floating;
     case OBJ_INT:       return left->integer == right->integer;
     case OBJ_BOOL:      return false;
     case OBJ_PROCEDURE: return left == right;

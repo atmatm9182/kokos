@@ -299,8 +299,12 @@ static kokos_obj_t* builtin_plus(
 static kokos_obj_t* builtin_minus(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
-    if (args.len == 0)
-        return 0;
+    if (args.len == 0) {
+        kokos_obj_t* result = kokos_interp_alloc(interp);
+        result->type = OBJ_INT;
+        result->integer = 0;
+        return result;
+    }
 
     bool use_float = false;
     int64_t int_res = 0;
