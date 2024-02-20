@@ -43,6 +43,7 @@ typedef struct kokos_obj_vec kokos_obj_vec_t;
 
 struct kokos_obj_procedure {
     struct {
+        bool var;
         size_t len;
         char** names;
     } params;

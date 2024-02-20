@@ -159,12 +159,37 @@ static kokos_obj_t* call_proc(
     kokos_interp_t* interp, kokos_obj_procedure_t proc, kokos_obj_list_t args)
 {
     kokos_env_t call_env = kokos_env_empty(args.len);
-    for (size_t i = 0; i < proc.params.len; i++) {
+    size_t i;
+    for (i = 0; i < proc.params.len - 1; i++) {
         kokos_obj_t* obj = kokos_interp_eval(interp, args.objs[i], 0);
         if (!obj)
             return NULL;
 
         kokos_env_add(&call_env, proc.params.names[i], obj);
+    }
+
+    if (proc.params.var) {
+        kokos_obj_t* rest_obj = kokos_interp_alloc(interp);
+        rest_obj->type = OBJ_VEC;
+        kokos_obj_vec_t* rest = &rest_obj->vec;
+
+        size_t cap = args.len == 0 ? 0 : args.len - proc.params.len;
+        DA_INIT(rest, 0, cap);
+        for (; i < args.len; i++) {
+            kokos_obj_t* obj = kokos_interp_eval(interp, args.objs[i], 0);
+            if (!obj)
+                return NULL;
+
+            DA_ADD(rest, obj);
+        }
+
+        kokos_env_add(&call_env, proc.params.names[proc.params.len - 1], rest_obj);
+    } else {
+        kokos_obj_t* last = kokos_interp_eval(interp, args.objs[args.len - 1], false);
+        if (!last)
+            return NULL;
+
+        kokos_env_add(&call_env, proc.params.names[proc.params.len - 1], last);
     }
 
     push_env(interp, &call_env);
@@ -176,6 +201,7 @@ static kokos_obj_t* call_proc(
     kokos_obj_t* result = kokos_interp_eval(interp, proc.body.objs[proc.body.len - 1], 0);
     pop_env(interp);
     kokos_env_destroy(&call_env);
+
     return result;
 }
 
@@ -243,11 +269,15 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
             kokos_obj_procedure_t proc = head->procedure;
 
             kokos_obj_list_t args = list_to_args(obj->list);
-            if (!expect_arity(obj->token.location, proc.params.len, args.len, P_EQUAL))
-                return NULL;
+            if (!proc.params.var) {
+                if (!expect_arity(obj->token.location, proc.params.len, args.len, P_EQUAL))
+                    return NULL;
+            } else {
+                if (!expect_arity(obj->token.location, proc.params.len - 1, args.len, P_AT_LEAST))
+                    return NULL;
+            }
 
-            call_proc(interp, proc, args);
-
+            result = call_proc(interp, proc, args);
             break;
         }
 
@@ -847,16 +877,33 @@ static kokos_obj_t* sform_def(
     return &kokos_obj_nil;
 }
 
-static kokos_obj_t* lambda(kokos_interp_t* interp, kokos_obj_list_t params, kokos_obj_list_t body)
+static inline kokos_obj_t* make_lambda(
+    kokos_interp_t* interp, kokos_obj_list_t params, kokos_obj_list_t body)
 {
     kokos_obj_t* result = kokos_interp_alloc(interp);
     result->type = OBJ_PROCEDURE;
+
+    result->procedure.params.var = false;
 
     char** names = malloc(sizeof(char*) * params.len);
     for (size_t i = 0; i < params.len; i++) {
         if (!expect_type(params.objs[i], 1, OBJ_SYMBOL)) {
             free(names);
             return NULL;
+        }
+
+        char* cur = params.objs[i]->symbol;
+        if (strcmp(cur, "&") == 0) {
+            if (i == params.len - 1) {
+                write_err(
+                    params.objs[i]->token.location, "expected a name for the rest parameter list");
+                return NULL;
+            }
+
+            names[i] = strdup(params.objs[i + 1]->symbol);
+            result->procedure.params.var = true;
+            params.len -= 1;
+            break;
         }
 
         names[i] = strdup(params.objs[i]->symbol);
@@ -888,7 +935,7 @@ static kokos_obj_t* sform_proc(
     // memory
     body = kokos_list_dup(interp, body);
 
-    kokos_obj_t* result = lambda(interp, params->list, body);
+    kokos_obj_t* result = make_lambda(interp, params->list, body);
     if (result)
         kokos_env_add(interp->current_env, args.objs[0]->symbol, result);
     return result;
@@ -906,7 +953,7 @@ static kokos_obj_t* sform_fn(
 
     kokos_obj_list_t body = { .objs = args.objs + 1, .len = args.len - 1 };
     body = kokos_list_dup(interp, body);
-    return lambda(interp, params->list, body);
+    return make_lambda(interp, params->list, body);
 }
 
 static kokos_obj_t* sform_if(
@@ -994,7 +1041,7 @@ static kokos_obj_t* make_special_form(kokos_interp_t* interp, kokos_builtin_proc
 
 static kokos_env_t default_env(kokos_interp_t* interp)
 {
-    kokos_env_t env = kokos_env_empty(10);
+    kokos_env_t env = kokos_env_empty(0);
 
     // builtins
     kokos_obj_t* plus = make_builtin(interp, builtin_plus);
@@ -1025,8 +1072,8 @@ static kokos_env_t default_env(kokos_interp_t* interp)
     kokos_env_add(&env, ">=", gte);
 
     kokos_obj_t* not = make_builtin(interp, builtin_not);
-    kokos_env_add(&env, "not", not);
-    
+    kokos_env_add(&env, "not", not );
+
     kokos_obj_t* print = make_builtin(interp, builtin_print);
     kokos_env_add(&env, "print", print);
 
@@ -1075,11 +1122,11 @@ static kokos_env_t default_env(kokos_interp_t* interp)
 
     kokos_obj_t* let = make_special_form(interp, sform_let);
     kokos_env_add(&env, "let", let);
-    
+
     kokos_obj_t* or = make_special_form(interp, sform_or);
     kokos_env_add(&env, "or", or);
-    
-    kokos_obj_t* and = make_special_form(interp, sform_and);
+
+    kokos_obj_t*and = make_special_form(interp, sform_and);
     kokos_env_add(&env, "and", and);
 
     return env;
