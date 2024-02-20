@@ -598,6 +598,53 @@ static kokos_obj_t* builtin_gte(
     return NULL;
 }
 
+static kokos_obj_t* builtin_not(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 1, args.len, P_EQUAL))
+        return NULL;
+
+    return kokos_bool_to_obj(!kokos_obj_to_bool(args.objs[0]));
+}
+
+static kokos_obj_t* sform_or(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 2, args.len, P_AT_LEAST))
+        return NULL;
+
+    for (size_t i = 0; i < args.len; i++) {
+        kokos_obj_t* obj = args.objs[i];
+        kokos_obj_t* evaled = kokos_interp_eval(interp, obj, false);
+        if (!evaled)
+            return NULL;
+
+        if (kokos_obj_to_bool(evaled))
+            return obj;
+    }
+
+    return args.objs[args.len - 1];
+}
+
+static kokos_obj_t* sform_and(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 2, args.len, P_AT_LEAST))
+        return NULL;
+
+    for (size_t i = 0; i < args.len; i++) {
+        kokos_obj_t* obj = args.objs[i];
+        kokos_obj_t* evaled = kokos_interp_eval(interp, obj, false);
+        if (!evaled)
+            return NULL;
+
+        if (!kokos_obj_to_bool(evaled))
+            return obj;
+    }
+
+    return args.objs[args.len - 1];
+}
+
 static kokos_obj_t* builtin_make_vec(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
@@ -977,6 +1024,9 @@ static kokos_env_t default_env(kokos_interp_t* interp)
     kokos_obj_t* gte = make_builtin(interp, builtin_gte);
     kokos_env_add(&env, ">=", gte);
 
+    kokos_obj_t* not = make_builtin(interp, builtin_not);
+    kokos_env_add(&env, "not", not);
+    
     kokos_obj_t* print = make_builtin(interp, builtin_print);
     kokos_env_add(&env, "print", print);
 
@@ -1025,6 +1075,12 @@ static kokos_env_t default_env(kokos_interp_t* interp)
 
     kokos_obj_t* let = make_special_form(interp, sform_let);
     kokos_env_add(&env, "let", let);
+    
+    kokos_obj_t* or = make_special_form(interp, sform_or);
+    kokos_env_add(&env, "or", or);
+    
+    kokos_obj_t* and = make_special_form(interp, sform_and);
+    kokos_env_add(&env, "and", and);
 
     return env;
 }
