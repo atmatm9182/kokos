@@ -643,17 +643,18 @@ static kokos_obj_t* sform_or(
     if (!expect_arity(called_from, 2, args.len, P_AT_LEAST))
         return NULL;
 
+    kokos_obj_t* result = NULL;
     for (size_t i = 0; i < args.len; i++) {
         kokos_obj_t* obj = args.objs[i];
-        kokos_obj_t* evaled = kokos_interp_eval(interp, obj, false);
-        if (!evaled)
-            return NULL;
+        result = kokos_interp_eval(interp, obj, false);
+        if (!result)
+            break;
 
-        if (kokos_obj_to_bool(evaled))
-            return obj;
+        if (kokos_obj_to_bool(result))
+            break;
     }
 
-    return args.objs[args.len - 1];
+    return result;
 }
 
 static kokos_obj_t* sform_and(
@@ -662,17 +663,18 @@ static kokos_obj_t* sform_and(
     if (!expect_arity(called_from, 2, args.len, P_AT_LEAST))
         return NULL;
 
+    kokos_obj_t* result = NULL;
     for (size_t i = 0; i < args.len; i++) {
         kokos_obj_t* obj = args.objs[i];
-        kokos_obj_t* evaled = kokos_interp_eval(interp, obj, false);
-        if (!evaled)
-            return NULL;
+        result = kokos_interp_eval(interp, obj, false);
+        if (!result)
+            break;
 
-        if (!kokos_obj_to_bool(evaled))
-            return obj;
+        if (!kokos_obj_to_bool(result))
+            break;
     }
 
-    return args.objs[args.len - 1];
+    return result;
 }
 
 static kokos_obj_t* builtin_make_vec(
