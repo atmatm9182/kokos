@@ -206,6 +206,44 @@ static kokos_obj_t* call_proc(
     return result;
 }
 
+static inline kokos_obj_t* call_macro(
+    kokos_interp_t* interp, kokos_obj_macro_t macro, kokos_obj_list_t args)
+{
+    kokos_env_t call_env = kokos_env_empty(args.len);
+    size_t i;
+    for (i = 0; i < macro.params.len - 1; i++) {
+        kokos_env_add(&call_env, macro.params.names[i], args.objs[i]);
+    }
+
+    if (macro.params.var) {
+        kokos_obj_t* rest_obj = kokos_interp_alloc(interp);
+        rest_obj->type = OBJ_VEC;
+        kokos_obj_vec_t* rest = &rest_obj->vec;
+
+        size_t cap = args.len == 0 ? 0 : args.len - macro.params.len;
+        DA_INIT(rest, 0, cap);
+        for (; i < args.len; i++) {
+            DA_ADD(rest, args.objs[i]);
+        }
+
+        kokos_env_add(&call_env, macro.params.names[macro.params.len - 1], rest_obj);
+    } else {
+        kokos_env_add(&call_env, macro.params.names[macro.params.len - 1], args.objs[args.len - 1]);
+    }
+
+    push_env(interp, &call_env);
+    for (size_t i = 0; i < macro.body.len - 1; i++) {
+        if (!kokos_interp_eval(interp, macro.body.objs[i], 0))
+            return NULL;
+    }
+
+    kokos_obj_t* result = kokos_interp_eval(interp, macro.body.objs[macro.body.len - 1], 0);
+    pop_env(interp);
+    kokos_env_destroy(&call_env);
+
+    return result;
+}
+
 kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool top_level)
 {
     kokos_obj_t* result = NULL;
@@ -280,6 +318,25 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
             }
 
             result = call_proc(interp, proc, args);
+            break;
+        }
+
+        if (head->type == OBJ_MACRO) {
+            kokos_obj_macro_t macro = head->macro;
+
+            kokos_obj_list_t args = list_to_args(obj->list);
+            if (!macro.params.var) {
+                if (!expect_arity(obj->token.location, macro.params.len, args.len, P_EQUAL))
+                    return NULL;
+            } else {
+                if (!expect_arity(obj->token.location, macro.params.len - 1, args.len, P_AT_LEAST))
+                    return NULL;
+            }
+
+            result = call_macro(interp, macro, args);
+            if (!result)
+                return NULL;
+            result = kokos_interp_eval(interp, result, 0);
             break;
         }
 
@@ -677,6 +734,15 @@ static kokos_obj_t* sform_and(
     }
 
     return result;
+}
+
+static kokos_obj_t* builtin_list(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    kokos_obj_t* list = kokos_interp_alloc(interp);
+    list->type = OBJ_LIST;
+    list->list = kokos_list_dup(interp, args);
+    return list;
 }
 
 static kokos_obj_t* builtin_make_vec(
@@ -1145,6 +1211,9 @@ static kokos_env_t default_env(kokos_interp_t* interp)
 
     kokos_obj_t* type = make_builtin(interp, builtin_type);
     kokos_env_add(&env, "type", type);
+
+    kokos_obj_t* list = make_builtin(interp, builtin_list);
+    kokos_env_add(&env, "list", list);
 
     kokos_obj_t* make_vec = make_builtin(interp, builtin_make_vec);
     kokos_env_add(&env, "make-vec", make_vec);

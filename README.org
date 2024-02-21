@@ -5,7 +5,7 @@
 - [ ] UTF-8 strings
 - [X] Variables
 - [X] Functions
-- [-] Macros
+- [X] Macros
 - [X] Scoped variable bindings
 - [X] Basic equality and comparison operators
 - [X] Dynamic arrays

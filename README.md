@@ -1,17 +1,17 @@
 
 # Table of Contents
 
-1.  [Features](#org187ceb8)
-    1.  [Language level](#orgf571773)
-    2.  [Implementation (software) level](#org1541031)
+1.  [Features](#org22cbd07)
+    1.  [Language level](#orge1d9d06)
+    2.  [Implementation (software) level](#orgeb3df2f)
 
 
-<a id="org187ceb8"></a>
+<a id="org22cbd07"></a>
 
 # Features
 
 
-<a id="orgf571773"></a>
+<a id="orge1d9d06"></a>
 
 ## Language level
 
@@ -20,7 +20,7 @@
 -   [ ] UTF-8 strings
 -   [X] Variables
 -   [X] Functions
--   [ ] Macros
+-   [X] Macros
 -   [X] Scoped variable bindings
 -   [X] Basic equality and comparison operators
 -   [X] Dynamic arrays
@@ -30,7 +30,7 @@
 -   [X] File I/O
 
 
-<a id="org1541031"></a>
+<a id="orgeb3df2f"></a>
 
 ## Implementation (software) level
 
