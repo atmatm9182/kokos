@@ -50,6 +50,7 @@ static const char* str_type(kokos_obj_type_e type)
     case OBJ_VEC:          return "vector";
     case OBJ_MAP:          return "map";
     case OBJ_SPECIAL_FORM: return "special form";
+    case OBJ_MACRO:        return "macro";
     }
 
     __builtin_unreachable();
@@ -218,6 +219,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
     case OBJ_VEC:
     case OBJ_MAP:
     case OBJ_BUILTIN_PROC:
+    case OBJ_MACRO:
     case OBJ_PROCEDURE:    result = obj; break;
     case OBJ_SYMBOL:       {
         kokos_env_pair_t* pair = kokos_env_find(interp->current_env, obj->symbol);
@@ -901,19 +903,15 @@ static kokos_obj_t* sform_def(
     return &kokos_obj_nil;
 }
 
-static inline kokos_obj_t* make_lambda(
-    kokos_interp_t* interp, kokos_obj_list_t params, kokos_obj_list_t body)
+static inline kokos_params_t make_params(kokos_obj_list_t params)
 {
-    kokos_obj_t* result = kokos_interp_alloc(interp);
-    result->type = OBJ_PROCEDURE;
-
-    result->procedure.params.var = false;
-
+    kokos_params_t result = { .var = false, .len = params.len };
     char** names = malloc(sizeof(char*) * params.len);
     for (size_t i = 0; i < params.len; i++) {
         if (!expect_type(params.objs[i], 1, OBJ_SYMBOL)) {
             free(names);
-            return NULL;
+            result.names = NULL;
+            return result;
         }
 
         char* cur = params.objs[i]->symbol;
@@ -921,11 +919,12 @@ static inline kokos_obj_t* make_lambda(
             if (i == params.len - 1) {
                 write_err(
                     params.objs[i]->token.location, "expected a name for the rest parameter list");
-                return NULL;
+                result.names = NULL;
+                return result;
             }
 
             names[i] = strdup(params.objs[i + 1]->symbol);
-            result->procedure.params.var = true;
+            result.var = true;
             params.len -= 1;
             break;
         }
@@ -933,8 +932,21 @@ static inline kokos_obj_t* make_lambda(
         names[i] = strdup(params.objs[i]->symbol);
     }
 
-    result->procedure.params.len = params.len;
-    result->procedure.params.names = names;
+    result.names = names;
+    return result;
+}
+
+static inline kokos_obj_t* make_lambda(
+    kokos_interp_t* interp, kokos_obj_list_t params, kokos_obj_list_t body)
+{
+    kokos_obj_t* result = kokos_interp_alloc(interp);
+    result->type = OBJ_PROCEDURE;
+
+    kokos_params_t proc_params = make_params(params);
+    if (!proc_params.names)
+        return NULL;
+
+    result->procedure.params = proc_params;
     result->procedure.body = body;
 
     return result;
@@ -978,6 +990,36 @@ static kokos_obj_t* sform_fn(
     kokos_obj_list_t body = { .objs = args.objs + 1, .len = args.len - 1 };
     body = kokos_list_dup(interp, body);
     return make_lambda(interp, params->list, body);
+}
+
+static kokos_obj_t* sform_macro(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 3, args.len, P_AT_LEAST))
+        return NULL;
+
+    kokos_obj_t* name = args.objs[0];
+    if (!expect_type(name, 1, OBJ_SYMBOL))
+        return NULL;
+
+    kokos_obj_t* params = args.objs[1];
+    if (!expect_type(params, 1, OBJ_LIST))
+        return NULL;
+
+    kokos_params_t macro_params = make_params(params->list);
+    if (!macro_params.names)
+        return NULL;
+
+    kokos_obj_list_t body = { .len = args.len - 2, .objs = args.objs + 2 };
+    body = kokos_list_dup(interp, body); // see 'builtin_proc' for explanation why this is necessary
+
+    kokos_obj_t* macro = kokos_interp_alloc(interp);
+    macro->type = OBJ_MACRO;
+    macro->macro.params = macro_params;
+    macro->macro.body = body;
+
+    kokos_env_add(interp->current_env, name->symbol, macro);
+    return macro;
 }
 
 static kokos_obj_t* sform_if(
@@ -1138,6 +1180,9 @@ static kokos_env_t default_env(kokos_interp_t* interp)
     kokos_obj_t* proc = make_special_form(interp, sform_proc);
     kokos_env_add(&env, "proc", proc);
 
+    kokos_obj_t* macro = make_special_form(interp, sform_macro);
+    kokos_env_add(&env, "macro", macro);
+
     kokos_obj_t* fn = make_special_form(interp, sform_fn);
     kokos_env_add(&env, "fn", fn);
 
@@ -1196,6 +1241,13 @@ static inline void obj_free(kokos_obj_t* obj)
         free(obj->procedure.params.names);
         free(obj->procedure.body.objs);
         break;
+    case OBJ_MACRO:
+        for (size_t i = 0; i < obj->macro.params.len; i++)
+            free(obj->macro.params.names[i]);
+        free(obj->macro.params.names);
+        free(obj->macro.body.objs);
+        break;
+
     case OBJ_NIL: return;
     }
     free(obj);

@@ -28,6 +28,10 @@ void kokos_obj_mark(kokos_obj_t* obj)
         for (size_t i = 0; i < obj->procedure.body.len; i++)
             kokos_obj_mark(obj->procedure.body.objs[i]);
         break;
+    case OBJ_MACRO:
+        for (size_t i = 0; i < obj->macro.body.len; i++)
+            kokos_obj_mark(obj->macro.body.objs[i]);
+        break;
     case OBJ_MAP:
         for (size_t i = 0; i < obj->map.cap; i++) {
             ht_bucket* bucket = obj->map.buckets[i];
@@ -93,6 +97,7 @@ void kokos_obj_print(kokos_obj_t* obj)
         break;
     case OBJ_BUILTIN_PROC: printf("<builtin function>"); break;
     case OBJ_PROCEDURE:    printf("<procedure>"); break;
+    case OBJ_MACRO:        printf("<macro>"); break;
     case OBJ_SPECIAL_FORM: assert(0 && "something went completely wrong");
     }
 }
@@ -170,10 +175,11 @@ bool kokos_obj_eq(const kokos_obj_t* left, const kokos_obj_t* right)
     case OBJ_FLOAT:
         if (isnan(left->floating))
             return isnan(right->floating);
-        
+
         return left->floating == right->floating;
     case OBJ_INT:       return left->integer == right->integer;
     case OBJ_BOOL:      return false;
+    case OBJ_MACRO:
     case OBJ_PROCEDURE: return left == right;
     case OBJ_LIST:      {
         if (left->list.len != right->list.len)

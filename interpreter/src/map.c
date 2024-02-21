@@ -27,6 +27,7 @@ int64_t hash(const kokos_obj_t* obj)
     case OBJ_PROCEDURE:
     case OBJ_BUILTIN_PROC:
     case OBJ_SPECIAL_FORM:
+    case OBJ_MACRO:
     case OBJ_MAP:          // TODO: calculate map hash differently
     case OBJ_BOOL:         return (int64_t)obj;
     case OBJ_LIST:         {

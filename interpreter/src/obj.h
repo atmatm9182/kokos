@@ -19,6 +19,7 @@ enum kokos_obj_type {
     OBJ_PROCEDURE,
     OBJ_BUILTIN_PROC,
     OBJ_SPECIAL_FORM,
+    OBJ_MACRO,
 };
 
 typedef enum kokos_obj_type kokos_obj_type_e;
@@ -41,16 +42,21 @@ struct kokos_obj_vec {
 
 typedef struct kokos_obj_vec kokos_obj_vec_t;
 
+struct kokos_params {
+    bool var;
+    size_t len;
+    char** names;
+};
+
+typedef struct kokos_params kokos_params_t;
+
 struct kokos_obj_procedure {
-    struct {
-        bool var;
-        size_t len;
-        char** names;
-    } params;
+    kokos_params_t params;
     kokos_obj_list_t body;
 };
 
 typedef struct kokos_obj_procedure kokos_obj_procedure_t;
+typedef struct kokos_obj_procedure kokos_obj_macro_t;
 
 struct kokos_interp;
 
@@ -77,6 +83,7 @@ struct kokos_obj {
         kokos_obj_map_t map;
         kokos_builtin_procedure_t builtin;
         kokos_obj_procedure_t procedure;
+        kokos_obj_macro_t macro;
     };
 };
 
