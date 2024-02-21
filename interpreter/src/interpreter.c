@@ -773,7 +773,7 @@ static kokos_obj_t* builtin_map(
         return NULL;
 
     kokos_obj_t* proc = args.objs[0];
-    if (!expect_type(proc, 2, OBJ_PROCEDURE, OBJ_BUILTIN_PROC))
+    if (!expect_type(proc, 1, OBJ_PROCEDURE))
         return NULL;
 
     if (!expect_arity(proc->token.location, 1, proc->procedure.params.len, P_EQUAL))
@@ -801,8 +801,30 @@ static kokos_obj_t* builtin_map(
         result->vec = result_vec;
         break;
     }
-    case OBJ_STRING:
-        assert(0 && "todo"); // TODO: implement map for strings when the char type is added
+    case OBJ_STRING: {
+        kokos_obj_vec_t result_vec;
+        char* str = collection->string;
+        size_t str_len = strlen(str);
+        DA_INIT(&result_vec, 0, str_len);
+
+        for (size_t i = 0; i < str_len; i++) {
+            char buf[2] = { str[i], '\0' };
+            kokos_obj_t c = { .type = OBJ_STRING, .string = buf };
+            kokos_obj_t* ca = &c;
+            kokos_obj_list_t args = { .len = 1, .objs = &ca };
+
+            kokos_obj_t* obj = call_proc(interp, proc->procedure, args);
+            if (!obj)
+                return NULL;
+
+            DA_ADD(&result_vec, obj);
+        }
+
+        result = kokos_interp_alloc(interp);
+        result->type = OBJ_VEC;
+        result->vec = result_vec;
+        break;
+    }
     default:
         type_mismatch(collection->token.location, collection->type, 2, OBJ_VEC, OBJ_STRING);
         result = NULL;
