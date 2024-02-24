@@ -1,17 +1,17 @@
 
 # Table of Contents
 
-1.  [Features](#org22cbd07)
-    1.  [Language level](#orge1d9d06)
-    2.  [Implementation (software) level](#orgeb3df2f)
+1.  [Features](#org93f6eba)
+    1.  [Language level](#org9fbf922)
+    2.  [Implementation (software) level](#org23d5b49)
 
 
-<a id="org22cbd07"></a>
+<a id="org93f6eba"></a>
 
 # Features
 
 
-<a id="orge1d9d06"></a>
+<a id="org9fbf922"></a>
 
 ## Language level
 
@@ -28,9 +28,11 @@
 -   [X] Lambdas
 -   [ ] Lazy evaluation
 -   [X] File I/O
+-   [ ] Module system
+-   [ ] Standard library
 
 
-<a id="orgeb3df2f"></a>
+<a id="org23d5b49"></a>
 
 ## Implementation (software) level
 
