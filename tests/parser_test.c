@@ -7,6 +7,7 @@
 #include "token.h"
 #include "parser.h"
 
+#include <assert.h>
 #include <string.h>
 
 void test_basic(void)

@@ -71,7 +71,8 @@ struct kokos_obj {
     kokos_token_t token;
     struct kokos_obj* next;
     unsigned char marked : 1;
-    kokos_obj_type_e type : 7;
+    unsigned char quoted : 1;
+    kokos_obj_type_e type : 6;
 
     union {
         int64_t integer;

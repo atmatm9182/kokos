@@ -86,6 +86,10 @@ int kokos_lex_next(kokos_lexer_t* lex, kokos_token_t* token)
         token->type = TT_RBRACE;
         token->value = sv_slice(lex->contents, lex->pos, 1);
         break;
+    case '\'':
+        token->type = TT_QUOTE;
+        token->value = sv_slice(lex->contents, lex->pos, 1);
+        break;
     case '"': {
         token->type = TT_STR_LIT;
         lex_advance(lex);
@@ -149,7 +153,6 @@ int kokos_lex_next(kokos_lexer_t* lex, kokos_token_t* token)
 
 kokos_lexer_t kokos_lex_buf(const char* buf, size_t buf_size)
 {
-    buf_size = buf_size == (size_t)-1 ? strlen(buf) : buf_size;
     return (kokos_lexer_t) { .contents = sv_make(buf, buf_size),
         .pos = 0,
         .location = { .filename = NULL, .row = 1, .col = 1 } };

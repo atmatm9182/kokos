@@ -3,6 +3,8 @@
 #include "base.h"
 #include "lexer.h"
 
+#include <assert.h>
+
 int test_empty()
 {
     const char* code = "";

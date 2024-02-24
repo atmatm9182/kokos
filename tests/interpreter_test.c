@@ -3,6 +3,8 @@
 #include "lexer.h"
 #include "obj.h"
 #include "parser.h"
+
+#include <assert.h>
 #include <math.h>
 #include <string.h>
 

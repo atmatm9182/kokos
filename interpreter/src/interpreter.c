@@ -248,8 +248,10 @@ static inline kokos_obj_t* call_macro(
 
 kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool top_level)
 {
-    kokos_obj_t* result = NULL;
+    if (obj->quoted)
+        return obj;
 
+    kokos_obj_t* result = NULL;
     switch (obj->type) {
     case OBJ_NIL:
     case OBJ_INT:
@@ -947,19 +949,6 @@ static kokos_obj_t* builtin_write_file(
     fclose(f);
 
     return kokos_bool_to_obj(true);
-}
-
-static kokos_obj_t* builtin_macroexpand(
-    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
-{
-    if (!expect_arity(called_from, 1, args.len, P_EQUAL))
-        return NULL;
-
-    kokos_obj_t* list = args.objs[0];
-    if (!expect_type(list, 1, OBJ_LIST))
-        return NULL;
-
-    assert(0 && "TODO");
 }
 
 static kokos_obj_t* sform_def(

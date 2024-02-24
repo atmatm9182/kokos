@@ -86,6 +86,16 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
     }
 
     switch (parser->cur.type) {
+    case TT_QUOTE: {
+        advance(parser);
+        kokos_obj_t* next = kokos_parser_next(parser, interp);
+        if (!next)
+            return NULL;
+
+        next->quoted = true;
+        return next;
+    }
+        
     case TT_LPAREN: {
         kokos_token_t list_token = parser->cur;
 

@@ -1,8 +1,6 @@
 #ifndef TOKEN_H_
 #define TOKEN_H_
 
-#include <assert.h>
-
 #include "base.h"
 #include "location.h"
 
@@ -13,6 +11,8 @@ enum kokos_token_type {
     TT_RBRACKET,
     TT_LBRACE,
     TT_RBRACE,
+
+    TT_QUOTE,
 
     TT_IDENT,
     TT_INT_LIT,
@@ -47,6 +47,7 @@ static inline const char* kokos_token_type_str(kokos_token_type_e tt)
     case TT_LBRACKET:         return "TT_LBRACKET";
     case TT_RBRACE:           return "TT_RBRACE";
     case TT_LBRACE:           return "TT_LBRACE";
+    case TT_QUOTE:            return "TT_QUOTE";
     }
 
     __builtin_unreachable();
