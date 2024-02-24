@@ -958,6 +958,29 @@ static kokos_obj_t* builtin_write_file(
     return kokos_bool_to_obj(true);
 }
 
+static kokos_obj_t* builtin_macroexpand_1(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 1, args.len, P_EQUAL))
+        return NULL;
+
+    kokos_obj_t* list_obj = args.objs[0];
+    if (!(list_obj->quoted && list_obj->type == OBJ_LIST))
+        return kokos_interp_eval(interp, list_obj, 0);
+
+    kokos_obj_list_t list = list_obj->list;
+    if (list.len == 0 || list.objs[0]->type != OBJ_SYMBOL)
+        return kokos_interp_eval(interp, list_obj, 0);
+
+    kokos_env_pair_t* symbol_pair = kokos_env_find(interp->current_env, list.objs[0]->symbol);
+    if (!symbol_pair || symbol_pair->value->type != OBJ_MACRO)
+        return kokos_interp_eval(interp, list_obj, 0);
+    
+    kokos_obj_macro_t macro = symbol_pair->value->macro;
+    kokos_obj_list_t macro_args = list_to_args(list);
+    return call_macro(interp, macro, macro_args);
+}
+
 static kokos_obj_t* sform_def(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
@@ -1255,7 +1278,10 @@ static kokos_env_t default_env(kokos_interp_t* interp)
 
     kokos_obj_t* write_file = make_builtin(interp, builtin_write_file);
     kokos_env_add(&env, "write-file", write_file);
-
+    
+    kokos_obj_t* macroexpand_1 = make_builtin(interp, builtin_macroexpand_1);
+    kokos_env_add(&env, "macroexpand-1", macroexpand_1);
+    
     // special forms
     kokos_obj_t* def = make_special_form(interp, sform_def);
     kokos_env_add(&env, "def", def);
