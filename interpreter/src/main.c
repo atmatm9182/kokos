@@ -1,14 +1,18 @@
+#include <errno.h>
 #include <stdio.h>
+#include <string.h>
 
 #define BASE_IMPL
 #include "base.h"
 #include "interpreter.h"
+#include "lexer.h"
 #include "parser.h"
+#include "src/obj.h"
+#include "src/util.h"
 
-static kokos_interp_t* interp;
 static bool eof = false;
 
-static kokos_obj_t* read(void)
+static kokos_obj_t* read(kokos_interp_t* interp)
 {
     static char buf[1024];
     if (!fgets(buf, 1024, stdin)) {
@@ -20,11 +24,6 @@ static kokos_obj_t* read(void)
     lex.location.filename = "repl";
     kokos_parser_t parser = kokos_parser_of_lexer(lex);
     return kokos_parser_next(&parser, interp);
-}
-
-static kokos_obj_t* eval(kokos_obj_t* obj)
-{
-    return kokos_interp_eval(interp, obj, 1);
 }
 
 static void print_location(kokos_location_t location)
@@ -61,13 +60,13 @@ static void print_interpreter_error(void)
     printf("%s\n", kokos_interp_get_error());
 }
 
-int main(int argc, char* argv[])
+int run_repl(void)
 {
-    interp = kokos_interp_new(500);
+    kokos_interp_t* interp = kokos_interp_new(500);
     while (1) {
         printf("> ");
 
-        kokos_obj_t* obj = read();
+        kokos_obj_t* obj = read(interp);
         if (!obj) {
             if (eof)
                 break;
@@ -76,7 +75,7 @@ int main(int argc, char* argv[])
             continue;
         }
 
-        obj = eval(obj);
+        obj = kokos_interp_eval(interp, obj, 1);
         if (!obj) {
             print_interpreter_error();
             continue;
@@ -88,6 +87,42 @@ int main(int argc, char* argv[])
     }
 
     kokos_interp_destroy(interp);
+
+    return 0;
+}
+
+int main(int argc, char* argv[])
+{
+    if (argc == 1)
+        return run_repl();
+
+    const char* script_name = argv[1];
+    char* script_data = read_whole_file(script_name);
+    if (!script_data) {
+        fprintf(stderr, "Could not open file %s because of: %s\n", script_name, strerror(errno));
+        return 1;
+    }
+
+    kokos_lexer_t lex = kokos_lex_buf(script_data, strlen(script_data));
+    kokos_parser_t parser = kokos_parser_of_lexer(lex);
+    kokos_interp_t* interpreter = kokos_interp_new(KOKOS_DEFAULT_GC_THRESHOLD);
+
+    kokos_obj_t* cur;
+    while ((cur = kokos_parser_next(&parser, interpreter))) {
+        kokos_obj_t* obj = kokos_interp_eval(interpreter, cur, 1);
+        if (!obj) {
+            print_interpreter_error();
+            return 1;
+        }
+    }
+
+    if (kokos_p_err != ERR_NONE) {
+        print_parser_error();
+        return 1;
+    }
+
+    kokos_interp_destroy(interpreter);
+    free(script_data);
 
     return 0;
 }

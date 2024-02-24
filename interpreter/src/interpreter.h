@@ -4,6 +4,10 @@
 #include "env.h"
 #include "obj.h"
 
+#ifndef KOKOS_DEFAULT_GC_THRESHOLD
+#define KOKOS_DEFAULT_GC_THRESHOLD 1024
+#endif
+
 struct kokos_interp {
     kokos_obj_t* obj_head;
     size_t obj_count;

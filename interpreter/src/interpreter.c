@@ -91,6 +91,8 @@ static bool expect_type(const kokos_obj_t* obj, int expected_count, ...)
 {
     va_list args;
     va_start(args, expected_count);
+    va_list err_args;
+    va_copy(err_args, args);
 
     for (int i = 0; i < expected_count; i++) {
         if (obj->type == va_arg(args, kokos_obj_type_e)) {
@@ -99,7 +101,7 @@ static bool expect_type(const kokos_obj_t* obj, int expected_count, ...)
         }
     }
 
-    type_mismatch_va(obj->token.location, obj->type, expected_count, args);
+    type_mismatch_va(obj->token.location, obj->type, expected_count, err_args);
     va_end(args);
     return false;
 }
@@ -945,6 +947,19 @@ static kokos_obj_t* builtin_write_file(
     fclose(f);
 
     return kokos_bool_to_obj(true);
+}
+
+static kokos_obj_t* builtin_macroexpand(
+    kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
+{
+    if (!expect_arity(called_from, 1, args.len, P_EQUAL))
+        return NULL;
+
+    kokos_obj_t* list = args.objs[0];
+    if (!expect_type(list, 1, OBJ_LIST))
+        return NULL;
+
+    assert(0 && "TODO");
 }
 
 static kokos_obj_t* sform_def(
