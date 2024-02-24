@@ -213,6 +213,6 @@ bool kokos_obj_eq(const kokos_obj_t* left, const kokos_obj_t* right)
     }
 }
 
-kokos_obj_t kokos_obj_nil = { 0 };
+kokos_obj_t kokos_obj_nil = { .type = OBJ_NIL };
 kokos_obj_t kokos_obj_false = { .type = OBJ_BOOL };
 kokos_obj_t kokos_obj_true = { .type = OBJ_BOOL };

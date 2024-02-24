@@ -136,6 +136,7 @@ kokos_obj_t* kokos_interp_alloc(kokos_interp_t* interp)
 {
     kokos_obj_t* obj = malloc(sizeof(kokos_obj_t));
     obj->marked = 0;
+    obj->quoted = 0;
     obj->next = interp->obj_head;
     interp->obj_head = obj;
     interp->obj_count++;
@@ -1031,6 +1032,9 @@ static inline kokos_obj_t* make_lambda(
 static kokos_obj_t* sform_proc(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
+    if (!expect_arity(called_from, 3, args.len, P_AT_LEAST))
+        return NULL;
+    
     if (!expect_type(args.objs[0], 1, OBJ_SYMBOL))
         return NULL;
 
@@ -1274,7 +1278,7 @@ static kokos_env_t default_env(kokos_interp_t* interp)
     kokos_obj_t* or = make_special_form(interp, sform_or);
     kokos_env_add(&env, "or", or);
 
-    kokos_obj_t*and = make_special_form(interp, sform_and);
+    kokos_obj_t* and = make_special_form(interp, sform_and);
     kokos_env_add(&env, "and", and);
 
     return env;
