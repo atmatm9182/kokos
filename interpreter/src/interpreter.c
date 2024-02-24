@@ -273,10 +273,14 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
         break;
     }
     case OBJ_LIST: {
+        if (obj->list.len == 0)
+            return obj;
+        
         kokos_obj_t* head = kokos_interp_eval(interp, obj->list.objs[0], 0);
         if (!head)
             return NULL;
-        if (head->type == OBJ_BUILTIN_PROC) {
+        switch (head->type) {
+        case OBJ_BUILTIN_PROC: {
             struct {
                 kokos_obj_t** items;
                 size_t len;
@@ -301,7 +305,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
             break;
         }
 
-        if (head->type == OBJ_SPECIAL_FORM) {
+        case OBJ_SPECIAL_FORM: {
             kokos_obj_list_t args = list_to_args(obj->list);
 
             kokos_builtin_procedure_t proc = head->builtin;
@@ -309,7 +313,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
             break;
         }
 
-        if (head->type == OBJ_PROCEDURE) {
+        case OBJ_PROCEDURE: {
             kokos_obj_procedure_t proc = head->procedure;
 
             kokos_obj_list_t args = list_to_args(obj->list);
@@ -325,7 +329,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
             break;
         }
 
-        if (head->type == OBJ_MACRO) {
+        case OBJ_MACRO: {
             kokos_obj_macro_t macro = head->macro;
 
             kokos_obj_list_t args = list_to_args(obj->list);
@@ -343,9 +347,11 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
             result = kokos_interp_eval(interp, result, 0);
             break;
         }
-
-        write_err(obj->token.location, "Object of type '%s' is not callable", str_type(head->type));
-        return NULL;
+        default:
+            write_err(obj->token.location, "Object of type '%s' is not callable", str_type(head->type));
+            return NULL;
+        }
+        break;
     }
     case OBJ_SPECIAL_FORM: assert(0 && "unreachable!"); break;
     }
