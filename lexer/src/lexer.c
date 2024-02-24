@@ -3,7 +3,6 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
 
 static inline char cur_char(kokos_lexer_t* lex)
 {
@@ -26,16 +25,20 @@ static bool lex_skip_whitespace(kokos_lexer_t* lex)
     while (lex->pos < lex->contents.size) {
         switch (cur_char(lex)) {
         case ' ':
-        case '\t':
-            if (!lex_advance(lex)) {
+            if (!lex_advance(lex))
                 return false;
-            }
+            break;
+        case '\t':
+            if (!lex_advance(lex))
+                return false;
+            lex->location.col += 3;
             break;
         case '\n':
             lex->location.row++;
             if (!lex_advance(lex)) {
                 return false;
             }
+            lex->location.col = 1;
             break;
         default: return true;
         }

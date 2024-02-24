@@ -98,7 +98,13 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
 
         advance(parser);
         while (parser->has_cur && parser->cur.type != TT_RPAREN) {
-            DA_ADD(&objs, kokos_parser_next(parser, interp));
+            kokos_obj_t* obj = kokos_parser_next(parser, interp);
+            if (!obj) {
+                DA_FREE(&objs);
+                return NULL;
+            }
+            
+            DA_ADD(&objs, obj);
         }
 
         if (!parser->has_cur) {
@@ -121,7 +127,13 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
 
         advance(parser);
         while (parser->has_cur && parser->cur.type != TT_RBRACKET) {
-            DA_ADD(&objs, kokos_parser_next(parser, interp));
+            kokos_obj_t* obj = kokos_parser_next(parser, interp);
+            if (!obj) {
+                DA_FREE(&objs);
+                return NULL;
+            }
+            
+            DA_ADD(&objs, obj);
         }
 
         if (!parser->has_cur) {

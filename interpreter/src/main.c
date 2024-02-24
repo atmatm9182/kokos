@@ -33,6 +33,7 @@ static void print_location(kokos_location_t location)
 
 static void print_parser_error(void)
 {
+    printf("Parser error: ");
     switch (kokos_p_err) {
     case ERR_NONE: return;
     case ERR_ILLEGAL_CHAR:
@@ -42,12 +43,11 @@ static void print_parser_error(void)
         print_location(kokos_p_err_tok.location);
         break;
     case ERR_UNEXPECTED_TOKEN:
-        printf("Unexpected token '%s' at", kokos_token_type_str(kokos_p_err_tok.type));
+        printf("Unexpected token '%s' at ", kokos_token_type_str(kokos_p_err_tok.type));
         print_location(kokos_p_err_tok.location);
         break;
     case ERR_UNMATCHED_DELIMITER:
         printf("Unmatched delimiter at ");
-        kokos_p_err_tok.location.col += kokos_p_err_tok.value.size;
         print_location(kokos_p_err_tok.location);
         break;
     }
@@ -57,7 +57,7 @@ static void print_parser_error(void)
 
 static void print_interpreter_error(void)
 {
-    printf("%s\n", kokos_interp_get_error());
+    printf("Evaluation error: %s\n", kokos_interp_get_error());
 }
 
 int run_repl(void)
@@ -104,6 +104,7 @@ int main(int argc, char* argv[])
     }
 
     kokos_lexer_t lex = kokos_lex_buf(script_data, strlen(script_data));
+    lex.location.filename = script_name;
     kokos_parser_t parser = kokos_parser_of_lexer(lex);
     kokos_interp_t* interpreter = kokos_interp_new(KOKOS_DEFAULT_GC_THRESHOLD);
 
