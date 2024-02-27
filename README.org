@@ -21,6 +21,6 @@
 - [X] Garbage collector
 - [X] Fully working interpreter
 - [ ] Virtual machine (?)
-- [ ] C embedding (?)
+- [X] C embedding
 - [ ] C FFI
 - [ ] Tail call optimization
