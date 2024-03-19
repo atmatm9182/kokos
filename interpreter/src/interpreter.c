@@ -1026,7 +1026,7 @@ static inline kokos_params_t make_params(kokos_obj_list_t params)
 
             names[i] = strdup(params.objs[i + 1]->symbol);
             result.var = true;
-            params.len -= 1;
+            result.len -= 1;
             break;
         }
 
