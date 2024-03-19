@@ -60,9 +60,9 @@ static void print_interpreter_error(void)
     printf("Evaluation error: %s\n", kokos_interp_get_error());
 }
 
-int run_repl(void)
+int run_repl(size_t gc_threshold)
 {
-    kokos_interp_t* interp = kokos_interp_new(500);
+    kokos_interp_t* interp = kokos_interp_new(gc_threshold);
     while (1) {
         printf("> ");
 
@@ -94,7 +94,7 @@ int run_repl(void)
 int main(int argc, char* argv[])
 {
     if (argc == 1)
-        return run_repl();
+        return run_repl(KOKOS_DEFAULT_GC_THRESHOLD);
 
     const char* script_name = argv[1];
     char* script_data = read_whole_file(script_name);
