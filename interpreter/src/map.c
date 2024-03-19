@@ -2,6 +2,7 @@
 #include "base.h"
 #include "obj.h"
 
+#include <assert.h>
 #include <stdint.h>
 
 // TODO: replace this by a better hash function
@@ -43,6 +44,8 @@ int64_t hash(const kokos_obj_t* obj)
         return sum;
     }
     }
+
+    assert(0 && "invalid object type");
 }
 
 kokos_obj_map_t kokos_obj_map_make(size_t cap)

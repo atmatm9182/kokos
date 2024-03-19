@@ -68,7 +68,7 @@ void test_arithmetic(void)
     assert(minus);
     assert(minus->type == OBJ_FLOAT);
     assert(minus->floating == 2.9);
-    
+
     kokos_obj_t* star = kokos_parser_next(&parser, interp);
     assert(star);
     star = kokos_interp_eval(interp, star, true);
@@ -92,7 +92,7 @@ void test_arithmetic_special_cases(void)
     kokos_lexer_t lexer = kokos_lex_buf(code, strlen(code));
     kokos_parser_t parser = kokos_parser_of_lexer(lexer);
     kokos_interp_t* interp = kokos_interp_new(100);
-    
+
     kokos_obj_t* plus = kokos_parser_next(&parser, interp);
     assert(plus);
     plus = kokos_interp_eval(interp, plus, true);
@@ -106,7 +106,7 @@ void test_arithmetic_special_cases(void)
     assert(minus);
     assert(minus->type == OBJ_INT);
     assert(minus->integer == 0);
-    
+
     kokos_obj_t* star = kokos_parser_next(&parser, interp);
     assert(star);
     star = kokos_interp_eval(interp, star, true);

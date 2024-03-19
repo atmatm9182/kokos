@@ -3,6 +3,7 @@
 #include "src/obj.h"
 #include "token.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -95,7 +96,7 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         next->quoted = true;
         return next;
     }
-        
+
     case TT_LPAREN: {
         kokos_token_t list_token = parser->cur;
 
@@ -113,7 +114,7 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
                 DA_FREE(&objs);
                 return NULL;
             }
-            
+
             DA_ADD(&objs, obj);
         }
 
@@ -142,7 +143,7 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
                 DA_FREE(&objs);
                 return NULL;
             }
-            
+
             DA_ADD(&objs, obj);
         }
 
@@ -250,6 +251,9 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         advance(parser);
         return NULL;
     }
+
+    assert(0 && "invalid result type"); // TODO: replace all similar asserts by some kind of
+                                        // error reporting
 }
 
 kokos_parser_t kokos_parser_of_lexer(kokos_lexer_t lexer)

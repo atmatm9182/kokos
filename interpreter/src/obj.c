@@ -206,11 +206,12 @@ bool kokos_obj_eq(const kokos_obj_t* left, const kokos_obj_t* right)
         return false; // TODO: find a way to compare two maps
     }
     case OBJ_STRING:       return strcmp(left->string, right->string) == 0;
-    case OBJ_SYMBOL:       assert(0 && "unreachable!");
     case OBJ_SPECIAL_FORM:
     case OBJ_BUILTIN_PROC: return left->builtin == right->builtin;
+    case OBJ_SYMBOL:
     case OBJ_NIL:          __builtin_unreachable();
     }
+    assert(0 && "invalid object type");
 }
 
 kokos_obj_t kokos_obj_nil = { .type = OBJ_NIL };

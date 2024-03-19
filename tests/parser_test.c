@@ -4,15 +4,16 @@
 #include "interpreter.h"
 #include "lexer.h"
 #include "obj.h"
-#include "token.h"
 #include "parser.h"
+#include "token.h"
 
 #include <assert.h>
 #include <string.h>
 
 void test_basic(void)
 {
-    const char* code = "\"hello world!\" symbol (+ 3 7) 7.7 [1 2.1 \"string!\"] [] {\"hello\" \"world\"} {}";
+    const char* code
+        = "\"hello world!\" symbol (+ 3 7) 7.7 [1 2.1 \"string!\"] [] {\"hello\" \"world\"} {}";
     kokos_lexer_t lex = kokos_lex_buf(code, strlen(code));
     kokos_parser_t parser = kokos_parser_of_lexer(lex);
     kokos_interp_t* interp = kokos_interp_new(500);
@@ -37,7 +38,7 @@ void test_basic(void)
     assert(list->list.objs[1]->integer == 3);
     assert(list->list.objs[2]->type == OBJ_INT);
     assert(list->list.objs[2]->integer == 7);
-    
+
     kokos_obj_t* floating = kokos_parser_next(&parser, interp);
     assert(floating);
     assert(floating->type == OBJ_FLOAT);
@@ -63,14 +64,14 @@ void test_basic(void)
     assert(map);
     assert(map->type == OBJ_MAP);
     assert(map->map.len == 1);
-    
+
     kokos_obj_t* map_entry_key = kokos_interp_alloc(interp);
     map_entry_key->type = OBJ_STRING;
-    
+
     const char* key_raw = "hello";
     char* key_str = strdup(key_raw);
     map_entry_key->string = key_str;
-    
+
     kokos_obj_t* map_entry_value = ht_find(&map->map, map_entry_key);
     assert(map_entry_value);
     assert(map_entry_value->type == OBJ_STRING);
@@ -110,7 +111,7 @@ void test_unmatched_delimiters(void)
     assert(kokos_p_err == ERR_UNMATCHED_DELIMITER);
     assert(kokos_p_err_tok.type == TT_LBRACKET);
     assert(sv_eq_cstr(kokos_p_err_tok.value, "["));
-    
+
     const char* brace_code = "{pair 123";
     lexer = kokos_lex_buf(brace_code, strlen(brace_code));
     parser = kokos_parser_of_lexer(lexer);
@@ -124,7 +125,7 @@ void test_unmatched_delimiters(void)
     const char* quote_code = "\"";
     lexer = kokos_lex_buf(quote_code, strlen(quote_code));
     parser = kokos_parser_of_lexer(lexer);
-    
+
     kokos_obj_t* quote = kokos_parser_next(&parser, interp);
     assert(!quote);
     assert(kokos_p_err == ERR_UNMATCHED_DELIMITER);

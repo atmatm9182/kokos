@@ -276,7 +276,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
     case OBJ_LIST: {
         if (obj->list.len == 0)
             return obj;
-        
+
         kokos_obj_t* head = kokos_interp_eval(interp, obj->list.objs[0], 0);
         if (!head)
             return NULL;
@@ -349,7 +349,8 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
             break;
         }
         default:
-            write_err(obj->token.location, "Object of type '%s' is not callable", str_type(head->type));
+            write_err(
+                obj->token.location, "Object of type '%s' is not callable", str_type(head->type));
             return NULL;
         }
         break;
@@ -975,7 +976,7 @@ static kokos_obj_t* builtin_macroexpand_1(
     kokos_env_pair_t* symbol_pair = kokos_env_find(interp->current_env, list.objs[0]->symbol);
     if (!symbol_pair || symbol_pair->value->type != OBJ_MACRO)
         return kokos_interp_eval(interp, list_obj, 0);
-    
+
     kokos_obj_macro_t macro = symbol_pair->value->macro;
     kokos_obj_list_t macro_args = list_to_args(list);
     return call_macro(interp, macro, macro_args);
@@ -1057,7 +1058,7 @@ static kokos_obj_t* sform_proc(
 {
     if (!expect_arity(called_from, 3, args.len, P_AT_LEAST))
         return NULL;
-    
+
     if (!expect_type(args.objs[0], 1, OBJ_SYMBOL))
         return NULL;
 
@@ -1278,10 +1279,10 @@ static kokos_env_t default_env(kokos_interp_t* interp)
 
     kokos_obj_t* write_file = make_builtin(interp, builtin_write_file);
     kokos_env_add(&env, "write-file", write_file);
-    
+
     kokos_obj_t* macroexpand_1 = make_builtin(interp, builtin_macroexpand_1);
     kokos_env_add(&env, "macroexpand-1", macroexpand_1);
-    
+
     // special forms
     kokos_obj_t* def = make_special_form(interp, sform_def);
     kokos_env_add(&env, "def", def);
@@ -1304,7 +1305,7 @@ static kokos_env_t default_env(kokos_interp_t* interp)
     kokos_obj_t* or = make_special_form(interp, sform_or);
     kokos_env_add(&env, "or", or);
 
-    kokos_obj_t* and = make_special_form(interp, sform_and);
+    kokos_obj_t*and = make_special_form(interp, sform_and);
     kokos_env_add(&env, "and", and);
 
     return env;
