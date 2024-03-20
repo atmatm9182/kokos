@@ -173,59 +173,60 @@ static inline bool is_num(const kokos_obj_t* obj)
     return obj->type == OBJ_INT || obj->type == OBJ_FLOAT;
 }
 
-bool kokos_obj_eq(const kokos_obj_t* left, const kokos_obj_t* right)
+bool kokos_obj_eq(const kokos_obj_t* lhs, const kokos_obj_t* rhs)
 {
-    if (left == right)
+    if (lhs == rhs)
         return true;
 
-    if (left->type != right->type && !(is_num(left) && is_num(right)))
+    if (lhs->type != rhs->type && !(is_num(lhs) && is_num(rhs)))
         return false;
 
-    switch (left->type) {
+    switch (lhs->type) {
     case OBJ_FLOAT:
-        if (isnan(left->floating))
-            return isnan(right->floating);
+        if (isnan(lhs->floating))
+            return isnan(rhs->floating);
 
-        if (right->type == OBJ_INT)
-            return left->floating == (double)right->integer;
+        if (rhs->type == OBJ_INT)
+            return lhs->floating == (double)rhs->integer;
 
-        return left->floating == right->floating;
+        return lhs->floating == rhs->floating;
     case OBJ_INT: {
-        if (right->type == OBJ_FLOAT)
-            return (double)left->integer == right->floating;
+        if (rhs->type == OBJ_FLOAT)
+            return (double)lhs->integer == rhs->floating;
 
-        return left->integer == right->integer;
+        return lhs->integer == rhs->integer;
     }
     case OBJ_BOOL:      return false;
     case OBJ_MACRO:
-    case OBJ_PROCEDURE: return left == right;
+    case OBJ_PROCEDURE: return lhs == rhs;
     case OBJ_LIST:      {
-        if (left->list.len != right->list.len)
+        if (lhs->list.len != rhs->list.len)
             return false;
 
-        for (size_t i = 0; i < left->list.len; i++) {
-            if (kokos_obj_eq(left->list.objs[i], right->list.objs[i]))
+        for (size_t i = 0; i < lhs->list.len; i++) {
+            if (kokos_obj_eq(lhs->list.objs[i], rhs->list.objs[i]))
                 return false;
         }
 
         return true;
     }
     case OBJ_VEC:
-        if (left->vec.len != right->vec.len)
+        if (lhs->vec.len != rhs->vec.len)
             return false;
 
-        for (size_t i = 0; i < left->vec.len; i++) {
-            if (kokos_obj_eq(left->vec.items[i], right->vec.items[i]))
+        for (size_t i = 0; i < lhs->vec.len; i++) {
+            if (kokos_obj_eq(lhs->vec.items[i], rhs->vec.items[i]))
                 return false;
         }
 
         return true;
     case OBJ_MAP: {
-        return false; // TODO: find a way to compare two maps
+        return false; // TODO: for now two maps are equal only if they literally point to the same
+                      // object. Maybe i should fix that? dunno
     }
-    case OBJ_STRING:       return strcmp(left->string, right->string) == 0;
+    case OBJ_STRING:       return strcmp(lhs->string, rhs->string) == 0;
     case OBJ_SPECIAL_FORM:
-    case OBJ_BUILTIN_PROC: return left->builtin == right->builtin;
+    case OBJ_BUILTIN_PROC: return lhs->builtin == rhs->builtin;
     case OBJ_SYMBOL:
     case OBJ_NIL:          __builtin_unreachable();
     }
