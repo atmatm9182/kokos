@@ -1,7 +1,6 @@
 #include "obj.h"
 #include "src/util.h"
 
-#include <assert.h>
 #include <math.h>
 #include <stdio.h>
 

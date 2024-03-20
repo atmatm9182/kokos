@@ -253,7 +253,7 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         return NULL;
     }
 
-    KOKOS_FAIL_WITH("Unknown token type %d\n");
+    KOKOS_FAIL_WITH("Unknown token type\n");
 }
 
 kokos_parser_t kokos_parser_of_lexer(kokos_lexer_t lexer)
