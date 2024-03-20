@@ -72,26 +72,31 @@ void kokos_obj_print(kokos_obj_t* obj)
         printf(")");
         break;
     case OBJ_VEC:
-        printf("[ ");
+        printf("[");
         for (size_t i = 0; i < obj->vec.len; i++) {
             kokos_obj_print(obj->vec.items[i]);
-            printf(" ");
+            if (i != obj->vec.len - 1)
+                printf(" ");
         }
-        printf(" ]");
+        printf("]");
         break;
     case OBJ_MAP:
-        printf("{ ");
+        printf("{");
+
+        size_t iter_count = 0;
         for (size_t i = 0; i < obj->map.cap; i++) {
             ht_bucket* bucket = obj->map.buckets[i];
             if (!bucket)
                 continue;
 
+            iter_count++;
             for (size_t j = 0; j < bucket->len; j++) {
                 kokos_obj_print((kokos_obj_t*)bucket->items[j].key);
                 printf(" ");
                 kokos_obj_print((kokos_obj_t*)bucket->items[j].value);
             }
-            printf(" ");
+            if (iter_count != obj->map.len)
+                printf(" ");
         }
         printf("}");
         break;
