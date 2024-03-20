@@ -1,6 +1,7 @@
 #include "src/map.h"
 #include "base.h"
 #include "obj.h"
+#include "src/util.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -61,7 +62,7 @@ int64_t hash(const kokos_obj_t* obj)
     }
     }
 
-    assert(0 && "invalid object type");
+    KOKOS_FAIL_WITH("Invalid object type\n");
 }
 
 kokos_obj_map_t kokos_obj_map_make(size_t cap)

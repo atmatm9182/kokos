@@ -1,4 +1,5 @@
 #include "obj.h"
+#include "src/util.h"
 
 #include <assert.h>
 #include <math.h>
@@ -103,7 +104,7 @@ void kokos_obj_print(kokos_obj_t* obj)
     case OBJ_BUILTIN_PROC: printf("<builtin function>"); break;
     case OBJ_PROCEDURE:    printf("<procedure>"); break;
     case OBJ_MACRO:        printf("<macro>"); break;
-    case OBJ_SPECIAL_FORM: assert(0 && "something went completely wrong");
+    case OBJ_SPECIAL_FORM: KOKOS_FAIL_WITH("Something went completely wrong");
     }
 }
 
@@ -152,7 +153,7 @@ kokos_obj_t* kokos_obj_dup(struct kokos_interp* interp, kokos_obj_t* obj)
         result->procedure.params.len = obj->procedure.params.len;
         break;
     }
-    default: assert(0 && "unreachable!");
+    default: KOKOS_FAIL_WITH("Unreachable");
     }
 
     return result;
@@ -230,7 +231,8 @@ bool kokos_obj_eq(const kokos_obj_t* lhs, const kokos_obj_t* rhs)
     case OBJ_SYMBOL:
     case OBJ_NIL:          __builtin_unreachable();
     }
-    assert(0 && "invalid object type");
+
+    KOKOS_FAIL_WITH("Invalid object type");
 }
 
 kokos_obj_t kokos_obj_nil = { .type = OBJ_NIL };

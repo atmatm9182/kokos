@@ -355,7 +355,7 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
         }
         break;
     }
-    case OBJ_SPECIAL_FORM: assert(0 && "unreachable!"); break;
+    case OBJ_SPECIAL_FORM: KOKOS_FAIL_WITH("Unreachable code");
     }
 
     if (top_level && result && interp->obj_count > interp->gc_threshold) {

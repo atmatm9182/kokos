@@ -1,6 +1,7 @@
 #include "src/parser.h"
 #include "src/map.h"
 #include "src/obj.h"
+#include "src/util.h"
 #include "token.h"
 
 #include <assert.h>
@@ -252,8 +253,7 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         return NULL;
     }
 
-    assert(0 && "invalid result type"); // TODO: replace all similar asserts by some kind of
-                                        // error reporting
+    KOKOS_FAIL_WITH("Unknown token type %d\n");
 }
 
 kokos_parser_t kokos_parser_of_lexer(kokos_lexer_t lexer)
