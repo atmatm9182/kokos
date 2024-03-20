@@ -542,7 +542,6 @@ static kokos_obj_t* builtin_type(
     return res;
 }
 
-// TODO: allow comparing integers and floats
 static kokos_obj_t* builtin_eq(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {

@@ -168,12 +168,17 @@ inline kokos_obj_t* kokos_bool_to_obj(bool b)
     return b ? &kokos_obj_true : &kokos_obj_false;
 }
 
+static inline bool is_num(const kokos_obj_t* obj)
+{
+    return obj->type == OBJ_INT || obj->type == OBJ_FLOAT;
+}
+
 bool kokos_obj_eq(const kokos_obj_t* left, const kokos_obj_t* right)
 {
     if (left == right)
         return true;
 
-    if (left->type != right->type)
+    if (left->type != right->type && !(is_num(left) && is_num(right)))
         return false;
 
     switch (left->type) {
@@ -181,8 +186,16 @@ bool kokos_obj_eq(const kokos_obj_t* left, const kokos_obj_t* right)
         if (isnan(left->floating))
             return isnan(right->floating);
 
+        if (right->type == OBJ_INT)
+            return left->floating == (double)right->integer;
+
         return left->floating == right->floating;
-    case OBJ_INT:       return left->integer == right->integer;
+    case OBJ_INT: {
+        if (right->type == OBJ_FLOAT)
+            return (double)left->integer == right->floating;
+
+        return left->integer == right->integer;
+    }
     case OBJ_BOOL:      return false;
     case OBJ_MACRO:
     case OBJ_PROCEDURE: return left == right;
