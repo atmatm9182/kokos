@@ -5,7 +5,6 @@
 #include "src/obj.h"
 #include "src/util.h"
 
-#include <assert.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -132,17 +131,6 @@ static bool expect_arity(kokos_location_t location, int expected, int got, arity
     return true;
 }
 
-kokos_obj_t* kokos_interp_alloc(kokos_interp_t* interp)
-{
-    kokos_obj_t* obj = malloc(sizeof(kokos_obj_t));
-    obj->marked = 0;
-    obj->quoted = 0;
-    obj->next = interp->obj_head;
-    interp->obj_head = obj;
-    interp->obj_count++;
-    return obj;
-}
-
 static kokos_obj_list_t list_to_args(kokos_obj_list_t list)
 {
     return (kokos_obj_list_t) { .objs = list.objs + 1, .len = list.len - 1 };
@@ -173,7 +161,7 @@ static kokos_obj_t* call_proc(
     }
 
     if (proc.params.var) {
-        kokos_obj_t* rest_obj = kokos_interp_alloc(interp);
+        kokos_obj_t* rest_obj = kokos_gc_alloc(&interp->gc);
         rest_obj->type = OBJ_VEC;
         kokos_obj_vec_t* rest = &rest_obj->vec;
 
@@ -219,7 +207,7 @@ static inline kokos_obj_t* call_macro(
     }
 
     if (macro.params.var) {
-        kokos_obj_t* rest_obj = kokos_interp_alloc(interp);
+        kokos_obj_t* rest_obj = kokos_gc_alloc(&interp->gc);
         rest_obj->type = OBJ_VEC;
         kokos_obj_vec_t* rest = &rest_obj->vec;
 
@@ -358,9 +346,9 @@ kokos_obj_t* kokos_interp_eval(kokos_interp_t* interp, kokos_obj_t* obj, bool to
     case OBJ_SPECIAL_FORM: KOKOS_FAIL_WITH("Unreachable code");
     }
 
-    if (top_level && result && interp->obj_count > interp->gc_threshold) {
+    if (top_level && result && interp->gc.obj_count > interp->gc.obj_threshold) {
         kokos_obj_mark(result);
-        kokos_gc_run(interp);
+        kokos_gc_run(&interp->gc, interp->current_env);
     }
 
     return result;
@@ -385,7 +373,7 @@ static kokos_obj_t* builtin_plus(
         }
     }
 
-    kokos_obj_t* obj = kokos_interp_alloc(interp);
+    kokos_obj_t* obj = kokos_gc_alloc(&interp->gc);
     if (use_float) {
         obj->type = OBJ_FLOAT;
         obj->floating = (double)int_res + float_res;
@@ -401,7 +389,7 @@ static kokos_obj_t* builtin_minus(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
     if (args.len == 0) {
-        kokos_obj_t* result = kokos_interp_alloc(interp);
+        kokos_obj_t* result = kokos_gc_alloc(&interp->gc);
         result->type = OBJ_INT;
         result->integer = 0;
         return result;
@@ -435,7 +423,7 @@ static kokos_obj_t* builtin_minus(
         }
     }
 
-    kokos_obj_t* obj = kokos_interp_alloc(interp);
+    kokos_obj_t* obj = kokos_gc_alloc(&interp->gc);
     if (use_float) {
         obj->type = OBJ_FLOAT;
         obj->floating = (double)int_res + float_res;
@@ -466,7 +454,7 @@ static kokos_obj_t* builtin_star(
         }
     }
 
-    kokos_obj_t* obj = kokos_interp_alloc(interp);
+    kokos_obj_t* obj = kokos_gc_alloc(&interp->gc);
     if (use_float) {
         obj->type = OBJ_FLOAT;
         obj->floating = (double)int_res + float_res;
@@ -480,7 +468,7 @@ static kokos_obj_t* builtin_star(
 
 static kokos_obj_t* alloc_nan(kokos_interp_t* interp)
 {
-    kokos_obj_t* obj = kokos_interp_alloc(interp);
+    kokos_obj_t* obj = kokos_gc_alloc(&interp->gc);
     obj->type = OBJ_FLOAT;
     obj->floating = NAN;
     return obj;
@@ -509,7 +497,7 @@ static kokos_obj_t* builtin_slash(
         }
     }
 
-    kokos_obj_t* obj = kokos_interp_alloc(interp);
+    kokos_obj_t* obj = kokos_gc_alloc(&interp->gc);
     obj->type = OBJ_FLOAT;
     obj->floating = result;
 
@@ -536,7 +524,7 @@ static kokos_obj_t* builtin_type(
     if (!expect_arity(called_from, 1, args.len, P_EQUAL))
         return NULL;
 
-    kokos_obj_t* res = kokos_interp_alloc(interp);
+    kokos_obj_t* res = kokos_gc_alloc(&interp->gc);
     res->type = OBJ_STRING;
     res->string = strdup(str_type(args.objs[0]->type));
     return res;
@@ -750,16 +738,16 @@ static kokos_obj_t* sform_and(
 static kokos_obj_t* builtin_list(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
-    kokos_obj_t* list = kokos_interp_alloc(interp);
+    kokos_obj_t* list = kokos_gc_alloc(&interp->gc);
     list->type = OBJ_LIST;
-    list->list = kokos_list_dup(interp, args);
+    list->list = kokos_list_dup(&interp->gc, args);
     return list;
 }
 
 static kokos_obj_t* builtin_make_vec(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
-    kokos_obj_t* result = kokos_interp_alloc(interp);
+    kokos_obj_t* result = kokos_gc_alloc(&interp->gc);
     result->type = OBJ_VEC;
 
     kokos_obj_vec_t vec;
@@ -805,7 +793,7 @@ static kokos_obj_t* builtin_nth(
 static kokos_obj_t* builtin_make_map(
     kokos_interp_t* interp, kokos_obj_list_t args, kokos_location_t called_from)
 {
-    kokos_obj_t* map = kokos_interp_alloc(interp);
+    kokos_obj_t* map = kokos_gc_alloc(&interp->gc);
     map->type = OBJ_MAP;
     map->map = kokos_obj_map_make(DEFAULT_MAP_CAPACITY);
 
@@ -877,7 +865,7 @@ static kokos_obj_t* builtin_map(
             DA_ADD(&result_vec, obj);
         }
 
-        result = kokos_interp_alloc(interp);
+        result = kokos_gc_alloc(&interp->gc);
         result->type = OBJ_VEC;
         result->vec = result_vec;
         break;
@@ -901,7 +889,7 @@ static kokos_obj_t* builtin_map(
             DA_ADD(&result_vec, obj);
         }
 
-        result = kokos_interp_alloc(interp);
+        result = kokos_gc_alloc(&interp->gc);
         result->type = OBJ_VEC;
         result->vec = result_vec;
         break;
@@ -929,7 +917,7 @@ static kokos_obj_t* builtin_read_file(
         return &kokos_obj_nil;
 
     char* contents = read_whole_file(filename);
-    kokos_obj_t* result = kokos_interp_alloc(interp);
+    kokos_obj_t* result = kokos_gc_alloc(&interp->gc);
     result->type = OBJ_STRING;
     result->string = contents;
     return result;
@@ -1039,7 +1027,7 @@ static inline kokos_params_t make_params(kokos_obj_list_t params)
 static inline kokos_obj_t* make_lambda(
     kokos_interp_t* interp, kokos_obj_list_t params, kokos_obj_list_t body)
 {
-    kokos_obj_t* result = kokos_interp_alloc(interp);
+    kokos_obj_t* result = kokos_gc_alloc(&interp->gc);
     result->type = OBJ_PROCEDURE;
 
     kokos_params_t proc_params = make_params(params);
@@ -1072,7 +1060,7 @@ static kokos_obj_t* sform_proc(
     // since if we tried to slice those lists the object from which we would've sliced
     // would become unreachable and thus would get collected leaving us with pointers to freed
     // memory
-    body = kokos_list_dup(interp, body);
+    body = kokos_list_dup(&interp->gc, body);
 
     kokos_obj_t* result = make_lambda(interp, params->list, body);
     if (result)
@@ -1091,7 +1079,7 @@ static kokos_obj_t* sform_fn(
         return NULL;
 
     kokos_obj_list_t body = { .objs = args.objs + 1, .len = args.len - 1 };
-    body = kokos_list_dup(interp, body);
+    body = kokos_list_dup(&interp->gc, body);
     return make_lambda(interp, params->list, body);
 }
 
@@ -1114,9 +1102,10 @@ static kokos_obj_t* sform_macro(
         return NULL;
 
     kokos_obj_list_t body = { .len = args.len - 2, .objs = args.objs + 2 };
-    body = kokos_list_dup(interp, body); // see 'builtin_proc' for explanation why this is necessary
+    body = kokos_list_dup(
+        &interp->gc, body); // see 'builtin_proc' for explanation why this is necessary
 
-    kokos_obj_t* macro = kokos_interp_alloc(interp);
+    kokos_obj_t* macro = kokos_gc_alloc(&interp->gc);
     macro->type = OBJ_MACRO;
     macro->macro.params = macro_params;
     macro->macro.body = body;
@@ -1194,7 +1183,7 @@ static kokos_obj_t* sform_let(
 
 static kokos_obj_t* make_builtin(kokos_interp_t* interp, kokos_builtin_procedure_t proc)
 {
-    kokos_obj_t* obj = kokos_interp_alloc(interp);
+    kokos_obj_t* obj = kokos_gc_alloc(&interp->gc);
     obj->type = OBJ_BUILTIN_PROC;
     obj->builtin = proc;
     return obj;
@@ -1202,7 +1191,7 @@ static kokos_obj_t* make_builtin(kokos_interp_t* interp, kokos_builtin_procedure
 
 static kokos_obj_t* make_special_form(kokos_interp_t* interp, kokos_builtin_procedure_t sform)
 {
-    kokos_obj_t* obj = kokos_interp_alloc(interp);
+    kokos_obj_t* obj = kokos_gc_alloc(&interp->gc);
     obj->type = OBJ_SPECIAL_FORM;
     obj->builtin = sform;
     return obj;
@@ -1313,90 +1302,26 @@ static kokos_env_t default_env(kokos_interp_t* interp)
 kokos_interp_t* kokos_interp_new(size_t gc_threshold)
 {
     kokos_interp_t* interp = malloc(sizeof(kokos_interp_t));
-    *interp = (kokos_interp_t) { .gc_threshold = gc_threshold, .obj_count = 0, .obj_head = NULL };
+    *interp = (kokos_interp_t) { .gc
+        = { .obj_threshold = gc_threshold, .obj_count = 0, .root = NULL } };
     interp->global_env = default_env(interp);
     interp->current_env = &interp->global_env;
     return interp;
 }
 
-static inline void mark_all(kokos_env_t* env)
-{
-    if (env == NULL)
-        return;
-
-    for (size_t i = 0; i < env->len; i++) {
-        kokos_obj_mark(env->items[i].value);
-    }
-
-    mark_all(env->parent);
-}
-
-static inline void obj_free(kokos_obj_t* obj)
-{
-    switch (obj->type) {
-    case OBJ_INT:
-    case OBJ_FLOAT:
-    case OBJ_BOOL:
-    case OBJ_BUILTIN_PROC:
-    case OBJ_SPECIAL_FORM: break;
-    case OBJ_VEC:          DA_FREE(&obj->vec); break;
-    case OBJ_MAP:          kokos_obj_map_destroy(&obj->map); break;
-    case OBJ_LIST:         free(obj->list.objs); break;
-    case OBJ_STRING:       free(obj->string); break;
-    case OBJ_SYMBOL:       free(obj->symbol); break;
-    case OBJ_PROCEDURE:
-        for (size_t i = 0; i < obj->procedure.params.len; i++)
-            free(obj->procedure.params.names[i]);
-        free(obj->procedure.params.names);
-        free(obj->procedure.body.objs);
-        break;
-    case OBJ_MACRO:
-        for (size_t i = 0; i < obj->macro.params.len; i++)
-            free(obj->macro.params.names[i]);
-        free(obj->macro.params.names);
-        free(obj->macro.body.objs);
-        break;
-
-    case OBJ_NIL: return;
-    }
-    free(obj);
-}
-
-static inline void sweep(kokos_interp_t* interp)
-{
-    kokos_obj_t** cur = &interp->obj_head;
-    while (*cur) {
-        if (!(*cur)->marked) {
-            kokos_obj_t* obj = *cur;
-            *cur = (*cur)->next;
-            obj_free(obj);
-            interp->obj_count--;
-        } else {
-            (*cur)->marked = 0;
-            cur = &(*cur)->next;
-        }
-    }
-}
-
-void kokos_gc_run(kokos_interp_t* interp)
-{
-    mark_all(interp->current_env);
-    sweep(interp);
-}
-
 void kokos_interp_print_stat(const kokos_interp_t* interp)
 {
-    printf("ALLOCATED OBJECTS: %lu\n", interp->obj_count);
-    printf("GC THRESHOLD: %lu\n", interp->gc_threshold);
+    printf("ALLOCATED OBJECTS: %lu\n", interp->gc.obj_count);
+    printf("GC THRESHOLD: %lu\n", interp->gc.obj_threshold);
 }
 
 void kokos_interp_destroy(kokos_interp_t* interp)
 {
-    kokos_obj_t* cur = interp->obj_head;
+    kokos_obj_t* cur = interp->gc.root;
     while (cur) {
         kokos_obj_t* obj = cur;
         cur = cur->next;
-        obj_free(obj);
+        kokos_obj_free(obj);
     }
 
     kokos_env_destroy(&interp->global_env);

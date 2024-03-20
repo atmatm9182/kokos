@@ -1,4 +1,6 @@
 #include "obj.h"
+#include "src/gc.h"
+#include "src/map.h"
 #include "src/util.h"
 
 #include <math.h>
@@ -107,9 +109,9 @@ void kokos_obj_print(kokos_obj_t* obj)
     }
 }
 
-kokos_obj_t* kokos_interp_alloc(struct kokos_interp*);
+kokos_obj_t* kokos_gc_alloc(struct kokos_gc*);
 
-kokos_obj_list_t kokos_list_dup(struct kokos_interp* interp, kokos_obj_list_t list)
+kokos_obj_list_t kokos_list_dup(struct kokos_gc* gc, kokos_obj_list_t list)
 {
     kokos_obj_list_t result;
     struct {
@@ -120,7 +122,7 @@ kokos_obj_list_t kokos_list_dup(struct kokos_interp* interp, kokos_obj_list_t li
     DA_INIT(&objs_arr, 0, list.len);
 
     for (size_t i = 0; i < list.len; i++)
-        DA_ADD(&objs_arr, kokos_obj_dup(interp, list.objs[i]));
+        DA_ADD(&objs_arr, kokos_obj_dup(gc, list.objs[i]));
 
     result.len = objs_arr.len;
     result.objs = objs_arr.items;
@@ -128,13 +130,13 @@ kokos_obj_list_t kokos_list_dup(struct kokos_interp* interp, kokos_obj_list_t li
     return result;
 }
 
-kokos_obj_t* kokos_obj_dup(struct kokos_interp* interp, kokos_obj_t* obj)
+kokos_obj_t* kokos_obj_dup(struct kokos_gc* gc, kokos_obj_t* obj)
 {
     if (obj->type == OBJ_BOOL) // we don't clone anything because all boolean values are variables
                                // with static lifetime
         return obj;
 
-    kokos_obj_t* result = kokos_interp_alloc(interp);
+    kokos_obj_t* result = kokos_gc_alloc(gc);
     result->type = obj->type;
 
     switch (obj->type) {
@@ -142,9 +144,9 @@ kokos_obj_t* kokos_obj_dup(struct kokos_interp* interp, kokos_obj_t* obj)
     case OBJ_FLOAT:     result->floating = obj->floating; break;
     case OBJ_SYMBOL:    result->symbol = strdup(obj->symbol); break;
     case OBJ_STRING:    result->string = strdup(obj->symbol); break;
-    case OBJ_LIST:      result->list = kokos_list_dup(interp, obj->list); break;
+    case OBJ_LIST:      result->list = kokos_list_dup(gc, obj->list); break;
     case OBJ_PROCEDURE: {
-        result->procedure.body = kokos_list_dup(interp, obj->procedure.body);
+        result->procedure.body = kokos_list_dup(gc, obj->procedure.body);
         char** names = malloc(sizeof(char*) * obj->procedure.params.len);
         for (size_t i = 0; i < obj->procedure.params.len; i++)
             names[i] = strdup(obj->procedure.params.names[i]);
@@ -232,6 +234,37 @@ bool kokos_obj_eq(const kokos_obj_t* lhs, const kokos_obj_t* rhs)
     }
 
     KOKOS_FAIL_WITH("Invalid object type");
+}
+
+void kokos_obj_free(kokos_obj_t* obj)
+{
+    switch (obj->type) {
+    case OBJ_INT:
+    case OBJ_FLOAT:
+    case OBJ_BOOL:
+    case OBJ_BUILTIN_PROC:
+    case OBJ_SPECIAL_FORM: break;
+    case OBJ_VEC:          DA_FREE(&obj->vec); break;
+    case OBJ_MAP:          kokos_obj_map_destroy(&obj->map); break;
+    case OBJ_LIST:         free(obj->list.objs); break;
+    case OBJ_STRING:       free(obj->string); break;
+    case OBJ_SYMBOL:       free(obj->symbol); break;
+    case OBJ_PROCEDURE:
+        for (size_t i = 0; i < obj->procedure.params.len; i++)
+            free(obj->procedure.params.names[i]);
+        free(obj->procedure.params.names);
+        free(obj->procedure.body.objs);
+        break;
+    case OBJ_MACRO:
+        for (size_t i = 0; i < obj->macro.params.len; i++)
+            free(obj->macro.params.names[i]);
+        free(obj->macro.params.names);
+        free(obj->macro.body.objs);
+        break;
+
+    case OBJ_NIL: return;
+    }
+    free(obj);
 }
 
 kokos_obj_t kokos_obj_nil = { .type = OBJ_NIL };

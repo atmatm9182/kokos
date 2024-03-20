@@ -4,13 +4,12 @@
 #include "src/util.h"
 #include "token.h"
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
 static kokos_obj_t* alloc_list(kokos_obj_t** objs, size_t len, kokos_interp_t* interp)
 {
-    kokos_obj_t* list = kokos_interp_alloc(interp);
+    kokos_obj_t* list = kokos_gc_alloc(&interp->gc);
     list->type = OBJ_LIST;
     list->list = (kokos_obj_list_t) { .objs = objs, .len = len };
     return list;
@@ -18,7 +17,7 @@ static kokos_obj_t* alloc_list(kokos_obj_t** objs, size_t len, kokos_interp_t* i
 
 static kokos_obj_t* alloc_symbol(string_view value, kokos_interp_t* interp)
 {
-    kokos_obj_t* sym = kokos_interp_alloc(interp);
+    kokos_obj_t* sym = kokos_gc_alloc(&interp->gc);
     sym->type = OBJ_SYMBOL;
     sym->symbol = malloc(sizeof(char) * (value.size + 1));
     memcpy(sym->symbol, value.ptr, value.size * sizeof(char));
@@ -49,7 +48,7 @@ static double sv_atof(string_view sv)
 
 static kokos_obj_t* alloc_integer(string_view value, kokos_interp_t* interp)
 {
-    kokos_obj_t* integer = kokos_interp_alloc(interp);
+    kokos_obj_t* integer = kokos_gc_alloc(&interp->gc);
     integer->type = OBJ_INT;
     integer->integer = sv_atoi(value);
     return integer;
@@ -57,7 +56,7 @@ static kokos_obj_t* alloc_integer(string_view value, kokos_interp_t* interp)
 
 static kokos_obj_t* alloc_float(string_view value, kokos_interp_t* interp)
 {
-    kokos_obj_t* integer = kokos_interp_alloc(interp);
+    kokos_obj_t* integer = kokos_gc_alloc(&interp->gc);
     integer->type = OBJ_FLOAT;
     integer->floating = sv_atof(value);
     return integer;
@@ -65,7 +64,7 @@ static kokos_obj_t* alloc_float(string_view value, kokos_interp_t* interp)
 
 static kokos_obj_t* alloc_str(string_view value, kokos_interp_t* interp)
 {
-    kokos_obj_t* str = kokos_interp_alloc(interp);
+    kokos_obj_t* str = kokos_gc_alloc(&interp->gc);
     str->type = OBJ_STRING;
     str->string = malloc(sizeof(char) * (value.size + 1));
     memcpy(str->string, value.ptr, value.size * sizeof(char));
@@ -156,7 +155,7 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         }
 
         advance(parser);
-        kokos_obj_t* vec = kokos_interp_alloc(interp);
+        kokos_obj_t* vec = kokos_gc_alloc(&interp->gc);
         vec->token = start_token;
         vec->type = OBJ_VEC;
         vec->vec = objs;
@@ -194,7 +193,7 @@ kokos_obj_t* kokos_parser_next(kokos_parser_t* parser, kokos_interp_t* interp)
         }
 
         advance(parser);
-        kokos_obj_t* result = kokos_interp_alloc(interp);
+        kokos_obj_t* result = kokos_gc_alloc(&interp->gc);
         result->token = start_token;
         result->type = OBJ_MAP;
         result->map = map;

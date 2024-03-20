@@ -59,6 +59,7 @@ typedef struct kokos_obj_procedure kokos_obj_procedure_t;
 typedef struct kokos_obj_procedure kokos_obj_macro_t;
 
 struct kokos_interp;
+struct kokos_gc;
 
 typedef kokos_obj_t* (*kokos_builtin_procedure_t)(
     struct kokos_interp* interp, kokos_obj_list_t args, kokos_location_t called_from);
@@ -93,10 +94,11 @@ extern kokos_obj_t kokos_obj_false;
 extern kokos_obj_t kokos_obj_true;
 
 void kokos_obj_mark(kokos_obj_t* obj);
+void kokos_obj_free(kokos_obj_t* obj);
 void kokos_obj_print(kokos_obj_t* obj);
 
-kokos_obj_list_t kokos_list_dup(struct kokos_interp* interp, kokos_obj_list_t list);
-kokos_obj_t* kokos_obj_dup(struct kokos_interp* interp, kokos_obj_t* obj);
+kokos_obj_list_t kokos_list_dup(struct kokos_gc* gc, kokos_obj_list_t list);
+kokos_obj_t* kokos_obj_dup(struct kokos_gc* gc, kokos_obj_t* obj);
 
 bool kokos_obj_eq(const kokos_obj_t* left, const kokos_obj_t* right);
 

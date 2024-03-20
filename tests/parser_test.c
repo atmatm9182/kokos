@@ -65,7 +65,7 @@ void test_basic(void)
     assert(map->type == OBJ_MAP);
     assert(map->map.len == 1);
 
-    kokos_obj_t* map_entry_key = kokos_interp_alloc(interp);
+    kokos_obj_t* map_entry_key = kokos_gc_alloc(&interp->gc);
     map_entry_key->type = OBJ_STRING;
 
     const char* key_raw = "hello";
