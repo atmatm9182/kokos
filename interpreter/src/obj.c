@@ -222,7 +222,7 @@ bool kokos_obj_eq(const kokos_obj_t* lhs, const kokos_obj_t* rhs)
 
         return true;
     case OBJ_MAP: {
-        return false; // TODO: for now two maps are equal only if they literally point to the same
+        return false; // NOTE: for now two maps are equal only if they literally point to the same
                       // object. Maybe i should fix that? dunno
     }
     case OBJ_STRING:       return strcmp(lhs->string, rhs->string) == 0;
