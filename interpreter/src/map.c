@@ -29,9 +29,25 @@ int64_t hash(const kokos_obj_t* obj)
     case OBJ_BUILTIN_PROC:
     case OBJ_SPECIAL_FORM:
     case OBJ_MACRO:
-    case OBJ_MAP:          // TODO: calculate map hash differently
-    case OBJ_BOOL:         return (int64_t)obj;
-    case OBJ_LIST:         {
+    case OBJ_MAP:          {
+        int64_t result = 0;
+        kokos_obj_map_t map = obj->map;
+
+        for (size_t i = 0; i < map.cap; i++) {
+            ht_bucket* bucket = map.buckets[i];
+            if (!bucket)
+                continue;
+
+            for (size_t j = 0; j < bucket->len; j++) {
+                result += hash(bucket->items[i].key);
+                result += hash(bucket->items[i].value);
+            }
+        }
+
+        return result;
+    }
+    case OBJ_BOOL: return (int64_t)obj;
+    case OBJ_LIST: {
         int64_t sum = 0;
         for (size_t i = 0; i < obj->list.len; i++)
             sum += hash(obj->list.objs[i]);
