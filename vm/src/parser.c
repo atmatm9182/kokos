@@ -29,9 +29,15 @@ static void parser_advance(kokos_parser_t* parser)
     }
 }
 
-static kokos_expr_t* alloc_number(const kokos_token_t* token)
+static kokos_expr_t* alloc_float(const kokos_token_t* token)
 {
-    kokos_expr_t* expr = alloc_empty(token, EXPR_NUMBER);
+    kokos_expr_t* expr = alloc_empty(token, EXPR_FLOAT_LIT);
+    return expr;
+}
+
+static kokos_expr_t* alloc_int(const kokos_token_t* token)
+{
+    kokos_expr_t* expr = alloc_empty(token, EXPR_INT_LIT);
     return expr;
 }
 
@@ -49,7 +55,7 @@ static kokos_expr_t* alloc_ident(const kokos_token_t* token)
 
 static kokos_expr_t* alloc_string(const kokos_token_t* token)
 {
-    return alloc_empty(token, EXPR_STRING);
+    return alloc_empty(token, EXPR_STRING_LIG);
 }
 
 kokos_expr_t* kokos_parser_next(kokos_parser_t* parser)
@@ -60,8 +66,11 @@ kokos_expr_t* kokos_parser_next(kokos_parser_t* parser)
 
     switch (parser->cur->type) {
     case TT_INT_LIT:
+        result = alloc_int(parser->cur);
+        parser_advance(parser);
+        break;
     case TT_FLOAT_LIT:
-        result = alloc_number(parser->cur);
+        result = alloc_float(parser->cur);
         parser_advance(parser);
         break;
     case TT_IDENT:

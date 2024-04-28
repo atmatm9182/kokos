@@ -11,7 +11,7 @@
 #define KOKOS_VERIFY(val)                                                                          \
     do {                                                                                           \
         if (!(val)) {                                                                              \
-            fprintf(stderr, "VERIFICATION FAILED: %s%d\n", __FILE__, __LINE__);                    \
+            fprintf(stderr, "VERIFICATION FAILED: %s:%d\n", __FILE__, __LINE__);                   \
             exit(1);                                                                               \
         }                                                                                          \
     } while (0)

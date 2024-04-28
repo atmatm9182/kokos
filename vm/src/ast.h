@@ -7,8 +7,9 @@
 #include <stdio.h>
 
 typedef enum {
-    EXPR_NUMBER,
-    EXPR_STRING,
+    EXPR_INT_LIT,
+    EXPR_FLOAT_LIT,
+    EXPR_STRING_LIG,
     EXPR_LIST,
     EXPR_VECTOR,
     EXPR_MAP,
@@ -39,15 +40,19 @@ typedef struct kokos_expr {
 static inline void kokos_expr_dump(const kokos_expr_t* expr)
 {
     switch (expr->type) {
-    case EXPR_NUMBER:
-        printf("number: ");
+    case EXPR_FLOAT_LIT:
+        printf("float: ");
+        sv_print(expr->token.value);
+        break;
+    case EXPR_INT_LIT:
+        printf("int: ");
         sv_print(expr->token.value);
         break;
     case EXPR_IDENT:
         printf("ident: ");
         sv_print(expr->token.value);
         break;
-    case EXPR_STRING:
+    case EXPR_STRING_LIG:
         printf("string: \"");
         sv_print(expr->token.value);
         printf("\"");
