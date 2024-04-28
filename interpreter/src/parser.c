@@ -25,27 +25,6 @@ static kokos_obj_t* alloc_symbol(string_view value, kokos_interp_t* interp)
     return sym;
 }
 
-static int64_t sv_atoi(string_view sv)
-{
-    int64_t num = 0;
-    for (size_t i = 0; i < sv.size; i++) {
-        num = num * 10 + (sv.ptr[i] - '0');
-    }
-    return num;
-}
-
-#define DOUBLE_LIT_MAX_LEN 316
-
-static double sv_atof(string_view sv)
-{
-    char tmp[DOUBLE_LIT_MAX_LEN + 1];
-    memcpy(tmp, sv.ptr, sv.size);
-    tmp[sv.size] = '\0';
-    return atof(tmp);
-}
-
-#undef DOUBLE_LIT_MAX_LEN
-
 static kokos_obj_t* alloc_integer(string_view value, kokos_interp_t* interp)
 {
     kokos_obj_t* integer = kokos_gc_alloc(&interp->gc);

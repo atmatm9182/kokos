@@ -103,6 +103,8 @@ BASEDEF bool sv_starts_with(string_view sv, const char* prefix);
 BASEDEF bool sv_starts_with_sv(string_view sv, string_view prefix);
 BASEDEF bool sv_eq(string_view a, string_view b);
 BASEDEF bool sv_eq_cstr(string_view sv, const char* str);
+BASEDEF int64_t sv_atoi(string_view sv);
+BASEDEF double sv_atof(string_view sv);
 
 typedef struct {
     char* items;
@@ -176,6 +178,27 @@ BASEDEF bool sv_eq_cstr(string_view sv, const char* str)
         return false;
     return strncmp(sv.ptr, str, sv.size) == 0;
 }
+
+BASEDEF int64_t sv_atoi(string_view sv)
+{
+    int64_t num = 0;
+    for (size_t i = 0; i < sv.size; i++) {
+        num = num * 10 + (sv.ptr[i] - '0');
+    }
+    return num;
+}
+
+#define DOUBLE_LIT_MAX_LEN 316
+
+BASEDEF double sv_atof(string_view sv)
+{
+    char tmp[DOUBLE_LIT_MAX_LEN + 1];
+    memcpy(tmp, sv.ptr, sv.size);
+    tmp[sv.size] = '\0';
+    return atof(tmp);
+}
+
+#undef DOUBLE_LIT_MAX_LEN
 
 // STRING BUILDER
 BASEDEF string_builder sb_new(size_t cap)
