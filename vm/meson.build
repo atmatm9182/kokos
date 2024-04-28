@@ -1,6 +1,9 @@
 vm_sources = [
   'src/main.c',
   'src/parser.c',
+  'src/vm.c',
+  'src/compile.c',
+  'src/instruction.c',
 ]
 
 executable('kokosvm',
