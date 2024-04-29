@@ -2,8 +2,8 @@
 #define VM_H_
 
 #include "base.h"
-#include "instruction.h"
 #include "compile.h"
+#include "instruction.h"
 #include "value.h"
 
 #define STACK_SIZE 8192

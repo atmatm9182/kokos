@@ -1,9 +1,9 @@
 #include "ast.h"
 #include "compile.h"
+#include "instruction.h"
 #include "lexer.h"
 #include "macros.h"
 #include "parser.h"
-#include "instruction.h"
 #include "vm.h"
 
 int main()
