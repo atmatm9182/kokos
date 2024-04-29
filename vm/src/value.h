@@ -30,9 +30,9 @@ typedef union {
 #define IS_MAP(val) (((val).as_int & MAP_BITS) == MAP_BITS)
 #define IS_VECTOR(val) (((val).as_int & VECTOR_BITS) == VECTOR_BITS)
 
-#define IS_TRUE(val) (((val).as_int & TRUE_BITS) == TRUE_BITS)
-#define IS_FALSE(val) (((val).as_int & FALSE_BITS) == FALSE_BITS)
-#define IS_NIL(val) (((val).as_int & NIL_BITS) == NIL_BITS)
+#define IS_TRUE(val) ((val) == TRUE_BITS)
+#define IS_FALSE(val) ((val) == FALSE_BITS)
+#define IS_NIL(val) ((val) == NIL_BITS)
 
 #define TO_VALUE(i)                                                                                \
     (_Generic((i), uint64_t: (value_t) { .as_int = (i) }, double: (value_t) { .as_double = (i) }))
