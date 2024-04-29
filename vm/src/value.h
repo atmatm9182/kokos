@@ -22,7 +22,7 @@ typedef union {
 
 #define TRUE_BITS (OBJ_BITS | 1)
 #define FALSE_BITS (OBJ_BITS | 2)
-#define NULL_BITS (OBJ_BITS | 4)
+#define NIL_BITS (OBJ_BITS | 4)
 
 #define IS_DOUBLE(val) (((val).as_int & OBJ_BITS) != OBJ_BITS)
 #define IS_STRING(val) (((val).as_int & STRING_BITS) == STRING_BITS)
@@ -32,7 +32,7 @@ typedef union {
 
 #define IS_TRUE(val) (((val).as_int & TRUE_BITS) == TRUE_BITS)
 #define IS_FALSE(val) (((val).as_int & FALSE_BITS) == FALSE_BITS)
-#define IS_NULL(val) (((val).as_int & NULL_BITS) == NULL_BITS)
+#define IS_NIL(val) (((val).as_int & NIL_BITS) == NIL_BITS)
 
 #define TO_VALUE(i)                                                                                \
     (_Generic((i), uint64_t: (value_t) { .as_int = (i) }, double: (value_t) { .as_double = (i) }))
