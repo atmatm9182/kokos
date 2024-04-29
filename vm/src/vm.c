@@ -25,6 +25,7 @@ static void exec(vm_t* vm, instruction_t instruction)
         }
         stack_push(&vm->stack, TO_VALUE(acc));
     }
+    default: KOKOS_TODO();
     }
 }
 
@@ -32,20 +33,7 @@ void kokos_vm_run(vm_t* vm, code_t code)
 {
     for (size_t i = 0; i < code.len; i++) {
         instruction_t instr = code.items[i];
-        switch (instr.type) {
-        case I_PUSH: stack_push(&vm->stack, TO_VALUE(instr.operand)); break;
-        case I_POP:  stack_pop(&vm->stack); break;
-        case I_ADD:  {
-            double acc = 0;
-            for (size_t i = 0; i < instr.operand; i++) {
-                value_t val = stack_pop(&vm->stack);
-                KOKOS_VERIFY(IS_DOUBLE(val));
-                acc += val.as_double;
-            }
-            stack_push(&vm->stack, TO_VALUE(acc));
-            break;
-        }
-        }
+        exec(vm, instr);
     }
 }
 

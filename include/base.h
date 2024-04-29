@@ -14,6 +14,10 @@
 #endif // BASE_STATIC
 #endif // BASEDEF
 
+#ifndef BASE_ALLOC
+#define BASE_ALLOC malloc
+#endif // BASE_ALLOC
+
 // DYNAMIC ARRAYS
 #define DA_DECLARE(name, t)                                                                        \
     typedef struct {                                                                               \
@@ -79,7 +83,9 @@ typedef struct {
     size_t len;
     size_t cap;
 
+    /// the hash function
     ht_hash_func hash_function;
+    /// the key comparison function
     ht_eq_func equality_function;
 } hash_table;
 
@@ -105,6 +111,7 @@ BASEDEF bool sv_eq(string_view a, string_view b);
 BASEDEF bool sv_eq_cstr(string_view sv, const char* str);
 BASEDEF int64_t sv_atoi(string_view sv);
 BASEDEF double sv_atof(string_view sv);
+BASEDEF const char* sv_dup(string_view sv);
 
 typedef struct {
     char* items;
@@ -196,6 +203,14 @@ BASEDEF double sv_atof(string_view sv)
     memcpy(tmp, sv.ptr, sv.size);
     tmp[sv.size] = '\0';
     return atof(tmp);
+}
+
+BASEDEF const char* sv_dup(string_view sv)
+{
+    char* ptr = BASE_ALLOC(sizeof(char) * (sv.size + 1));
+    memcpy(ptr, sv.ptr, sizeof(char) * sv.size);
+    ptr[sv.size] = '\0';
+    return ptr;
 }
 
 #undef DOUBLE_LIT_MAX_LEN
