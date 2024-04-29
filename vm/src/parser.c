@@ -130,3 +130,16 @@ kokos_parser_t kokos_parser_init(kokos_lexer_t* lexer)
     parser_advance(&parser);
     return parser;
 }
+
+kokos_program_t kokos_parser_program(kokos_parser_t* parser)
+{
+    kokos_program_t prog;
+    DA_INIT(&prog, 0, 0);
+
+    kokos_expr_t* expr;
+    while ((expr = kokos_parser_next(parser))) {
+        DA_ADD(&prog, expr);
+    }
+
+    return prog;
+}

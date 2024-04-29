@@ -37,6 +37,8 @@ typedef struct kokos_expr {
     };
 } kokos_expr_t;
 
+DA_DECLARE(kokos_program_t, kokos_expr_t*);
+
 static inline void kokos_expr_dump(const kokos_expr_t* expr)
 {
     switch (expr->type) {

@@ -96,6 +96,9 @@ BASEDEF void* ht_delete(hash_table* ht, const void* key);
 BASEDEF void ht_destroy(hash_table* ht);
 
 // STRING VIEW
+
+#define SV_FMT "%.*s"
+
 typedef struct {
     const char* ptr;
     size_t size;
@@ -136,7 +139,7 @@ BASEDEF string_view sv_make(const char* str, size_t size)
 
 BASEDEF void sv_print(string_view sv)
 {
-    printf("%.*s", (int)sv.size, sv.ptr);
+    printf(SV_FMT, (int)sv.size, sv.ptr);
 }
 
 BASEDEF string_view sv_slice(string_view sv, size_t start, size_t len)

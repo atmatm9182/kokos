@@ -1,4 +1,5 @@
 #include "macros.h"
+#include <stdio.h>
 
 #define BASE_ALLOC KOKOS_ALLOC
 #include "base.h"
@@ -68,19 +69,17 @@ static void compile_procedure_def(const kokos_expr_t* expr, kokos_compiler_conte
     DA_INIT(&body, 0, 5);
 
     for (size_t i = 3; i < list.len; i++) {
-        code_t code = kokos_expr_compile(list.items[i], &new_ctx);
-
-        for (size_t j = 0; j < code.len; j++) {
-            DA_ADD(&body, code.items[j]);
-        }
+        kokos_expr_compile(list.items[i], &new_ctx, &body);
     }
 
+    const char* name_str = sv_dup(name);
+
     kokos_compiled_proc_t* proc = KOKOS_ALLOC(sizeof(kokos_compiled_proc_t));
+    proc->name = name_str;
     proc->body = body;
     proc->params = params;
 
-    const char* name_str = sv_dup(name);
-    kokos_ctx_add_proc(ctx, name_str, proc);
+    kokos_ctx_add_proc(ctx, proc->name, proc);
 }
 
 static size_t kokos_ctx_get_var_idx(const kokos_compiler_context_t* ctx, string_view name)
@@ -94,41 +93,45 @@ static size_t kokos_ctx_get_var_idx(const kokos_compiler_context_t* ctx, string_
     return (size_t)-1;
 }
 
-static code_t compile_push_expr(const kokos_expr_t* expr, const kokos_compiler_context_t* ctx)
+static void compile_push_expr(
+    const kokos_expr_t* expr, const kokos_compiler_context_t* ctx, code_t* code)
 {
-    code_t code;
-    DA_INIT(&code, 0, 1);
-
     switch (expr->type) {
     case EXPR_FLOAT_LIT:
     case EXPR_INT_LIT:   {
         uint64_t num = to_double_bytes(expr);
-        DA_ADD(&code, INSTR_PUSH(num));
+        DA_ADD(code, INSTR_PUSH(num));
         break;
     }
     case EXPR_IDENT: {
         int64_t local_idx = kokos_ctx_get_var_idx(ctx, expr->token.value);
         KOKOS_VERIFY(local_idx != (size_t)-1);
 
-        DA_ADD(&code, INSTR_PUSH_LOCAL(local_idx));
+        DA_ADD(code, INSTR_PUSH_LOCAL(local_idx));
         break;
     }
     default: KOKOS_TODO();
     }
-
-    return code;
 }
 
-code_t kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx)
+static void compile_add(kokos_list_t list, kokos_compiler_context_t* ctx, code_t* code)
 {
-    code_t code;
-    DA_INIT(&code, 0, 1);
 
+    for (size_t i = 1; i < list.len; i++) {
+        const kokos_expr_t* elem = list.items[i];
+        compile_push_expr(elem, ctx, code);
+    }
+
+    DA_ADD(code, INSTR_ADD(list.len - 1));
+}
+
+void kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, code_t* code)
+{
     switch (expr->type) {
     case EXPR_FLOAT_LIT:
     case EXPR_INT_LIT:   {
         uint64_t value = to_double_bytes(expr);
-        DA_ADD(&code, INSTR_PUSH(value));
+        DA_ADD(code, INSTR_PUSH(value));
         break;
     }
     case EXPR_LIST: {
@@ -141,21 +144,40 @@ code_t kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ct
             break;
         }
 
-        KOKOS_VERIFY(sv_eq_cstr(head, "+"));
-
-        for (size_t i = 1; i < list.len; i++) {
-            const kokos_expr_t* elem = list.items[i];
-
-            code_t push_code = compile_push_expr(elem, ctx);
-            for (size_t j = 0; j < push_code.len; j++) {
-                DA_ADD(&code, push_code.items[j]);
-            }
+        if (sv_eq_cstr(head, "+")) {
+            compile_add(list, ctx, code);
+            break;
         }
 
-        DA_ADD(&code, INSTR_ADD(list.len - 1));
+        KOKOS_VERIFY(head.size < 256);
+
+        char head_buf[256];
+        sprintf(head_buf, SV_FMT, (int)head.size, head.ptr);
+        head_buf[head.size] = '\0';
+
+        kokos_compiled_proc_t* proc = kokos_ctx_get_proc(ctx, head_buf);
+        KOKOS_ASSERT(proc);
+        KOKOS_ASSERT(proc->params.len == list.len - 1);
+
+        for (size_t i = 1; i < list.len; i++) {
+            compile_push_expr(list.items[i], ctx, code);
+        }
+
+        DA_ADD(code, INSTR_CALL((uint64_t)proc->name));
+
         break;
     }
     default: KOKOS_TODO();
+    }
+}
+
+code_t kokos_compile_program(kokos_program_t program, kokos_compiler_context_t* ctx)
+{
+    code_t code;
+    DA_INIT(&code, 0, 10);
+
+    for (size_t i = 0; i < program.len; i++) {
+        kokos_expr_compile(program.items[i], ctx, &code);
     }
 
     return code;
