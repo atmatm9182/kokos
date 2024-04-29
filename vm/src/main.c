@@ -1,13 +1,13 @@
 #include "ast.h"
-#include "lexer.h"
-#include "parser.h"
-#include "macros.h"
 #include "compile.h"
+#include "lexer.h"
+#include "macros.h"
+#include "parser.h"
 #include "vm.h"
 
 int main()
 {
-    char code[] = "(+ 69.420)";
+    char code[] = "(proc add (x y) (+ x y))";
 
     kokos_lexer_t lexer = kokos_lex_buf(code, sizeof(code));
     kokos_parser_t parser = kokos_parser_init(&lexer);

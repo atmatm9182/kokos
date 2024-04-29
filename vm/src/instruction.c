@@ -12,4 +12,3 @@ void kokos_code_dump(code_t code)
         printf("\n");
     }
 }
-

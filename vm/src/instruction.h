@@ -1,8 +1,8 @@
 #ifndef INSTRUCTION_H_
 #define INSTRUCTION_H_
 
-#include <stdint.h>
 #include "base.h"
+#include <stdint.h>
 
 typedef enum { I_PUSH, I_POP, I_ADD } instruction_type_e;
 
