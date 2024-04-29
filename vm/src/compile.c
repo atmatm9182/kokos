@@ -65,6 +65,14 @@ static void compile_procedure_def(const kokos_expr_t* expr, kokos_compiler_conte
         kokos_ctx_add_local(&new_ctx, params.names[i]);
     }
 
+    // Add the procedure before the body compilation to allow recursion
+    kokos_compiled_proc_t* proc = KOKOS_ALLOC(sizeof(kokos_compiled_proc_t));
+    const char* name_str = sv_dup(name);
+    proc->name = name_str;
+    proc->params = params;
+
+    kokos_ctx_add_proc(ctx, proc->name, proc);
+
     code_t body;
     DA_INIT(&body, 0, 5);
 
@@ -72,14 +80,7 @@ static void compile_procedure_def(const kokos_expr_t* expr, kokos_compiler_conte
         kokos_expr_compile(list.items[i], &new_ctx, &body);
     }
 
-    const char* name_str = sv_dup(name);
-
-    kokos_compiled_proc_t* proc = KOKOS_ALLOC(sizeof(kokos_compiled_proc_t));
-    proc->name = name_str;
     proc->body = body;
-    proc->params = params;
-
-    kokos_ctx_add_proc(ctx, proc->name, proc);
 }
 
 static size_t kokos_ctx_get_var_idx(const kokos_compiler_context_t* ctx, string_view name)

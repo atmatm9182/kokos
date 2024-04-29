@@ -8,7 +8,7 @@
 
 int main()
 {
-    char code[] = "(proc add (x y) (+ x y))\n(add 1 2)";
+    char code[] = "(proc add (x y) (add x y))\n(add 1 2)";
 
     kokos_lexer_t lexer = kokos_lex_buf(code, sizeof(code));
     kokos_parser_t parser = kokos_parser_init(&lexer);
