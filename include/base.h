@@ -117,7 +117,7 @@ BASEDEF void sb_destroy(string_builder* sb);
 BASEDEF void sb_push_cstr(string_builder* sb, const char* str);
 BASEDEF char* sb_to_cstr(string_builder* sb);
 
-#ifdef BASE_IMPL
+#ifdef BASE_IMPLEMENTATION
 
 #include <stdio.h>
 
