@@ -8,10 +8,27 @@
 #define KOKOS_ALLOC malloc
 #endif
 
+#define __ESC_RED "\e[31m"
+#define __ESC_RESET "\e[39;49m"
+
+#ifdef KOKOS_DEBUG_BUILD
+#define KOKOS_ASSERT(val)                                                                          \
+    do {                                                                                           \
+        if (!(val)) {                                                                              \
+            fprintf(                                                                               \
+                stderr, __ESC_RED "ASSERTION FAILED:" __ESC_RESET " %s:%d\n", __FILE__, __LINE__); \
+            exit(1);                                                                               \
+        }                                                                                          \
+    } while (0)
+#else
+#define KOKOS_ASSERT(...)
+#endif // KOKOS_DEBUG_BUILD
+
 #define KOKOS_VERIFY(val)                                                                          \
     do {                                                                                           \
         if (!(val)) {                                                                              \
-            fprintf(stderr, "VERIFICATION FAILED: %s:%d\n", __FILE__, __LINE__);                   \
+            fprintf(stderr, __ESC_RED "VERIFICATION FAILED:" __ESC_RESET " %s:%d\n", __FILE__,     \
+                __LINE__);                                                                         \
             exit(1);                                                                               \
         }                                                                                          \
     } while (0)
