@@ -13,9 +13,21 @@ typedef struct {
     size_t cap;
 } kokos_variable_list_t;
 
+typedef struct {
+    const char* ptr;
+    size_t len;
+} kokos_string_t;
+
+typedef struct {
+    kokos_string_t* items;
+    size_t len;
+    size_t cap;
+} kokos_string_store_t;
+
 typedef struct kokos_compiler_context {
     hash_table functions;
     kokos_variable_list_t locals;
+    kokos_string_store_t string_store;
 
     struct kokos_compiler_context* parent;
 } kokos_compiler_context_t;

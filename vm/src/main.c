@@ -33,6 +33,10 @@ static int run_file(const char* filename)
     kokos_parser_t parser = kokos_parser_init(&lexer);
     kokos_program_t program = kokos_parser_program(&parser);
 
+    printf("--------------------------------------------------\n");
+    kokos_program_dump(program);
+    printf("--------------------------------------------------\n");
+
     if (!kokos_parser_ok(&parser)) {
         const char* error_msg = kokos_parser_get_err(&parser);
         fprintf(stderr, "Error while parsing the program: %s\n", error_msg);
@@ -47,8 +51,12 @@ static int run_file(const char* filename)
         return 1;
     }
 
-    kokos_vm_t vm = { 0 };
-    kokos_vm_run(&vm, code, &compiler_context);
+    printf("--------------------------------------------------\n");
+    kokos_code_dump(code);
+    printf("--------------------------------------------------\n");
+
+    kokos_vm_t vm = kokos_vm_create(&compiler_context);
+    kokos_vm_run(&vm, code);
 
     kokos_vm_dump(&vm);
 

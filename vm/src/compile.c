@@ -254,23 +254,24 @@ static bool compile_if(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, 
 
     DA_ADD(code, INSTR_JZ(0));
 
-    size_t ip = code->len;
+    size_t start_ip = code->len;
     if (!kokos_expr_compile(exprs.items[2], ctx, code)) {
         return false;
     }
 
     DA_ADD(code, INSTR_BRANCH(0));
 
-    size_t nzip = code->len - ip;
+    size_t consequence_ip = code->len - start_ip;
     if (!kokos_expr_compile(exprs.items[3], ctx, code)) {
         return false;
     }
 
-    KOKOS_ASSERT(code->items[ip - 1].type == I_JZ);
-    code->items[ip - 1].operand = nzip + 1; // patch the jump instruction
+    KOKOS_ASSERT(code->items[start_ip - 1].type == I_JZ);
+    code->items[start_ip - 1].operand = consequence_ip + 1; // patch the jump instruction
 
-    KOKOS_ASSERT(code->items[nzip + ip - 1].type == I_BRANCH);
-    code->items[nzip + ip - 1].operand = code->len - nzip - 1; // patch the branch instruction
+    KOKOS_ASSERT(code->items[consequence_ip + start_ip - 1].type == I_BRANCH);
+    code->items[consequence_ip + start_ip - 1].operand
+        = code->len - (consequence_ip + start_ip) + 1; // patch the branch instruction
 
     return true;
 }
@@ -398,7 +399,7 @@ static kokos_sform_pair_t sforms[] = {
     { "!=", compile_neq },
 };
 
-#define SFORMS_COUNT (sizeof(sforms) / sizeof(kokos_sform_pair_t))
+#define SFORMS_COUNT (sizeof(sforms) / sizeof(sforms[0]))
 
 static kokos_sform_t get_sform(string_view name)
 {
@@ -406,6 +407,23 @@ static kokos_sform_t get_sform(string_view name)
         const char* sname = sforms[i].name;
         if (sv_eq_cstr(name, sname)) {
             return sforms[i].sform;
+        }
+    }
+
+    return NULL;
+}
+
+static const char* natives[] = {
+    "print",
+};
+
+#define NATIVES_COUNT (sizeof(natives) / sizeof(natives[0]))
+
+static const char* get_native(string_view sv)
+{
+    for (size_t i = 0; i < NATIVES_COUNT; i++) {
+        if (sv_eq_cstr(sv, natives[i])) {
+            return natives[i];
         }
     }
 
@@ -431,6 +449,13 @@ bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
             if (!sform(expr, ctx, code)) {
                 return false;
             }
+            break;
+        }
+
+        const char* native = get_native(head);
+        if (native) {
+            compile_all_args(expr, ctx, code);
+            DA_ADD(code, INSTR_CALL_NATIVE((uint64_t)native));
             break;
         }
 
@@ -474,6 +499,18 @@ bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
         KOKOS_VERIFY(local_idx != (size_t)-1);
 
         DA_ADD(code, INSTR_PUSH_LOCAL(local_idx));
+        break;
+    }
+    case EXPR_STRING_LIT: {
+        string_view value = expr->token.value;
+        char* str = KOKOS_ALLOC(sizeof(char) * value.size);
+        memcpy(str, value.ptr, value.size * sizeof(char));
+
+        kokos_string_t string = { .ptr = str, .len = value.size };
+        DA_ADD(&ctx->string_store, string);
+
+        uint64_t string_value = STRING_BITS | (ctx->string_store.len - 1);
+        DA_ADD(code, INSTR_PUSH(string_value));
         break;
     }
     default: {
@@ -520,9 +557,13 @@ kokos_compiler_context_t kokos_ctx_empty(void)
 {
     hash_table functions = ht_make(string_hash_func, string_eq_func, 1);
     kokos_variable_list_t vars;
+    kokos_string_store_t strings;
     DA_INIT(&vars, 0, 0);
+    DA_INIT(&strings, 0, 0);
 
-    return (kokos_compiler_context_t) { .functions = functions, .locals = vars, .parent = NULL };
+    return (kokos_compiler_context_t) {
+        .functions = functions, .locals = vars, .parent = NULL, .string_store = strings
+    };
 }
 
 kokos_compiled_proc_t* kokos_ctx_get_proc(kokos_compiler_context_t* ctx, const char* name)

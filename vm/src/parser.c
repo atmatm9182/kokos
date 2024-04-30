@@ -233,12 +233,7 @@ kokos_expr_t* kokos_parser_next(kokos_parser_t* parser)
             cur->value.ptr, cur->location.filename, cur->location.row, cur->location.col);
         break;
     case TT_QUOTE: {
-        kokos_expr_t* expr = kokos_parser_next(parser);
-        if (!expr) {
-            return NULL;
-        }
-        expr->type |= 1 << 31;
-        break;
+        KOKOS_TODO();
     }
     }
 

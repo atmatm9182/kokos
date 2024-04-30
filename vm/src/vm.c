@@ -1,4 +1,5 @@
 #include "vm.h"
+#include "base.h"
 #include "compile.h"
 #include "macros.h"
 
@@ -10,6 +11,13 @@
 #define STACK_POP(stack) ((stack)->data[--((stack)->sp)])
 
 #define TO_BOOL(b) (TO_VALUE(b ? TRUE_BITS : FALSE_BITS))
+
+static void exec(kokos_vm_t* vm);
+
+kokos_compiled_proc_t* kokos_store_get_proc(kokos_runtime_store_t* store, const char* name)
+{
+    return ht_find(&store->functions, name);
+}
 
 static kokos_frame_t* alloc_frame(void)
 {
@@ -25,10 +33,7 @@ static kokos_frame_t* current_frame(kokos_vm_t* vm)
     return vm->frames.data[vm->frames.sp - 1];
 }
 
-static void exec(kokos_vm_t* vm, kokos_compiler_context_t* ctx);
-
-static kokos_value_t call_proc(
-    kokos_vm_t* vm, const kokos_compiled_proc_t* proc, kokos_compiler_context_t* ctx)
+static kokos_value_t call_proc(kokos_vm_t* vm, const kokos_compiled_proc_t* proc)
 {
     kokos_frame_t* cur_frame = current_frame(vm);
     kokos_frame_t* new_frame = alloc_frame();
@@ -45,7 +50,7 @@ static kokos_value_t call_proc(
     vm->instructions = proc->body;
     vm->ip = 0;
     while (vm->ip < vm->instructions.len) {
-        exec(vm, ctx);
+        exec(vm);
     }
 
     vm->instructions = vm_instructions;
@@ -77,7 +82,49 @@ static uint64_t kokos_cmp_values(kokos_value_t lhs, kokos_value_t rhs)
     return lhs.as_double < rhs.as_double ? -1 : 1;
 }
 
-static void exec(kokos_vm_t* vm, kokos_compiler_context_t* ctx)
+static void native_print(kokos_vm_t* vm)
+{
+    kokos_frame_t* frame = current_frame(vm);
+    kokos_value_t value = STACK_POP(&frame->stack);
+
+    if (IS_DOUBLE(value)) {
+        printf("%f\n", value.as_double);
+        return;
+    }
+
+    if (IS_STRING(value)) {
+        size_t idx = value.as_int & ~STRING_BITS;
+        kokos_string_t string = vm->store.string_store.items[idx];
+        printf("%.*s\n", (int)string.len, string.ptr);
+        return;
+    }
+
+    KOKOS_TODO();
+}
+
+typedef void (*kokos_native_proc_t)(kokos_vm_t* vm);
+
+typedef struct {
+    const char* name;
+    kokos_native_proc_t proc;
+} kokos_named_native_proc_t;
+
+static kokos_named_native_proc_t natives[] = { { "print", native_print } };
+
+#define NATIVES_COUNT (sizeof(natives) / sizeof(natives[0]))
+
+static kokos_native_proc_t get_native(const char* name)
+{
+    for (size_t i = 0; i < NATIVES_COUNT; i++) {
+        if (strcmp(name, natives[i].name) == 0) {
+            return natives[i].proc;
+        }
+    }
+
+    return NULL;
+}
+
+static void exec(kokos_vm_t* vm)
 {
     kokos_frame_t* frame = current_frame(vm);
     kokos_instruction_t instruction = current_instruction(vm);
@@ -154,10 +201,10 @@ static void exec(kokos_vm_t* vm, kokos_compiler_context_t* ctx)
     }
     case I_CALL: {
         const char* proc_name = (const char*)instruction.operand;
-        kokos_compiled_proc_t* proc = kokos_ctx_get_proc(ctx, proc_name);
+        kokos_compiled_proc_t* proc = kokos_store_get_proc(&vm->store, proc_name);
         KOKOS_VERIFY(proc);
 
-        kokos_value_t return_value = call_proc(vm, proc, ctx);
+        kokos_value_t return_value = call_proc(vm, proc);
         STACK_PUSH(&frame->stack, return_value);
 
         vm->ip++;
@@ -218,6 +265,13 @@ static void exec(kokos_vm_t* vm, kokos_compiler_context_t* ctx)
         vm->ip++;
         break;
     }
+    case I_CALL_NATIVE: {
+        const char* native_name = (const char*)instruction.operand;
+        kokos_native_proc_t native = get_native(native_name);
+        native(vm);
+        vm->ip++;
+        break;
+    }
     default: {
 
         char buf[128] = { 0 };
@@ -228,7 +282,7 @@ static void exec(kokos_vm_t* vm, kokos_compiler_context_t* ctx)
     }
 }
 
-void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code, kokos_compiler_context_t* ctx)
+void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code)
 {
     vm->instructions = code;
 
@@ -236,10 +290,10 @@ void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code, kokos_compiler_context_t* c
     STACK_PUSH(&vm->frames, frame);
 
     while (vm->ip < code.len) {
-        exec(vm, ctx);
+        exec(vm);
     }
 
-    // NOTE: we do not pop the frame here after the vm has run
+    // NOTE: we do not pop the frame here after the vm has ran
 }
 
 void kokos_vm_dump(kokos_vm_t* vm)
@@ -254,14 +308,26 @@ void kokos_vm_dump(kokos_vm_t* vm)
 
         if (IS_DOUBLE(cur)) {
             printf("%f", cur.as_double);
-        } else if IS_TRUE (cur) {
+        } else if (IS_TRUE(cur)) {
             printf("true");
-        } else if IS_FALSE (cur) {
+        } else if (IS_FALSE(cur)) {
             printf("false");
+        } else if (IS_STRING(cur)) {
+            size_t idx = cur.as_int & ~STRING_BITS;
+            kokos_string_t value = vm->store.string_store.items[idx];
+            printf("%.*s", (int)value.len, value.ptr);
         } else {
             KOKOS_TODO();
         }
 
         printf("\n");
     }
+}
+
+kokos_vm_t kokos_vm_create(kokos_compiler_context_t* ctx)
+{
+    kokos_vm_t vm = { 0 };
+    vm.store = (kokos_runtime_store_t) { .functions = ctx->functions,
+        .string_store = ctx->string_store };
+    return vm;
 }

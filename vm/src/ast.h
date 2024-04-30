@@ -115,4 +115,12 @@ static inline const char* kokos_expr_type_str(kokos_expr_type_e type)
     }
 }
 
+static void kokos_program_dump(kokos_program_t program)
+{
+    for (size_t i = 0; i < program.len; i++) {
+        kokos_expr_dump(program.items[i]);
+        printf("\n");
+    }
+}
+
 #endif // AST_H_
