@@ -72,7 +72,7 @@ static kokos_expr_t* alloc_ident(const kokos_token_t* token)
 
 static kokos_expr_t* alloc_string(const kokos_token_t* token)
 {
-    return alloc_empty(token, EXPR_STRING_LIG);
+    return alloc_empty(token, EXPR_STRING_LIT);
 }
 
 static kokos_expr_t* alloc_map(const kokos_token_t* token, kokos_map_t map)

@@ -23,7 +23,7 @@ static kokos_frame_t* current_frame(kokos_vm_t* vm)
     return vm->frames.data[vm->frames.sp - 1];
 }
 
-static void exec(kokos_vm_t* vm, kokos_instruction_t instruction, kokos_compiler_context_t* ctx);
+static void exec(kokos_vm_t* vm, kokos_compiler_context_t* ctx);
 
 static kokos_value_t call_proc(
     kokos_vm_t* vm, const kokos_compiled_proc_t* proc, kokos_compiler_context_t* ctx)
@@ -37,22 +37,42 @@ static kokos_value_t call_proc(
 
     STACK_PUSH(&vm->frames, new_frame);
 
+    kokos_code_t vm_instructions = vm->instructions;
+    size_t vm_ip = vm->ip;
+
+    vm->instructions = proc->body;
+    vm->ip = 0;
     for (size_t i = 0; i < proc->body.len; i++) {
-        exec(vm, proc->body.items[i], ctx);
+        exec(vm, ctx);
     }
+
+    vm->instructions = vm_instructions;
+    vm->ip = vm_ip;
 
     kokos_value_t return_value = STACK_POP(&new_frame->stack);
     STACK_POP(&vm->frames);
     return return_value;
 }
 
-static void exec(kokos_vm_t* vm, kokos_instruction_t instruction, kokos_compiler_context_t* ctx)
+static kokos_instruction_t current_instruction(const kokos_vm_t* vm)
+{
+    return vm->instructions.items[vm->ip];
+}
+
+static bool kokos_value_to_bool(kokos_value_t value)
+{
+    return !IS_FALSE(value) && !IS_NIL(value);
+}
+
+static void exec(kokos_vm_t* vm, kokos_compiler_context_t* ctx)
 {
     kokos_frame_t* frame = current_frame(vm);
+    kokos_instruction_t instruction = current_instruction(vm);
 
     switch (instruction.type) {
     case I_PUSH: {
         STACK_PUSH(&frame->stack, TO_VALUE(instruction.operand));
+        vm->ip++;
         break;
     }
     case I_POP: {
@@ -67,6 +87,8 @@ static void exec(kokos_vm_t* vm, kokos_instruction_t instruction, kokos_compiler
             acc += val.as_double;
         }
         STACK_PUSH(&frame->stack, TO_VALUE(acc));
+
+        vm->ip++;
         break;
     }
     case I_CALL: {
@@ -76,24 +98,48 @@ static void exec(kokos_vm_t* vm, kokos_instruction_t instruction, kokos_compiler
 
         kokos_value_t return_value = call_proc(vm, proc, ctx);
         STACK_PUSH(&frame->stack, return_value);
+
+        vm->ip++;
         break;
     }
     case I_PUSH_LOCAL: {
         kokos_value_t local = frame->locals[instruction.operand];
         STACK_PUSH(&frame->stack, local);
+
+        vm->ip++;
         break;
     }
+    case I_BRANCH: {
+        vm->ip += (int32_t)instruction.operand;
+        break;
+    }
+    case I_JZ: {
+        kokos_value_t test = STACK_POP(&frame->stack);
+        if (!kokos_value_to_bool(test)) {
+            vm->ip += (int32_t)instruction.operand;
+        }
+        break;
+    }
+    case I_JNZ: {
+        kokos_value_t test = STACK_POP(&frame->stack);
+        if (kokos_value_to_bool(test)) {
+            vm->ip += (int32_t)instruction.operand;
+        }
+        break;
+    }
+    default: KOKOS_TODO();
     }
 }
 
 void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code, kokos_compiler_context_t* ctx)
 {
+    vm->instructions = code;
+
     kokos_frame_t* frame = alloc_frame();
     STACK_PUSH(&vm->frames, frame);
 
-    for (size_t i = 0; i < code.len; i++) {
-        kokos_instruction_t instr = code.items[i];
-        exec(vm, instr, ctx);
+    while (vm->ip < code.len) {
+        exec(vm, ctx);
     }
 
     // NOTE: we do not pop the frame here after the vm has run

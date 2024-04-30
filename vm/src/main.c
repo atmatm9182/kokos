@@ -2,13 +2,12 @@
 #include "compile.h"
 #include "instruction.h"
 #include "lexer.h"
-#include "macros.h"
 #include "parser.h"
 #include "vm.h"
 
 int main()
 {
-    char code[] = "(proc add (x y) (add x y))\n(add 1 2)";
+    char code[] = "(if false (+ 1 2 3) (+ 4 5 6))";
 
     kokos_lexer_t lexer = kokos_lex_buf(code, sizeof(code));
     kokos_parser_t parser = kokos_parser_init(&lexer);
@@ -20,11 +19,6 @@ int main()
     printf("program code: \n");
     kokos_code_dump(compiled);
     printf("--------------------------------------------------\n");
-
-    kokos_compiled_proc_t* proc = kokos_ctx_get_proc(&ctx, "add");
-    KOKOS_VERIFY(proc);
-
-    kokos_code_dump(proc->body);
 
     kokos_vm_t vm = { 0 };
     kokos_vm_run(&vm, compiled, &ctx);

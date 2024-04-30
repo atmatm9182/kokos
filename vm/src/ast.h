@@ -2,13 +2,14 @@
 #define AST_H_
 
 #include "base.h"
+#include "macros.h"
 #include "token.h"
 #include <stdio.h>
 
 typedef enum {
     EXPR_INT_LIT,
     EXPR_FLOAT_LIT,
-    EXPR_STRING_LIG,
+    EXPR_STRING_LIT,
     EXPR_LIST,
     EXPR_VECTOR,
     EXPR_MAP,
@@ -49,7 +50,7 @@ static inline void kokos_expr_dump(const kokos_expr_t* expr)
     case EXPR_FLOAT_LIT:
     case EXPR_INT_LIT:
     case EXPR_IDENT:     sv_print(expr->token.value); break;
-    case EXPR_STRING_LIG:
+    case EXPR_STRING_LIT:
         printf("\"");
         sv_print(expr->token.value);
         printf("\"");
@@ -93,6 +94,20 @@ static inline void kokos_expr_dump(const kokos_expr_t* expr)
         printf("}");
         break;
     }
+    }
+}
+
+static inline const char* kokos_expr_type_str(kokos_expr_type_e type)
+{
+    switch (type) {
+    case EXPR_INT_LIT:    return "EXPR_INT_LIT";
+    case EXPR_FLOAT_LIT:  return "EXPR_FLOAT_LIT";
+    case EXPR_STRING_LIT: return "EXPR_STRING_LIT";
+    case EXPR_LIST:       return "EXPR_LIST";
+    case EXPR_VECTOR:     return "EXPR_VECTOR";
+    case EXPR_MAP:        return "EXPR_MAP";
+    case EXPR_IDENT:      return "EXPR_IDENT";
+    default:              KOKOS_TODO();
     }
 }
 

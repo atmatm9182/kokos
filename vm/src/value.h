@@ -30,11 +30,11 @@ typedef union {
 #define IS_MAP(val) (((val).as_int & MAP_BITS) == MAP_BITS)
 #define IS_VECTOR(val) (((val).as_int & VECTOR_BITS) == VECTOR_BITS)
 
-#define IS_TRUE(val) ((val) == TRUE_BITS)
-#define IS_FALSE(val) ((val) == FALSE_BITS)
-#define IS_NIL(val) ((val) == NIL_BITS)
+#define IS_TRUE(val) ((val).as_int == TRUE_BITS)
+#define IS_FALSE(val) ((val).as_int == FALSE_BITS)
+#define IS_NIL(val) ((val).as_int == NIL_BITS)
 
 #define TO_VALUE(i)                                                                                \
-    (_Generic((i), uint64_t: (kokos_value_t) { .as_int = (i) }, double: (kokos_value_t) { .as_double = (i) }))
+    (_Generic((i), long: (kokos_value_t) { .as_int = (i) }, uint64_t: (kokos_value_t) { .as_int = (i) }, double: (kokos_value_t) { .as_double = (i) }))
 
 #endif // VALUE_H_

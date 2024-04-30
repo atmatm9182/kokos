@@ -1,13 +1,13 @@
 #include "macros.h"
-#include <stdio.h>
+#include "token.h"
 
-#define BASE_ALLOC KOKOS_ALLOC
 #include "base.h"
 
 #include "compile.h"
 #include "instruction.h"
 #include "value.h"
 
+#include <stdio.h>
 #include <string.h>
 
 static uint64_t to_double_bytes(const kokos_expr_t* expr)
@@ -94,6 +94,25 @@ static size_t kokos_ctx_get_var_idx(const kokos_compiler_context_t* ctx, string_
     return (size_t)-1;
 }
 
+// TODO: refactor this
+static bool get_special_value(string_view value, uint64_t* out)
+{
+    if (sv_eq_cstr(value, "true")) {
+        *out = TRUE_BITS;
+        return true;
+    }
+    if (sv_eq_cstr(value, "false")) {
+        *out = FALSE_BITS;
+        return true;
+    }
+    if (sv_eq_cstr(value, "nil")) {
+        *out = NIL_BITS;
+        return true;
+    }
+
+    return false;
+}
+
 static void compile_push_expr(
     const kokos_expr_t* expr, const kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
@@ -105,6 +124,12 @@ static void compile_push_expr(
         break;
     }
     case EXPR_IDENT: {
+        uint64_t special;
+        if (get_special_value(expr->token.value, &special)) {
+            DA_ADD(code, INSTR_PUSH(special));
+            break;
+        }
+
         int64_t local_idx = kokos_ctx_get_var_idx(ctx, expr->token.value);
         KOKOS_VERIFY(local_idx != (size_t)-1);
 
@@ -115,15 +140,42 @@ static void compile_push_expr(
     }
 }
 
-static void compile_add(kokos_list_t list, kokos_compiler_context_t* ctx, kokos_code_t* code)
+static void compile_add(kokos_list_t elements, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
+    KOKOS_ASSERT(sv_eq_cstr(elements.items[0]->token.value, "+"));
 
-    for (size_t i = 1; i < list.len; i++) {
-        const kokos_expr_t* elem = list.items[i];
+    for (size_t i = 1; i < elements.len; i++) {
+        const kokos_expr_t* elem = elements.items[i];
         compile_push_expr(elem, ctx, code);
     }
 
-    DA_ADD(code, INSTR_ADD(list.len - 1));
+    DA_ADD(code, INSTR_ADD(elements.len - 1));
+}
+
+static void compile_if(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
+{
+    KOKOS_ASSERT(sv_eq_cstr(expr->list.items[0]->token.value, "if"));
+
+    // TODO: support other forms of if expression and handle an error
+    KOKOS_VERIFY(expr->list.len == 4);
+
+    kokos_list_t exprs = expr->list;
+
+    kokos_expr_compile(exprs.items[1], ctx, code);
+    DA_ADD(code, INSTR_JZ(0));
+
+    size_t ip = code->len;
+    kokos_expr_compile(exprs.items[2], ctx, code);
+    DA_ADD(code, INSTR_BRANCH(0));
+
+    size_t nzip = code->len - ip;
+    kokos_expr_compile(exprs.items[3], ctx, code);
+
+    KOKOS_ASSERT(code->items[ip - 1].type == I_JZ);
+    code->items[ip - 1].operand = nzip + 1; // patch the jump instruction
+
+    KOKOS_ASSERT(code->items[nzip + ip - 1].type == I_BRANCH);
+    code->items[nzip + ip - 1].operand = code->len - nzip - 1; // patch the branch instruction
 }
 
 void kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
@@ -139,6 +191,11 @@ void kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
         kokos_list_t list = expr->list;
         KOKOS_VERIFY(list.len > 0);
         string_view head = list.items[0]->token.value;
+
+        if (sv_eq_cstr(head, "if")) {
+            compile_if(expr, ctx, code);
+            break;
+        }
 
         if (sv_eq_cstr(head, "proc")) {
             compile_procedure_def(expr, ctx);
@@ -168,7 +225,12 @@ void kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
 
         break;
     }
-    default: KOKOS_TODO();
+    case EXPR_IDENT: compile_push_expr(expr, ctx, code); break;
+    default:         {
+        char buf[128] = { 0 };
+        sprintf(buf, "implement compilation of expression %s", kokos_expr_type_str(expr->type));
+        KOKOS_TODO(buf);
+    }
     }
 }
 

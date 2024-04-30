@@ -26,6 +26,8 @@ typedef struct {
 
 typedef struct {
     kokos_frame_stack_t frames;
+    kokos_code_t instructions;
+    size_t ip;
 } kokos_vm_t;
 
 void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code, kokos_compiler_context_t* ctx);
