@@ -177,6 +177,13 @@ static void exec(kokos_vm_t* vm, kokos_compiler_context_t* ctx)
         vm->ip++;
         break;
     }
+    case I_NEQ: {
+        kokos_value_t top = STACK_POP(&frame->stack);
+        STACK_PUSH(&frame->stack, TO_BOOL(top.as_int != instruction.operand));
+
+        vm->ip++;
+        break;
+    }
     default: {
 
         char buf[128] = { 0 };

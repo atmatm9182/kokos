@@ -17,6 +17,7 @@ typedef enum {
     I_CALL_NATIVE,
     I_CMP,
     I_EQ,
+    I_NEQ,
 } kokos_instruction_type_e;
 
 typedef struct {
@@ -34,6 +35,7 @@ typedef struct {
 #define INSTR_JNZ(op) ((kokos_instruction_t) { .type = I_JNZ, .operand = (op) })
 #define INSTR_BRANCH(op) ((kokos_instruction_t) { .type = I_BRANCH, .operand = (op) })
 #define INSTR_EQ(op) ((kokos_instruction_t) { .type = I_EQ, .operand = (op) })
+#define INSTR_NEQ(op) ((kokos_instruction_t) { .type = I_NEQ, .operand = (op) })
 
 #define INSTR_SFORM(op) ((kokos_instruction_t) { .type = I_SFORM, .operand = (op) })
 #define INSTR_CALL_NATIVE(op) ((kokos_instruction_t) { .type = I_CALL_NATIVE, .operand = (op) })

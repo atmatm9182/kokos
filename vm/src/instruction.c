@@ -16,6 +16,7 @@ const char* kokos_instruction_type_str(kokos_instruction_type_e type)
     case I_CALL_NATIVE: return "call_native";
     case I_CMP:         return "cmp";
     case I_EQ:          return "eq";
+    case I_NEQ:         return "neq";
     default:            KOKOS_TODO(__FUNCTION__);
     }
 }
@@ -38,6 +39,7 @@ void kokos_instruction_dump(kokos_instruction_t instruction)
     case I_CALL_NATIVE: printf("%s 0x%lx",  type, instruction.operand); break;
     case I_CMP:         printf("%s",        type); break;
     case I_EQ:          printf("%s 0x%lx",  type, instruction.operand); break;
+    case I_NEQ:         printf("%s 0x%lx",  type, instruction.operand); break;
     }
 }
 // clang-format on

@@ -8,7 +8,7 @@
 int main()
 {
     // char code[] = "(if false (+ 1 2 3) (+ 4 5 6))";
-    char code[] = "(proc fib (x) (if (< x 3) x (+ (fib (- x 1)) (fib (- x 2))))) (fib 25)";
+    char code[] = "(proc fib (x) (if (<= x 2) x (+ (fib (- x 1)) (fib (- x 2))))) (fib 30)";
 
     kokos_lexer_t lexer = kokos_lex_buf(code, sizeof(code));
     kokos_parser_t parser = kokos_parser_init(&lexer);

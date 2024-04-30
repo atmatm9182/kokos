@@ -116,7 +116,8 @@ static bool get_special_value(string_view value, uint64_t* out)
     return false;
 }
 
-static void push_all_args(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
+static void push_all_args(
+    const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
     kokos_list_t elements = expr->list;
     for (size_t i = 1; i < elements.len; i++) {
@@ -139,10 +140,8 @@ static void compile_add(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
 
 static void compile_if(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-
     // TODO: support other forms of if expression and handle an error
     KOKOS_VERIFY(expr->list.len == 4);
-    KOKOS_ASSERT(sv_eq_cstr(expr->list.items[0]->token.value, "if"));
 
     kokos_list_t exprs = expr->list;
 
@@ -163,17 +162,50 @@ static void compile_if(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, 
     code->items[nzip + ip - 1].operand = code->len - nzip - 1; // patch the branch instruction
 }
 
+static void compile_eq(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
+{
+    KOKOS_ASSERT(expr->list.len == 3);
+    push_all_args(expr, ctx, code);
+    DA_ADD(code, INSTR_CMP);
+    DA_ADD(code, INSTR_EQ(0));
+}
+
+static void compile_neq(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
+{
+    KOKOS_ASSERT(expr->list.len == 3);
+    push_all_args(expr, ctx, code);
+    DA_ADD(code, INSTR_CMP);
+    DA_ADD(code, INSTR_NEQ(0));
+}
+
+static void compile_lte(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
+{
+    KOKOS_ASSERT(expr->list.len == 3);
+    push_all_args(expr, ctx, code);
+    DA_ADD(code, INSTR_CMP);
+    DA_ADD(code, INSTR_NEQ(1));
+}
+
+static void compile_gte(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
+{
+    KOKOS_ASSERT(expr->list.len == 3);
+    push_all_args(expr, ctx, code);
+    DA_ADD(code, INSTR_CMP);
+    DA_ADD(code, INSTR_NEQ((uint64_t)-1));
+}
+
+static void compile_gt(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
+{
+    KOKOS_ASSERT(expr->list.len == 3);
+    push_all_args(expr, ctx, code);
+    DA_ADD(code, INSTR_CMP);
+    DA_ADD(code, INSTR_EQ(1));
+}
+
 static void compile_lt(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-    kokos_list_t list = expr->list;
-    KOKOS_ASSERT(list.len == 3);
-    KOKOS_ASSERT(sv_eq_cstr(expr->list.items[0]->token.value, "<"));
-
-    const kokos_expr_t* lhs = list.items[1];
-    const kokos_expr_t* rhs = list.items[2];
-
-    kokos_expr_compile(lhs, ctx, code);
-    kokos_expr_compile(rhs, ctx, code);
+    KOKOS_ASSERT(expr->list.len == 3);
+    push_all_args(expr, ctx, code);
     DA_ADD(code, INSTR_CMP);
     DA_ADD(code, INSTR_EQ((uint64_t)-1));
 }
@@ -192,6 +224,11 @@ static kokos_sform_pair_t sforms[] = {
     { "-", compile_sub },
     { "if", compile_if },
     { "<", compile_lt },
+    { ">", compile_gt },
+    { "<=", compile_lte },
+    { ">=", compile_gte },
+    { "=", compile_eq },
+    { "!=", compile_neq },
 };
 
 #define SFORMS_COUNT (sizeof(sforms) / sizeof(kokos_sform_pair_t))
@@ -258,7 +295,7 @@ void kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
         DA_ADD(code, INSTR_PUSH_LOCAL(local_idx));
         break;
     }
-    default:         {
+    default: {
         char buf[128] = { 0 };
         sprintf(buf, "compilation of expression %s is not implemented",
             kokos_expr_type_str(expr->type));
