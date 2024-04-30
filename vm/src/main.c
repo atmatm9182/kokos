@@ -4,34 +4,56 @@
 #include "lexer.h"
 #include "parser.h"
 #include "vm.h"
+#include <stdio.h>
 
-int main()
+char* read_file(const char* filename)
 {
-    char code[] = "(proc fib (x) (if (<= x 2) x (+ (fib (- x 1)) (fib (- x 2))))) (fib 25) (fib 25)";
+    FILE* f = fopen(filename, "r");
+    if (!f) {
+        return NULL;
+    }
 
-    kokos_lexer_t lexer = kokos_lex_buf(code, sizeof(code));
+    fseek(f, 0, SEEK_END);
+    long fsize = ftell(f);
+    rewind(f);
+
+    char* data = KOKOS_ALLOC(sizeof(char) * (fsize + 1));
+    fread(data, sizeof(char), fsize, f);
+    data[fsize] = '\0';
+
+    return data;
+}
+
+static int run_file(const char* filename)
+{
+    char* data = read_file(filename);
+    KOKOS_VERIFY(data);
+
+    kokos_lexer_t lexer = kokos_lex_buf(data, strlen(data));
     kokos_parser_t parser = kokos_parser_init(&lexer);
+    kokos_program_t program = kokos_parser_program(&parser);
 
-    kokos_program_t prog = kokos_parser_program(&parser);
-    KOKOS_VERIFY(kokos_parser_ok(&parser));
+    if (!kokos_parser_ok(&parser)) {
+        const char* error_msg = kokos_parser_get_err(&parser);
+        fprintf(stderr, "Error while parsing the program: %s\n", error_msg);
+        return 1;
+    }
 
-    kokos_compiler_context_t ctx = kokos_ctx_empty();
-    kokos_code_t compiled = kokos_compile_program(prog, &ctx);
-
-    kokos_compiled_proc_t* fib = kokos_ctx_get_proc(&ctx, "fib");
-    KOKOS_VERIFY(fib);
-    printf("--------------------------------------------------\n");
-    kokos_code_dump(fib->body);
-    printf("--------------------------------------------------\n");
-
-    printf("program code: \n");
-    kokos_code_dump(compiled);
-    printf("--------------------------------------------------\n");
+    kokos_compiler_context_t compiler_context = kokos_ctx_empty();
+    kokos_code_t code = kokos_compile_program(program, &compiler_context);
 
     kokos_vm_t vm = { 0 };
-    kokos_vm_run(&vm, compiled, &ctx);
-
-    kokos_vm_dump(&vm);
+    kokos_vm_run(&vm, code, &compiler_context);
 
     return 0;
+}
+
+int main(int argc, char* argv[])
+{
+    if (argc > 1) {
+        return run_file(argv[1]);
+    }
+
+    fprintf(stderr, "ERROR: not enough arguments\n");
+    return 1;
 }

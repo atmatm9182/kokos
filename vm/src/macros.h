@@ -6,7 +6,11 @@
 #ifndef KOKOS_ALLOC
 #include <stdlib.h>
 #define KOKOS_ALLOC malloc
-#endif
+#endif // KOKOS_ALLOC
+
+#ifndef KOKOS_FREE
+#define KOKOS_FREE free
+#endif // KOKOS_FREE
 
 #define __ESC_RED "\e[31m"
 #define __ESC_RESET "\e[39;49m"
