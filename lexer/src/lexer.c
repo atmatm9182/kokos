@@ -109,6 +109,13 @@ int kokos_lex_next(kokos_lexer_t* lex, kokos_token_t* token)
         token->value = sv_slice(lex->contents, start, lex->pos - start);
         break;
     }
+    case ';': {
+        while (lex->pos < lex->contents.size && lex->contents.ptr[lex->pos] != '\n') {
+            lex_advance(lex);
+        }
+
+        return kokos_lex_next(lex, token);
+    }
     case '\0': return 0;
     default:
         if (isdigit(c)) {
