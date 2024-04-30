@@ -1,6 +1,6 @@
-project('kokos', 'c', default_options : ['werror=true'])
+project('kokos', 'c', default_options : ['werror=true', 'warning_level=everything'])
 
-add_global_arguments('-Og', '-Wno-unused-function', '-Wno-unused-result', language : 'c')
+add_global_arguments('-Wno-unused-function', '-Wno-unused-result', language : 'c')
 
 baseinc = include_directories('include')
 
