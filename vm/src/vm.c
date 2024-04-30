@@ -1,6 +1,6 @@
 #include "vm.h"
 #include "macros.h"
-#include "src/compile.h"
+#include "compile.h"
 
 #define STACK_PUSH(stack, value)                                                                   \
     do {                                                                                           \

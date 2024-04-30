@@ -12,7 +12,9 @@ typedef enum {
     I_CALL,
     I_JNZ,
     I_JZ,
-    I_BRANCH
+    I_BRANCH,
+    I_SFORM,
+    I_CALL_NATIVE,
 } kokos_instruction_type_e;
 
 typedef struct {
@@ -29,12 +31,16 @@ typedef struct {
 #define INSTR_JNZ(op) ((kokos_instruction_t) { .type = I_JNZ, .operand = (op) })
 #define INSTR_BRANCH(op) ((kokos_instruction_t) { .type = I_BRANCH, .operand = (op) })
 
+#define INSTR_SFORM(op) ((kokos_instruction_t) { .type = I_SFORM, .operand = (op) })
+#define INSTR_CALL_NATIVE(op) ((kokos_instruction_t) { .type = I_CALL_NATIVE, .operand = (op) })
+
 typedef struct {
     kokos_instruction_t* items;
     size_t len;
     size_t cap;
 } kokos_code_t;
 
+void kokos_instruction_dump(kokos_instruction_t instruction);
 void kokos_code_dump(kokos_code_t code);
 
 #endif // INSTRUCTION_H_
