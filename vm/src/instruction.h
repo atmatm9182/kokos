@@ -4,21 +4,25 @@
 #include "base.h"
 #include <stdint.h>
 
-typedef enum { I_PUSH, I_POP, I_ADD, I_PUSH_LOCAL, I_CALL } instruction_type_e;
+typedef enum { I_PUSH, I_POP, I_ADD, I_PUSH_LOCAL, I_CALL } kokos_instruction_type_e;
 
 typedef struct {
-    instruction_type_e type;
+    kokos_instruction_type_e type;
     uint64_t operand;
-} instruction_t;
+} kokos_instruction_t;
 
-#define INSTR_PUSH(op) ((instruction_t) { .type = I_PUSH, .operand = (op) })
-#define INSTR_POP(op) ((instruction_t) { .type = I_POP, .operand = (op) })
-#define INSTR_ADD(op) ((instruction_t) { .type = I_ADD, .operand = (op) })
-#define INSTR_PUSH_LOCAL(op) ((instruction_t) { .type = I_PUSH_LOCAL, .operand = (op) })
-#define INSTR_CALL(op) ((instruction_t) { .type = I_CALL, .operand = (op) })
+#define INSTR_PUSH(op) ((kokos_instruction_t) { .type = I_PUSH, .operand = (op) })
+#define INSTR_POP(op) ((kokos_instruction_t) { .type = I_POP, .operand = (op) })
+#define INSTR_ADD(op) ((kokos_instruction_t) { .type = I_ADD, .operand = (op) })
+#define INSTR_PUSH_LOCAL(op) ((kokos_instruction_t) { .type = I_PUSH_LOCAL, .operand = (op) })
+#define INSTR_CALL(op) ((kokos_instruction_t) { .type = I_CALL, .operand = (op) })
 
-DA_DECLARE(code_t, instruction_t);
+typedef struct {
+    kokos_instruction_t* items;
+    size_t len;
+    size_t cap;
+} kokos_code_t;
 
-void kokos_code_dump(code_t code);
+void kokos_code_dump(kokos_code_t code);
 
 #endif // INSTRUCTION_H_

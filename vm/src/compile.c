@@ -73,7 +73,7 @@ static void compile_procedure_def(const kokos_expr_t* expr, kokos_compiler_conte
 
     kokos_ctx_add_proc(ctx, proc->name, proc);
 
-    code_t body;
+    kokos_code_t body;
     DA_INIT(&body, 0, 5);
 
     for (size_t i = 3; i < list.len; i++) {
@@ -95,7 +95,7 @@ static size_t kokos_ctx_get_var_idx(const kokos_compiler_context_t* ctx, string_
 }
 
 static void compile_push_expr(
-    const kokos_expr_t* expr, const kokos_compiler_context_t* ctx, code_t* code)
+    const kokos_expr_t* expr, const kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
     switch (expr->type) {
     case EXPR_FLOAT_LIT:
@@ -115,7 +115,7 @@ static void compile_push_expr(
     }
 }
 
-static void compile_add(kokos_list_t list, kokos_compiler_context_t* ctx, code_t* code)
+static void compile_add(kokos_list_t list, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
 
     for (size_t i = 1; i < list.len; i++) {
@@ -126,7 +126,7 @@ static void compile_add(kokos_list_t list, kokos_compiler_context_t* ctx, code_t
     DA_ADD(code, INSTR_ADD(list.len - 1));
 }
 
-void kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, code_t* code)
+void kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
     switch (expr->type) {
     case EXPR_FLOAT_LIT:
@@ -172,9 +172,9 @@ void kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
     }
 }
 
-code_t kokos_compile_program(kokos_program_t program, kokos_compiler_context_t* ctx)
+kokos_code_t kokos_compile_program(kokos_program_t program, kokos_compiler_context_t* ctx)
 {
-    code_t code;
+    kokos_code_t code;
     DA_INIT(&code, 0, 10);
 
     for (size_t i = 0; i < program.len; i++) {

@@ -16,7 +16,7 @@ int main()
     kokos_program_t prog = kokos_parser_program(&parser);
 
     kokos_compiler_context_t ctx = kokos_empty_compiler_context();
-    code_t compiled = kokos_compile_program(prog, &ctx);
+    kokos_code_t compiled = kokos_compile_program(prog, &ctx);
     printf("program code: \n");
     kokos_code_dump(compiled);
     printf("--------------------------------------------------\n");

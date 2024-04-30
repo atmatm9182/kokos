@@ -23,9 +23,9 @@ static kokos_frame_t* current_frame(kokos_vm_t* vm)
     return vm->frames.data[vm->frames.sp - 1];
 }
 
-static void exec(kokos_vm_t* vm, instruction_t instruction, kokos_compiler_context_t* ctx);
+static void exec(kokos_vm_t* vm, kokos_instruction_t instruction, kokos_compiler_context_t* ctx);
 
-static value_t call_proc(
+static kokos_value_t call_proc(
     kokos_vm_t* vm, const kokos_compiled_proc_t* proc, kokos_compiler_context_t* ctx)
 {
     kokos_frame_t* cur_frame = current_frame(vm);
@@ -41,12 +41,12 @@ static value_t call_proc(
         exec(vm, proc->body.items[i], ctx);
     }
 
-    value_t return_value = STACK_POP(&new_frame->stack);
+    kokos_value_t return_value = STACK_POP(&new_frame->stack);
     STACK_POP(&vm->frames);
     return return_value;
 }
 
-static void exec(kokos_vm_t* vm, instruction_t instruction, kokos_compiler_context_t* ctx)
+static void exec(kokos_vm_t* vm, kokos_instruction_t instruction, kokos_compiler_context_t* ctx)
 {
     kokos_frame_t* frame = current_frame(vm);
 
@@ -62,7 +62,7 @@ static void exec(kokos_vm_t* vm, instruction_t instruction, kokos_compiler_conte
     case I_ADD: {
         double acc = 0.0;
         for (size_t i = 0; i < instruction.operand; i++) {
-            value_t val = STACK_POP(&frame->stack);
+            kokos_value_t val = STACK_POP(&frame->stack);
             KOKOS_VERIFY(IS_DOUBLE(val));
             acc += val.as_double;
         }
@@ -74,25 +74,25 @@ static void exec(kokos_vm_t* vm, instruction_t instruction, kokos_compiler_conte
         kokos_compiled_proc_t* proc = kokos_ctx_get_proc(ctx, proc_name);
         KOKOS_VERIFY(proc);
 
-        value_t return_value = call_proc(vm, proc, ctx);
+        kokos_value_t return_value = call_proc(vm, proc, ctx);
         STACK_PUSH(&frame->stack, return_value);
         break;
     }
     case I_PUSH_LOCAL: {
-        value_t local = frame->locals[instruction.operand];
+        kokos_value_t local = frame->locals[instruction.operand];
         STACK_PUSH(&frame->stack, local);
         break;
     }
     }
 }
 
-void kokos_vm_run(kokos_vm_t* vm, code_t code, kokos_compiler_context_t* ctx)
+void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code, kokos_compiler_context_t* ctx)
 {
     kokos_frame_t* frame = alloc_frame();
     STACK_PUSH(&vm->frames, frame);
 
     for (size_t i = 0; i < code.len; i++) {
-        instruction_t instr = code.items[i];
+        kokos_instruction_t instr = code.items[i];
         exec(vm, instr, ctx);
     }
 

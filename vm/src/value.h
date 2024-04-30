@@ -13,7 +13,7 @@
 typedef union {
     double as_double;
     uint64_t as_int;
-} value_t;
+} kokos_value_t;
 
 #define STRING_BITS 0x7FFE000000000000
 #define MAP_BITS 0x7FFF000000000000
@@ -35,6 +35,6 @@ typedef union {
 #define IS_NIL(val) ((val) == NIL_BITS)
 
 #define TO_VALUE(i)                                                                                \
-    (_Generic((i), uint64_t: (value_t) { .as_int = (i) }, double: (value_t) { .as_double = (i) }))
+    (_Generic((i), uint64_t: (kokos_value_t) { .as_int = (i) }, double: (kokos_value_t) { .as_double = (i) }))
 
 #endif // VALUE_H_

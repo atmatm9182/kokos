@@ -25,7 +25,7 @@ typedef struct {
 typedef struct {
     const char* name;
     kokos_params_t params;
-    code_t body;
+    kokos_code_t body;
 } kokos_compiled_proc_t;
 
 kokos_compiler_context_t kokos_empty_compiler_context(void);
@@ -33,7 +33,7 @@ void kokos_ctx_add_proc(
     kokos_compiler_context_t* ctx, const char* name, kokos_compiled_proc_t* proc);
 kokos_compiled_proc_t* kokos_ctx_get_proc(kokos_compiler_context_t* ctx, const char* name);
 
-void kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* context, code_t* code);
-code_t kokos_compile_program(kokos_program_t program, kokos_compiler_context_t* ctx);
+void kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* context, kokos_code_t* code);
+kokos_code_t kokos_compile_program(kokos_program_t program, kokos_compiler_context_t* ctx);
 
 #endif // COMPILE_H_
