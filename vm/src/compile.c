@@ -49,8 +49,11 @@ void kokos_ctx_add_local(kokos_compiler_context_t* ctx, string_view local)
     DA_ADD(&ctx->locals, local);
 }
 
-static void compile_procedure_def(const kokos_expr_t* expr, kokos_compiler_context_t* ctx)
+static void compile_procedure_def(
+    const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
+    (void)code;
+
     kokos_list_t list = expr->list;
     string_view name = list.items[1]->token.value;
 
@@ -113,51 +116,33 @@ static bool get_special_value(string_view value, uint64_t* out)
     return false;
 }
 
-static void compile_push_expr(
-    const kokos_expr_t* expr, const kokos_compiler_context_t* ctx, kokos_code_t* code)
+static void push_all_args(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-    switch (expr->type) {
-    case EXPR_FLOAT_LIT:
-    case EXPR_INT_LIT:   {
-        uint64_t num = to_double_bytes(expr);
-        DA_ADD(code, INSTR_PUSH(num));
-        break;
-    }
-    case EXPR_IDENT: {
-        uint64_t special;
-        if (get_special_value(expr->token.value, &special)) {
-            DA_ADD(code, INSTR_PUSH(special));
-            break;
-        }
-
-        int64_t local_idx = kokos_ctx_get_var_idx(ctx, expr->token.value);
-        KOKOS_VERIFY(local_idx != (size_t)-1);
-
-        DA_ADD(code, INSTR_PUSH_LOCAL(local_idx));
-        break;
-    }
-    default: KOKOS_TODO();
+    kokos_list_t elements = expr->list;
+    for (size_t i = 1; i < elements.len; i++) {
+        const kokos_expr_t* elem = elements.items[i];
+        kokos_expr_compile(elem, ctx, code);
     }
 }
 
-static void compile_add(kokos_list_t elements, kokos_compiler_context_t* ctx, kokos_code_t* code)
+static void compile_sub(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-    KOKOS_ASSERT(sv_eq_cstr(elements.items[0]->token.value, "+"));
+    push_all_args(expr, ctx, code);
+    DA_ADD(code, INSTR_SUB(expr->list.len - 1));
+}
 
-    for (size_t i = 1; i < elements.len; i++) {
-        const kokos_expr_t* elem = elements.items[i];
-        compile_push_expr(elem, ctx, code);
-    }
-
-    DA_ADD(code, INSTR_ADD(elements.len - 1));
+static void compile_add(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
+{
+    push_all_args(expr, ctx, code);
+    DA_ADD(code, INSTR_ADD(expr->list.len - 1));
 }
 
 static void compile_if(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-    KOKOS_ASSERT(sv_eq_cstr(expr->list.items[0]->token.value, "if"));
 
     // TODO: support other forms of if expression and handle an error
     KOKOS_VERIFY(expr->list.len == 4);
+    KOKOS_ASSERT(sv_eq_cstr(expr->list.items[0]->token.value, "if"));
 
     kokos_list_t exprs = expr->list;
 
@@ -178,6 +163,51 @@ static void compile_if(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, 
     code->items[nzip + ip - 1].operand = code->len - nzip - 1; // patch the branch instruction
 }
 
+static void compile_lt(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
+{
+    kokos_list_t list = expr->list;
+    KOKOS_ASSERT(list.len == 3);
+    KOKOS_ASSERT(sv_eq_cstr(expr->list.items[0]->token.value, "<"));
+
+    const kokos_expr_t* lhs = list.items[1];
+    const kokos_expr_t* rhs = list.items[2];
+
+    kokos_expr_compile(lhs, ctx, code);
+    kokos_expr_compile(rhs, ctx, code);
+    DA_ADD(code, INSTR_CMP);
+    DA_ADD(code, INSTR_EQ((uint64_t)-1));
+}
+
+typedef void (*kokos_sform_t)(
+    const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code);
+
+typedef struct {
+    const char* name;
+    kokos_sform_t sform;
+} kokos_sform_pair_t;
+
+static kokos_sform_pair_t sforms[] = {
+    { "proc", compile_procedure_def },
+    { "+", compile_add },
+    { "-", compile_sub },
+    { "if", compile_if },
+    { "<", compile_lt },
+};
+
+#define SFORMS_COUNT (sizeof(sforms) / sizeof(kokos_sform_pair_t))
+
+static kokos_sform_t get_sform(string_view name)
+{
+    for (size_t i = 0; i < SFORMS_COUNT; i++) {
+        const char* sname = sforms[i].name;
+        if (sv_eq_cstr(name, sname)) {
+            return sforms[i].sform;
+        }
+    }
+
+    return NULL;
+}
+
 void kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
     switch (expr->type) {
@@ -192,18 +222,9 @@ void kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
         KOKOS_VERIFY(list.len > 0);
         string_view head = list.items[0]->token.value;
 
-        if (sv_eq_cstr(head, "if")) {
-            compile_if(expr, ctx, code);
-            break;
-        }
-
-        if (sv_eq_cstr(head, "proc")) {
-            compile_procedure_def(expr, ctx);
-            break;
-        }
-
-        if (sv_eq_cstr(head, "+")) {
-            compile_add(list, ctx, code);
+        kokos_sform_t sform = get_sform(head);
+        if (sform) {
+            sform(expr, ctx, code);
             break;
         }
 
@@ -218,17 +239,29 @@ void kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
         KOKOS_ASSERT(proc->params.len == list.len - 1);
 
         for (size_t i = 1; i < list.len; i++) {
-            compile_push_expr(list.items[i], ctx, code);
+            kokos_expr_compile(list.items[i], ctx, code);
         }
 
         DA_ADD(code, INSTR_CALL((uint64_t)proc->name));
-
         break;
     }
-    case EXPR_IDENT: compile_push_expr(expr, ctx, code); break;
+    case EXPR_IDENT: {
+        uint64_t special;
+        if (get_special_value(expr->token.value, &special)) {
+            DA_ADD(code, INSTR_PUSH(special));
+            break;
+        }
+
+        int64_t local_idx = kokos_ctx_get_var_idx(ctx, expr->token.value);
+        KOKOS_VERIFY(local_idx != (size_t)-1);
+
+        DA_ADD(code, INSTR_PUSH_LOCAL(local_idx));
+        break;
+    }
     default:         {
         char buf[128] = { 0 };
-        sprintf(buf, "implement compilation of expression %s", kokos_expr_type_str(expr->type));
+        sprintf(buf, "compilation of expression %s is not implemented",
+            kokos_expr_type_str(expr->type));
         KOKOS_TODO(buf);
     }
     }

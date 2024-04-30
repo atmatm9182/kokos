@@ -1,6 +1,6 @@
 #include "vm.h"
-#include "macros.h"
 #include "compile.h"
+#include "macros.h"
 
 #define STACK_PUSH(stack, value)                                                                   \
     do {                                                                                           \
@@ -8,6 +8,8 @@
     } while (0)
 
 #define STACK_POP(stack) ((stack)->data[--((stack)->sp)])
+
+#define TO_BOOL(b) (TO_VALUE(b ? TRUE_BITS : FALSE_BITS))
 
 static kokos_frame_t* alloc_frame(void)
 {
@@ -42,7 +44,7 @@ static kokos_value_t call_proc(
 
     vm->instructions = proc->body;
     vm->ip = 0;
-    for (size_t i = 0; i < proc->body.len; i++) {
+    while (vm->ip < vm->instructions.len) {
         exec(vm, ctx);
     }
 
@@ -62,6 +64,17 @@ static kokos_instruction_t current_instruction(const kokos_vm_t* vm)
 static bool kokos_value_to_bool(kokos_value_t value)
 {
     return !IS_FALSE(value) && !IS_NIL(value);
+}
+
+static uint64_t kokos_cmp_values(kokos_value_t lhs, kokos_value_t rhs)
+{
+    if (lhs.as_int == rhs.as_int) {
+        return 0;
+    }
+
+    KOKOS_VERIFY(
+        IS_DOUBLE(lhs) && IS_DOUBLE(rhs)); // TODO: allow comparing of any values or throw an error
+    return lhs.as_double < rhs.as_double ? -1 : 1;
 }
 
 static void exec(kokos_vm_t* vm, kokos_compiler_context_t* ctx)
@@ -86,6 +99,20 @@ static void exec(kokos_vm_t* vm, kokos_compiler_context_t* ctx)
             KOKOS_VERIFY(IS_DOUBLE(val));
             acc += val.as_double;
         }
+        STACK_PUSH(&frame->stack, TO_VALUE(acc));
+
+        vm->ip++;
+        break;
+    }
+    case I_SUB: {
+        double acc = 0.0;
+        for (ssize_t i = 0; i < instruction.operand - 1; i++) {
+            kokos_value_t val = STACK_POP(&frame->stack);
+            KOKOS_VERIFY(IS_DOUBLE(val));
+            acc -= val.as_double;
+        }
+
+        acc += STACK_POP(&frame->stack).as_double;
         STACK_PUSH(&frame->stack, TO_VALUE(acc));
 
         vm->ip++;
@@ -117,17 +144,46 @@ static void exec(kokos_vm_t* vm, kokos_compiler_context_t* ctx)
         kokos_value_t test = STACK_POP(&frame->stack);
         if (!kokos_value_to_bool(test)) {
             vm->ip += (int32_t)instruction.operand;
+            break;
         }
+
+        vm->ip++;
         break;
     }
     case I_JNZ: {
         kokos_value_t test = STACK_POP(&frame->stack);
         if (kokos_value_to_bool(test)) {
             vm->ip += (int32_t)instruction.operand;
+            break;
         }
+
+        vm->ip++;
         break;
     }
-    default: KOKOS_TODO();
+    case I_CMP: {
+        kokos_value_t rhs = STACK_POP(&frame->stack);
+        kokos_value_t lhs = STACK_POP(&frame->stack);
+
+        uint64_t cmp = kokos_cmp_values(lhs, rhs);
+        STACK_PUSH(&frame->stack, TO_VALUE(cmp));
+
+        vm->ip++;
+        break;
+    }
+    case I_EQ: {
+        kokos_value_t top = STACK_POP(&frame->stack);
+        STACK_PUSH(&frame->stack, TO_BOOL(top.as_int == instruction.operand));
+
+        vm->ip++;
+        break;
+    }
+    default: {
+
+        char buf[128] = { 0 };
+        sprintf(buf, "execution of instruction %s is not implemented",
+            kokos_instruction_type_str(instruction.type));
+        KOKOS_TODO(buf);
+    }
     }
 }
 
@@ -151,6 +207,20 @@ void kokos_vm_dump(kokos_vm_t* vm)
 
     printf("stack:\n");
     for (size_t i = 0; i < frame->stack.sp; i++) {
-        printf("\t[%lu] %f\n", i, frame->stack.data[i].as_double);
+        kokos_value_t cur = frame->stack.data[i];
+
+        printf("\t[%lu] ", i);
+
+        if (IS_DOUBLE(cur)) {
+            printf("%f", cur.as_double);
+        } else if IS_TRUE (cur) {
+            printf("true");
+        } else if IS_FALSE (cur) {
+            printf("false");
+        } else {
+            KOKOS_TODO();
+        }
+
+        printf("\n");
     }
 }
