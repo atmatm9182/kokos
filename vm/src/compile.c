@@ -202,6 +202,25 @@ static bool compile_all_args(
     return true;
 }
 
+static bool compile_mul(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
+{
+    if (!compile_all_args(expr, ctx, code)) {
+        return false;
+    }
+
+    DA_ADD(code, INSTR_MUL(expr->list.len - 1));
+    return true;
+}
+
+static bool compile_div(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
+{
+    if (!compile_all_args(expr, ctx, code)) {
+        return false;
+    }
+
+    DA_ADD(code, INSTR_DIV(expr->list.len - 1));
+    return true;
+}
 static bool compile_sub(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
     if (!compile_all_args(expr, ctx, code)) {
@@ -368,6 +387,8 @@ static kokos_sform_pair_t sforms[] = {
     { "proc", compile_procedure_def },
     { "+", compile_add },
     { "-", compile_sub },
+    { "*", compile_mul },
+    { "/", compile_div },
     { "if", compile_if },
     { "<", compile_lt },
     { ">", compile_gt },

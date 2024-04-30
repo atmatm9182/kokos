@@ -8,6 +8,8 @@ const char* kokos_instruction_type_str(kokos_instruction_type_e type)
     case I_POP:         return "pop";
     case I_ADD:         return "add";
     case I_SUB:         return "sub";
+    case I_MUL:         return "mul";
+    case I_DIV:         return "div";
     case I_PUSH_LOCAL:  return "push_local";
     case I_CALL:        return "call";
     case I_JZ:          return "jz";
@@ -17,7 +19,7 @@ const char* kokos_instruction_type_str(kokos_instruction_type_e type)
     case I_CMP:         return "cmp";
     case I_EQ:          return "eq";
     case I_NEQ:         return "neq";
-    default:            KOKOS_TODO(__FUNCTION__);
+    default:            KOKOS_TODO();
     }
 }
 
@@ -30,6 +32,8 @@ void kokos_instruction_dump(kokos_instruction_t instruction)
     case I_PUSH:        printf("%s 0x%lx",  type, instruction.operand); break;
     case I_POP:         printf("%s",        type); break;
     case I_ADD:         printf("%s %lu",    type, instruction.operand); break;
+    case I_MUL:         printf("%s %lu",    type, instruction.operand); break;
+    case I_DIV:         printf("%s %lu",    type, instruction.operand); break;
     case I_SUB:         printf("%s %lu",    type, instruction.operand); break;
     case I_PUSH_LOCAL:  printf("%s %lu",    type, instruction.operand); break;
     case I_CALL:        printf("%s %s",     type, (const char*)instruction.operand); break;

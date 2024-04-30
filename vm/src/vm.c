@@ -118,6 +118,40 @@ static void exec(kokos_vm_t* vm, kokos_compiler_context_t* ctx)
         vm->ip++;
         break;
     }
+    case I_MUL: {
+        double acc = 1.0;
+        for (size_t i = 0; i < instruction.operand; i++) {
+            kokos_value_t val = STACK_POP(&frame->stack);
+            KOKOS_VERIFY(IS_DOUBLE(val));
+            acc *= val.as_double;
+        }
+        STACK_PUSH(&frame->stack, TO_VALUE(acc));
+
+        vm->ip++;
+        break;
+    }
+    case I_DIV: {
+        if (instruction.operand == 0) {
+            STACK_PUSH(&frame->stack, TO_VALUE(NAN_BITS));
+            vm->ip++;
+            break;
+        }
+
+        double divisor = 1.0;
+        for (size_t i = 0; i < instruction.operand - 1; i++) {
+            kokos_value_t val = STACK_POP(&frame->stack);
+            KOKOS_VERIFY(IS_DOUBLE(val));
+            divisor *= val.as_double;
+        }
+
+        kokos_value_t divident = STACK_POP(&frame->stack);
+        KOKOS_VERIFY(IS_DOUBLE(divident));
+
+        STACK_PUSH(&frame->stack, TO_VALUE(divident.as_double / divisor));
+
+        vm->ip++;
+        break;
+    }
     case I_CALL: {
         const char* proc_name = (const char*)instruction.operand;
         kokos_compiled_proc_t* proc = kokos_ctx_get_proc(ctx, proc_name);

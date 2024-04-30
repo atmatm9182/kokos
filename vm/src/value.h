@@ -8,6 +8,7 @@
 // the top 2 bits of NaN are always set to one, and at least one
 // bit in the mantissa set to one, giving us a bitmask 0x7FF8
 
+#define NAN_BITS 0x7FF8000000000000
 #define OBJ_BITS 0x7FFC000000000000
 
 typedef union {

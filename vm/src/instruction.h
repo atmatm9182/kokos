@@ -9,6 +9,8 @@ typedef enum {
     I_POP,
     I_ADD,
     I_SUB,
+    I_MUL,
+    I_DIV,
     I_PUSH_LOCAL,
     I_CALL,
     I_JNZ,
@@ -28,6 +30,8 @@ typedef struct {
 #define INSTR_PUSH(op) ((kokos_instruction_t) { .type = I_PUSH, .operand = (op) })
 #define INSTR_POP(op) ((kokos_instruction_t) { .type = I_POP, .operand = (op) })
 #define INSTR_ADD(op) ((kokos_instruction_t) { .type = I_ADD, .operand = (op) })
+#define INSTR_MUL(op) ((kokos_instruction_t) { .type = I_MUL, .operand = (op) })
+#define INSTR_DIV(op) ((kokos_instruction_t) { .type = I_DIV, .operand = (op) })
 #define INSTR_SUB(op) ((kokos_instruction_t) { .type = I_SUB, .operand = (op) })
 #define INSTR_PUSH_LOCAL(op) ((kokos_instruction_t) { .type = I_PUSH_LOCAL, .operand = (op) })
 #define INSTR_CALL(op) ((kokos_instruction_t) { .type = I_CALL, .operand = (op) })

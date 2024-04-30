@@ -50,6 +50,8 @@ static int run_file(const char* filename)
     kokos_vm_t vm = { 0 };
     kokos_vm_run(&vm, code, &compiler_context);
 
+    kokos_vm_dump(&vm);
+
     return 0;
 }
 
