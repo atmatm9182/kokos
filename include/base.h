@@ -19,13 +19,6 @@
 #endif // BASE_ALLOC
 
 // DYNAMIC ARRAYS
-#define DA_DECLARE(name, t)                                                                        \
-    typedef struct {                                                                               \
-        t* items;                                                                                  \
-        size_t len;                                                                                \
-        size_t cap;                                                                                \
-    } name
-
 #define DA_INIT(arr, l, c)                                                                         \
     do {                                                                                           \
         __typeof__(c) __cap = c ? c : 1;                                                           \
@@ -73,7 +66,11 @@ typedef struct {
     void* value;
 } ht_kv_pair;
 
-DA_DECLARE(ht_bucket, ht_kv_pair);
+typedef struct {
+    ht_kv_pair* items;
+    size_t len;
+    size_t cap;
+} ht_bucket;
 
 typedef int64_t (*ht_hash_func)(const void*);
 typedef bool (*ht_eq_func)(const void*, const void*);

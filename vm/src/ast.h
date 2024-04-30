@@ -42,7 +42,11 @@ typedef struct kokos_expr {
     };
 } kokos_expr_t;
 
-DA_DECLARE(kokos_program_t, kokos_expr_t*);
+typedef struct {
+    kokos_expr_t** items;
+    size_t len;
+    size_t cap;
+} kokos_program_t;
 
 static inline void kokos_expr_dump(const kokos_expr_t* expr)
 {

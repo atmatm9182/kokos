@@ -62,7 +62,7 @@ static void compile_procedure_def(
 
     kokos_params_t params = expr_to_params(params_expr);
 
-    kokos_compiler_context_t new_ctx = kokos_empty_compiler_context();
+    kokos_compiler_context_t new_ctx = kokos_ctx_empty();
     new_ctx.parent = ctx;
     for (size_t i = 0; i < params.len; i++) {
         kokos_ctx_add_local(&new_ctx, params.names[i]);
@@ -330,7 +330,7 @@ static bool string_eq_func(const void* lhs, const void* rhs)
     return strcmp(ls, rs) == 0;
 }
 
-kokos_compiler_context_t kokos_empty_compiler_context(void)
+kokos_compiler_context_t kokos_ctx_empty(void)
 {
     hash_table functions = ht_make(string_hash_func, string_eq_func, 1);
     kokos_variable_list_t vars;

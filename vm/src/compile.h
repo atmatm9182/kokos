@@ -7,7 +7,11 @@
 
 #include <stdint.h>
 
-DA_DECLARE(kokos_variable_list_t, string_view);
+typedef struct {
+    string_view* items;
+    size_t len;
+    size_t cap;
+} kokos_variable_list_t;
 
 typedef struct kokos_compiler_context {
     hash_table functions;
@@ -28,7 +32,7 @@ typedef struct {
     kokos_code_t body;
 } kokos_compiled_proc_t;
 
-kokos_compiler_context_t kokos_empty_compiler_context(void);
+kokos_compiler_context_t kokos_ctx_empty(void);
 void kokos_ctx_add_proc(
     kokos_compiler_context_t* ctx, const char* name, kokos_compiled_proc_t* proc);
 kokos_compiled_proc_t* kokos_ctx_get_proc(kokos_compiler_context_t* ctx, const char* name);
