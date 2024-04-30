@@ -41,6 +41,11 @@ static int run_file(const char* filename)
 
     kokos_compiler_context_t compiler_context = kokos_ctx_empty();
     kokos_code_t code = kokos_compile_program(program, &compiler_context);
+    if (!kokos_compile_ok()) {
+        const char* error_msg = kokos_compile_get_err();
+        fprintf(stderr, "Error while compiling the program: %s\n", error_msg);
+        return 1;
+    }
 
     kokos_vm_t vm = { 0 };
     kokos_vm_run(&vm, code, &compiler_context);
