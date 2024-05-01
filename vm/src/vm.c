@@ -10,18 +10,22 @@
 
 #define STACK_POP(stack) ((stack)->data[--((stack)->sp)])
 
+#define STACK_PEEK(stack) ((stack)->data[(stack)->sp - 1])
+
 #define TO_BOOL(b) (TO_VALUE(b ? TRUE_BITS : FALSE_BITS))
 
 static void exec(kokos_vm_t* vm);
 
 kokos_compiled_proc_t* kokos_store_get_proc(kokos_runtime_store_t* store, const char* name)
 {
-    return ht_find(&store->functions, name);
+    return ht_find(&store->procedures, name);
 }
 
-static kokos_frame_t* alloc_frame(void)
+static kokos_frame_t* alloc_frame(size_t ret_location)
 {
-    return KOKOS_ALLOC(sizeof(kokos_frame_t));
+    kokos_frame_t* frame = KOKOS_ALLOC(sizeof(kokos_frame_t));
+    frame->ret_location = ret_location;
+    return frame;
 }
 
 static kokos_frame_t* current_frame(kokos_vm_t* vm)
@@ -30,40 +34,12 @@ static kokos_frame_t* current_frame(kokos_vm_t* vm)
         KOKOS_VERIFY(0);
     }
 
-    return vm->frames.data[vm->frames.sp - 1];
-}
-
-static kokos_value_t call_proc(kokos_vm_t* vm, const kokos_compiled_proc_t* proc)
-{
-    kokos_frame_t* cur_frame = current_frame(vm);
-    kokos_frame_t* new_frame = alloc_frame();
-
-    for (size_t i = 0; i < proc->params.len; i++) {
-        new_frame->locals[i] = STACK_POP(&cur_frame->stack);
-    }
-
-    STACK_PUSH(&vm->frames, new_frame);
-
-    kokos_code_t vm_instructions = vm->instructions;
-    size_t vm_ip = vm->ip;
-
-    vm->instructions = proc->body;
-    vm->ip = 0;
-    while (vm->ip < vm->instructions.len) {
-        exec(vm);
-    }
-
-    vm->instructions = vm_instructions;
-    vm->ip = vm_ip;
-
-    kokos_value_t return_value = STACK_POP(&new_frame->stack);
-    STACK_POP(&vm->frames);
-    return return_value;
+    return STACK_PEEK(&vm->frames);
 }
 
 static kokos_instruction_t current_instruction(const kokos_vm_t* vm)
 {
-    return vm->instructions.items[vm->ip];
+    return vm->current_instructions->items[vm->ip];
 }
 
 static bool kokos_value_to_bool(kokos_value_t value)
@@ -126,7 +102,7 @@ static kokos_native_proc_t get_native(const char* name)
 
 static void exec(kokos_vm_t* vm)
 {
-    kokos_frame_t* frame = current_frame(vm);
+    kokos_frame_t* frame = STACK_PEEK(&vm->frames);
     kokos_instruction_t instruction = current_instruction(vm);
 
     switch (instruction.type) {
@@ -200,14 +176,35 @@ static void exec(kokos_vm_t* vm)
         break;
     }
     case I_CALL: {
-        const char* proc_name = (const char*)instruction.operand;
-        kokos_compiled_proc_t* proc = kokos_store_get_proc(&vm->store, proc_name);
-        KOKOS_VERIFY(proc);
+        size_t ret_location = (vm->ip + 1)
+            | ((size_t)(vm->frames.sp != 1) << 63); // FIXME: this should use uint64_t values
 
-        kokos_value_t return_value = call_proc(vm, proc);
-        STACK_PUSH(&frame->stack, return_value);
+        uint32_t arity = instruction.operand >> 32;
+        uint32_t ip = instruction.operand & 0xFFFFFFFF;
+        vm->ip = ip;
+        vm->current_instructions = &vm->store.procedure_code;
 
-        vm->ip++;
+        kokos_frame_t* new_frame = alloc_frame(ret_location);
+        for (size_t i = 0; i < arity; i++) {
+            new_frame->locals[i] = STACK_POP(&frame->stack);
+        }
+        STACK_PUSH(&vm->frames, new_frame);
+        break;
+    }
+    case I_RET: {
+        kokos_frame_t* proc_frame = STACK_POP(&vm->frames);
+        kokos_value_t ret_value = STACK_PEEK(&proc_frame->stack);
+
+        const size_t ret_mask = (size_t)1 << 63;
+        vm->ip = proc_frame->ret_location & ~ret_mask;
+
+        if (ret_mask & proc_frame->ret_location) {
+            vm->current_instructions = &vm->store.procedure_code;
+        } else {
+            vm->current_instructions = &vm->instructions;
+        }
+
+        STACK_PUSH(&current_frame(vm)->stack, ret_value);
         break;
     }
     case I_PUSH_LOCAL: {
@@ -285,11 +282,12 @@ static void exec(kokos_vm_t* vm)
 void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code)
 {
     vm->instructions = code;
+    vm->current_instructions = &vm->instructions;
 
-    kokos_frame_t* frame = alloc_frame();
+    kokos_frame_t* frame = alloc_frame(0);
     STACK_PUSH(&vm->frames, frame);
 
-    while (vm->ip < code.len) {
+    while (vm->ip < vm->current_instructions->len) {
         exec(vm);
     }
 
@@ -327,7 +325,9 @@ void kokos_vm_dump(kokos_vm_t* vm)
 kokos_vm_t kokos_vm_create(kokos_compiler_context_t* ctx)
 {
     kokos_vm_t vm = { 0 };
-    vm.store = (kokos_runtime_store_t) { .functions = ctx->functions,
-        .string_store = ctx->string_store };
+    vm.store = (kokos_runtime_store_t) { .procedures = ctx->procedures,
+        .string_store = ctx->string_store,
+        .procedure_code = ctx->procedure_code };
+    vm.frames.sp = 0;
     return vm;
 }

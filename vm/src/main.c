@@ -54,6 +54,8 @@ static int run_file(const char* filename)
     printf("--------------------------------------------------\n");
     kokos_code_dump(code);
     printf("--------------------------------------------------\n");
+    kokos_code_dump(compiler_context.procedure_code);
+    printf("--------------------------------------------------\n");
 
     kokos_vm_t vm = kokos_vm_create(&compiler_context);
     kokos_vm_run(&vm, code);

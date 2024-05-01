@@ -20,6 +20,7 @@ typedef enum {
     I_CMP,
     I_EQ,
     I_NEQ,
+    I_RET,
 } kokos_instruction_type_e;
 
 typedef struct {
@@ -45,6 +46,7 @@ typedef struct {
 #define INSTR_CALL_NATIVE(op) ((kokos_instruction_t) { .type = I_CALL_NATIVE, .operand = (op) })
 
 #define INSTR_CMP ((kokos_instruction_t) { .type = I_CMP })
+#define INSTR_RET ((kokos_instruction_t) { .type = I_RET })
 
 typedef struct {
     kokos_instruction_t* items;

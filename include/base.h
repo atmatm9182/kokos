@@ -36,8 +36,8 @@
 
 #define DA_RESIZE(arr, c)                                                                          \
     do {                                                                                           \
-        (arr)->cap = c;                                                                            \
-        (arr)->items = realloc((arr)->items, c * sizeof((arr)->items[0]));                         \
+        (arr)->cap = (c);                                                                          \
+        (arr)->items = realloc((arr)->items, (c) * sizeof((arr)->items[0]));                       \
     } while (0)
 
 #define DA_GROW(arr)                                                                               \
@@ -51,7 +51,7 @@
         if ((arr)->len == (arr)->cap) {                                                            \
             DA_GROW(arr);                                                                          \
         }                                                                                          \
-        (arr)->items[(arr)->len++] = elem;                                                         \
+        (arr)->items[(arr)->len++] = (elem);                                                       \
     } while (0)
 
 #define DA_FREE(arr)                                                                               \
@@ -279,7 +279,7 @@ BASEDEF void ht_add(hash_table* ht, void* key, void* value)
     ht_kv_pair pair = { .key = key, .value = value };
 
     if (!bucket) {
-        bucket = malloc(sizeof(ht_bucket));
+        bucket = BASE_ALLOC(sizeof(ht_bucket));
         DA_INIT(bucket, 0, 2);
         DA_ADD(bucket, pair);
         ht->buckets[idx] = bucket;

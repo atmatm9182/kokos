@@ -96,7 +96,7 @@ bool expr_to_params(const kokos_expr_t* expr, kokos_params_t* params)
 void kokos_ctx_add_proc(
     kokos_compiler_context_t* ctx, const char* name, kokos_compiled_proc_t* proc)
 {
-    ht_add(&ctx->functions, (void*)name, proc);
+    ht_add(&ctx->procedures, (void*)name, proc);
 }
 
 void kokos_ctx_add_local(kokos_compiler_context_t* ctx, string_view local)
@@ -140,21 +140,19 @@ static bool compile_procedure_def(
     // Add the procedure before the body compilation to allow recursion
     kokos_compiled_proc_t* proc = KOKOS_ALLOC(sizeof(kokos_compiled_proc_t));
     const char* name_str = sv_dup(name);
-    proc->name = name_str;
     proc->params = params;
 
-    kokos_ctx_add_proc(ctx, proc->name, proc);
+    kokos_ctx_add_proc(ctx, name_str, proc);
 
-    kokos_code_t body;
-    DA_INIT(&body, 0, 5);
-
+    size_t proc_ip = ctx->procedure_code.len;
     for (size_t i = 3; i < list.len; i++) {
-        if (!kokos_expr_compile(list.items[i], &new_ctx, &body)) {
+        if (!kokos_expr_compile(list.items[i], &new_ctx, &ctx->procedure_code)) {
             return false;
         }
     }
 
-    proc->body = body;
+    proc->ip = proc_ip;
+    DA_ADD(&ctx->procedure_code, INSTR_RET);
     return true;
 }
 
@@ -485,7 +483,7 @@ bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
             }
         }
 
-        DA_ADD(code, INSTR_CALL((uint64_t)proc->name));
+        DA_ADD(code, INSTR_CALL((proc->params.len << 32) | proc->ip));
         break;
     }
     case EXPR_IDENT: {
@@ -498,7 +496,7 @@ bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
         int64_t local_idx = kokos_ctx_get_var_idx(ctx, expr->token.value);
         KOKOS_VERIFY(local_idx != (size_t)-1);
 
-        DA_ADD(code, INSTR_PUSH_LOCAL(local_idx));
+        DA_ADD(code, INSTR_PUSH_LOCAL((uint64_t)local_idx));
         break;
     }
     case EXPR_STRING_LIT: {
@@ -540,9 +538,17 @@ kokos_code_t kokos_compile_program(kokos_program_t program, kokos_compiler_conte
 }
 
 // TODO: implement this function
-static int64_t string_hash_func(const void* str)
+static int64_t string_hash_func(const void* ptr)
 {
-    return 1337;
+    const char* str = ptr;
+
+    int64_t hash = 5381;
+    int c;
+
+    while ((c = *str++))
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+    return hash;
 }
 
 static bool string_eq_func(const void* lhs, const void* rhs)
@@ -558,12 +564,16 @@ kokos_compiler_context_t kokos_ctx_empty(void)
     hash_table functions = ht_make(string_hash_func, string_eq_func, 1);
     kokos_variable_list_t vars;
     kokos_string_store_t strings;
+    kokos_code_t code;
     DA_INIT(&vars, 0, 0);
     DA_INIT(&strings, 0, 0);
+    DA_INIT(&code, 0, 0);
 
-    return (kokos_compiler_context_t) {
-        .functions = functions, .locals = vars, .parent = NULL, .string_store = strings
-    };
+    return (kokos_compiler_context_t) { .procedures = functions,
+        .locals = vars,
+        .parent = NULL,
+        .string_store = strings,
+        .procedure_code = code };
 }
 
 kokos_compiled_proc_t* kokos_ctx_get_proc(kokos_compiler_context_t* ctx, const char* name)
@@ -571,7 +581,7 @@ kokos_compiled_proc_t* kokos_ctx_get_proc(kokos_compiler_context_t* ctx, const c
     if (!ctx)
         return NULL;
 
-    kokos_compiled_proc_t* proc = ht_find(&ctx->functions, name);
+    kokos_compiled_proc_t* proc = ht_find(&ctx->procedures, name);
     if (!proc)
         return kokos_ctx_get_proc(ctx->parent, name);
 

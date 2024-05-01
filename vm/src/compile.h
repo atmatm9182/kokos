@@ -14,7 +14,7 @@ typedef struct {
 } kokos_variable_list_t;
 
 typedef struct {
-    const char* ptr;
+    char* ptr;
     size_t len;
 } kokos_string_t;
 
@@ -25,9 +25,10 @@ typedef struct {
 } kokos_string_store_t;
 
 typedef struct kokos_compiler_context {
-    hash_table functions;
+    hash_table procedures;
     kokos_variable_list_t locals;
     kokos_string_store_t string_store;
+    kokos_code_t procedure_code;
 
     struct kokos_compiler_context* parent;
 } kokos_compiler_context_t;
@@ -39,9 +40,8 @@ typedef struct {
 } kokos_params_t;
 
 typedef struct {
-    const char* name;
     kokos_params_t params;
-    kokos_code_t body;
+    size_t ip;
 } kokos_compiled_proc_t;
 
 kokos_compiler_context_t kokos_ctx_empty(void);
@@ -49,7 +49,7 @@ void kokos_ctx_add_proc(
     kokos_compiler_context_t* ctx, const char* name, kokos_compiled_proc_t* proc);
 kokos_compiled_proc_t* kokos_ctx_get_proc(kokos_compiler_context_t* ctx, const char* name);
 
-// NOTE: maybe crate a compiler structure so we potentially can run it multithreaded
+// NOTE: maybe create a compiler structure so we potentially can run it multithreaded
 bool kokos_expr_compile(
     const kokos_expr_t* expr, kokos_compiler_context_t* context, kokos_code_t* code);
 kokos_code_t kokos_compile_program(kokos_program_t program, kokos_compiler_context_t* ctx);
