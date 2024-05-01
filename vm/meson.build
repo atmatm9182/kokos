@@ -4,6 +4,7 @@ vm_sources = [
   'src/vm.c',
   'src/compile.c',
   'src/instruction.c',
+  'src/native.c',
 ]
 
 kokosvm_cargs = ['-Wno-unused-value', '-DBASE_IMPLEMENTATION', '-DBASE_STATIC']

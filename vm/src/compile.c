@@ -1,4 +1,5 @@
 #include "macros.h"
+#include "src/native.h"
 #include "token.h"
 
 #include "base.h"
@@ -411,23 +412,6 @@ static kokos_sform_t get_sform(string_view name)
     return NULL;
 }
 
-static const char* natives[] = {
-    "print",
-};
-
-#define NATIVES_COUNT (sizeof(natives) / sizeof(natives[0]))
-
-static const char* get_native(string_view sv)
-{
-    for (size_t i = 0; i < NATIVES_COUNT; i++) {
-        if (sv_eq_cstr(sv, natives[i])) {
-            return natives[i];
-        }
-    }
-
-    return NULL;
-}
-
 bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
     switch (expr->type) {
@@ -450,7 +434,7 @@ bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
             break;
         }
 
-        const char* native = get_native(head);
+        kokos_native_proc_t native = kokos_find_native(head);
         if (native) {
             compile_all_args(expr, ctx, code);
             DA_ADD(code, INSTR_CALL_NATIVE((uint64_t)native));

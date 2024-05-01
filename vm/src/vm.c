@@ -2,17 +2,7 @@
 #include "base.h"
 #include "compile.h"
 #include "macros.h"
-
-#define STACK_PUSH(stack, value)                                                                   \
-    do {                                                                                           \
-        (stack)->data[(stack)->sp++] = (value);                                                    \
-    } while (0)
-
-#define STACK_POP(stack) ((stack)->data[--((stack)->sp)])
-
-#define STACK_PEEK(stack) ((stack)->data[(stack)->sp - 1])
-
-#define TO_BOOL(b) (TO_VALUE(b ? TRUE_BITS : FALSE_BITS))
+#include "native.h"
 
 static void exec(kokos_vm_t* vm);
 
@@ -56,48 +46,6 @@ static uint64_t kokos_cmp_values(kokos_value_t lhs, kokos_value_t rhs)
     KOKOS_VERIFY(
         IS_DOUBLE(lhs) && IS_DOUBLE(rhs)); // TODO: allow comparing of any values or throw an error
     return lhs.as_double < rhs.as_double ? -1 : 1;
-}
-
-static void native_print(kokos_vm_t* vm)
-{
-    kokos_frame_t* frame = current_frame(vm);
-    kokos_value_t value = STACK_POP(&frame->stack);
-
-    if (IS_DOUBLE(value)) {
-        printf("%f\n", value.as_double);
-        return;
-    }
-
-    if (IS_STRING(value)) {
-        size_t idx = value.as_int & ~STRING_BITS;
-        kokos_string_t string = vm->store.string_store.items[idx];
-        printf("%.*s\n", (int)string.len, string.ptr);
-        return;
-    }
-
-    KOKOS_TODO();
-}
-
-typedef void (*kokos_native_proc_t)(kokos_vm_t* vm);
-
-typedef struct {
-    const char* name;
-    kokos_native_proc_t proc;
-} kokos_named_native_proc_t;
-
-static kokos_named_native_proc_t natives[] = { { "print", native_print } };
-
-#define NATIVES_COUNT (sizeof(natives) / sizeof(natives[0]))
-
-static kokos_native_proc_t get_native(const char* name)
-{
-    for (size_t i = 0; i < NATIVES_COUNT; i++) {
-        if (strcmp(name, natives[i].name) == 0) {
-            return natives[i].proc;
-        }
-    }
-
-    return NULL;
 }
 
 static void exec(kokos_vm_t* vm)
@@ -263,8 +211,7 @@ static void exec(kokos_vm_t* vm)
         break;
     }
     case I_CALL_NATIVE: {
-        const char* native_name = (const char*)instruction.operand;
-        kokos_native_proc_t native = get_native(native_name);
+        kokos_native_proc_t native = (kokos_native_proc_t)instruction.operand;
         native(vm);
         vm->ip++;
         break;

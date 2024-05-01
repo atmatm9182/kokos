@@ -9,6 +9,17 @@
 #define OP_STACK_SIZE 1024
 #define FRAME_STACK_SIZE 1024
 
+#define STACK_PUSH(stack, value)                                                                   \
+    do {                                                                                           \
+        (stack)->data[(stack)->sp++] = (value);                                                    \
+    } while (0)
+
+#define STACK_POP(stack) ((stack)->data[--((stack)->sp)])
+
+#define STACK_PEEK(stack) ((stack)->data[(stack)->sp - 1])
+
+#define TO_BOOL(b) (TO_VALUE(b ? TRUE_BITS : FALSE_BITS))
+
 typedef struct {
     hash_table procedures;
     kokos_code_t procedure_code;
@@ -32,7 +43,7 @@ typedef struct {
     size_t sp;
 } kokos_frame_stack_t;
 
-typedef struct {
+typedef struct kokos_vm {
     kokos_runtime_store_t store;
     kokos_frame_stack_t frames;
     kokos_code_t instructions;
