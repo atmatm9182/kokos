@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -72,7 +73,7 @@ typedef struct {
     size_t cap;
 } ht_bucket;
 
-typedef int64_t (*ht_hash_func)(const void*);
+typedef uint64_t (*ht_hash_func)(const void*);
 typedef bool (*ht_eq_func)(const void*, const void*);
 
 typedef struct {
@@ -261,9 +262,9 @@ BASEDEF hash_table ht_make(ht_hash_func hash_func, ht_eq_func eq_func, size_t ca
     };
 }
 
-static inline size_t __ht_idx_for(const hash_table* ht, const void* key)
+static inline uint64_t __ht_idx_for(const hash_table* ht, const void* key)
 {
-    int64_t hash = ht->hash_function(key);
+    uint64_t hash = ht->hash_function(key);
     return hash % ht->cap;
 }
 

@@ -13,9 +13,8 @@ static void native_print(kokos_vm_t* vm)
     }
 
     if (IS_STRING(value)) {
-        size_t idx = value.as_int & ~STRING_BITS;
-        kokos_string_t string = vm->store.string_store.items[idx];
-        printf("%.*s\n", (int)string.len, string.ptr);
+        kokos_string_t* string = (kokos_string_t*)(value.as_int & ~STRING_BITS);
+        printf("%.*s\n", (int)string->len, string->ptr);
         return;
     }
 
@@ -27,7 +26,9 @@ typedef struct {
     kokos_native_proc_t proc;
 } kokos_named_native_proc_t;
 
-static kokos_named_native_proc_t natives[] = { { "print", native_print } };
+static kokos_named_native_proc_t natives[] = {
+    { "print", native_print },
+};
 
 #define NATIVES_COUNT (sizeof(natives) / sizeof(natives[0]))
 

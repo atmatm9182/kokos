@@ -1,5 +1,6 @@
 #include "macros.h"
-#include "src/native.h"
+#include "hash.h"
+#include "native.h"
 #include "token.h"
 
 #include "base.h"
@@ -412,6 +413,23 @@ static kokos_sform_t get_sform(string_view name)
     return NULL;
 }
 
+static void kokos_compile_string_lit(
+    const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
+{
+
+    string_view value = expr->token.value;
+    char* str = KOKOS_ALLOC(sizeof(char) * value.size);
+    memcpy(str, value.ptr, value.size * sizeof(char));
+
+    kokos_string_t* string = KOKOS_ALLOC(sizeof(kokos_string_t));
+    string->ptr = str;
+    string->len = value.size;
+    DA_ADD(&ctx->string_store, string);
+
+    uint64_t string_value = STRING_BITS | (uint64_t)string;
+    DA_ADD(code, INSTR_PUSH(string_value));
+}
+
 bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
     switch (expr->type) {
@@ -484,15 +502,32 @@ bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
         break;
     }
     case EXPR_STRING_LIT: {
-        string_view value = expr->token.value;
-        char* str = KOKOS_ALLOC(sizeof(char) * value.size);
-        memcpy(str, value.ptr, value.size * sizeof(char));
+        kokos_compile_string_lit(expr, ctx, code);
+        break;
+    }
+    case EXPR_MAP: {
+        kokos_map_t map = expr->map;
+        for (size_t i = 0; i < map.len; i++) {
+            if (!kokos_expr_compile(map.keys[i], ctx, code)) {
+                return false;
+            }
+            if (!kokos_expr_compile(map.values[i], ctx, code)) {
+                return false;
+            }
+        }
 
-        kokos_string_t string = { .ptr = str, .len = value.size };
-        DA_ADD(&ctx->string_store, string);
+        DA_ADD(code, INSTR_ALLOC(MAP_BITS, map.len));
+        break;
+    }
+    case EXPR_VECTOR: {
+        kokos_vec_t vec = expr->vec;
+        for (ssize_t i = vec.len - 1; i >= 0; i--) {
+            if (!kokos_expr_compile(vec.items[i], ctx, code)) {
+                return false;
+            }
+        }
 
-        uint64_t string_value = STRING_BITS | (ctx->string_store.len - 1);
-        DA_ADD(code, INSTR_PUSH(string_value));
+        DA_ADD(code, INSTR_ALLOC(VECTOR_BITS, vec.len));
         break;
     }
     default: {
@@ -521,18 +556,9 @@ kokos_code_t kokos_compile_program(kokos_program_t program, kokos_compiler_conte
     return code;
 }
 
-// TODO: implement this function
-static int64_t string_hash_func(const void* ptr)
+static uint64_t string_hash_func(const void* ptr)
 {
-    const char* str = ptr;
-
-    int64_t hash = 5381;
-    int c;
-
-    while ((c = *str++))
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-
-    return hash;
+    return hash_djb2((const char*)ptr);
 }
 
 static bool string_eq_func(const void* lhs, const void* rhs)

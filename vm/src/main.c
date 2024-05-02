@@ -46,16 +46,16 @@ static int run_file(const char* filename)
     kokos_program_t program = kokos_parser_program(&parser);
     uint64_t parser_end = get_time_stamp();
 
-    printf("program ast:\n");
-    printf("--------------------------------------------------\n");
-    kokos_program_dump(program);
-    printf("--------------------------------------------------\n\n");
-
     if (!kokos_parser_ok(&parser)) {
         const char* error_msg = kokos_parser_get_err(&parser);
         fprintf(stderr, "Error while parsing the program: %s\n", error_msg);
         return 1;
     }
+
+    printf("program ast:\n");
+    printf("--------------------------------------------------\n");
+    kokos_program_dump(program);
+    printf("--------------------------------------------------\n\n");
 
     kokos_compiler_context_t compiler_context = kokos_ctx_empty();
 

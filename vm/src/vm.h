@@ -3,6 +3,7 @@
 
 #include "base.h"
 #include "compile.h"
+#include "gc.h"
 #include "instruction.h"
 #include "value.h"
 
@@ -34,8 +35,7 @@ typedef struct {
 typedef struct {
     kokos_value_t locals[256];
     kokos_op_stack_t stack;
-    size_t ret_location; // set the highest bit to indicate whether to return to the main code or
-                         // procedure code
+    size_t ret_location; // set the highest bit to indicate whether to return to procedure code
 } kokos_frame_t;
 
 typedef struct {
@@ -44,8 +44,10 @@ typedef struct {
 } kokos_frame_stack_t;
 
 typedef struct kokos_vm {
+    kokos_gc_t gc;
     kokos_runtime_store_t store;
     kokos_frame_stack_t frames;
+
     kokos_code_t instructions;
     kokos_code_t* current_instructions;
     size_t ip;

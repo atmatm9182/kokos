@@ -3,6 +3,7 @@
 #include "compile.h"
 #include "macros.h"
 #include "native.h"
+#include "runtime.h"
 
 static void exec(kokos_vm_t* vm);
 
@@ -46,6 +47,42 @@ static uint64_t kokos_cmp_values(kokos_value_t lhs, kokos_value_t rhs)
     KOKOS_VERIFY(
         IS_DOUBLE(lhs) && IS_DOUBLE(rhs)); // TODO: allow comparing of any values or throw an error
     return lhs.as_double < rhs.as_double ? -1 : 1;
+}
+
+kokos_value_t kokos_alloc_value(kokos_vm_t* vm, uint64_t params)
+{
+    kokos_frame_t* frame = STACK_PEEK(&vm->frames);
+
+    switch (GET_TAG(params)) {
+    case VECTOR_TAG: {
+        kokos_runtime_vector_t* vec = (kokos_runtime_vector_t*)kokos_gc_alloc(&vm->gc, VECTOR_TAG);
+
+        uint32_t count = params & 0xFFFFFFFF;
+        for (size_t i = 0; i < count; i++) {
+            DA_ADD(vec, STACK_POP(&frame->stack));
+        }
+
+        return TO_VALUE((uint64_t)vec | VECTOR_BITS);
+    }
+    case MAP_TAG: {
+        kokos_runtime_map_t* map = (kokos_runtime_map_t*)kokos_gc_alloc(&vm->gc, MAP_TAG);
+
+        uint32_t count = params & 0xFFFFFFFF;
+        for (size_t i = 0; i < count; i++) {
+            kokos_value_t value = STACK_POP(&frame->stack);
+            kokos_value_t key = STACK_POP(&frame->stack);
+            kokos_runtime_map_add(map, key, value);
+        }
+
+        return TO_VALUE((uint64_t)map | MAP_BITS);
+    }
+    default: {
+        char buf[128] = { 0 };
+        printf("0x%lx\n", VECTOR_TAG);
+        sprintf(buf, "allocation of type with tag 0x%lx not implemented", GET_TAG(params));
+        KOKOS_TODO(buf);
+    }
+    }
 }
 
 static void exec(kokos_vm_t* vm)
@@ -216,8 +253,13 @@ static void exec(kokos_vm_t* vm)
         vm->ip++;
         break;
     }
+    case I_ALLOC: {
+        kokos_value_t value = kokos_alloc_value(vm, instruction.operand);
+        STACK_PUSH(&frame->stack, value);
+        vm->ip++;
+        break;
+    }
     default: {
-
         char buf[128] = { 0 };
         sprintf(buf, "execution of instruction %s is not implemented",
             kokos_instruction_type_str(instruction.type));
@@ -241,29 +283,92 @@ void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code)
     // NOTE: we do not pop the frame here after the vm has ran
 }
 
+static void print_value(kokos_value_t value)
+{
+
+    if (IS_TRUE(value)) {
+        printf("true");
+        return;
+    }
+
+    if (IS_FALSE(value)) {
+        printf("false");
+        return;
+    }
+
+    if (IS_NIL(value)) {
+        printf("nil");
+        return;
+    }
+
+    switch (VALUE_TAG(value)) {
+    case STRING_TAG: {
+        kokos_string_t* string = (kokos_string_t*)(value.as_int & ~STRING_BITS);
+        printf("%.*s", (int)string->len, string->ptr);
+        break;
+    }
+    case VECTOR_TAG: {
+        kokos_runtime_vector_t* vector = (kokos_runtime_vector_t*)(value.as_int & ~VECTOR_BITS);
+        printf("[");
+        for (size_t i = 0; i < vector->len; i++) {
+            print_value(vector->items[i]);
+            if (i != vector->len - 1) {
+                printf(" ");
+            }
+        }
+        printf("]");
+        break;
+    }
+    case MAP_TAG: {
+        kokos_runtime_map_t* map = (kokos_runtime_map_t*)(value.as_int & ~MAP_BITS);
+        hash_table table = map->table;
+
+        size_t printed_count = 0;
+        printf("{");
+        for (size_t i = 0; i < table.cap; i++) {
+            ht_bucket* bucket = table.buckets[i];
+            if (!bucket) {
+                continue;
+            }
+
+            for (size_t j = 0; j < bucket->len; j++) {
+                ht_kv_pair kv = bucket->items[j];
+                kokos_value_t key = TO_VALUE((uint64_t)kv.key);
+                kokos_value_t value = TO_VALUE((uint64_t)kv.value);
+
+                print_value(key);
+                printf(" ");
+                print_value(value);
+                if (j != bucket->len - 1) {
+                    printf(" ");
+                }
+            }
+
+            if (++printed_count != table.len) {
+                printf(" ");
+            }
+        }
+        printf("}");
+        break;
+    }
+    default: {
+        KOKOS_VERIFY(IS_DOUBLE(value));
+        printf("%f", value.as_double);
+        break;
+    }
+    }
+}
+
 void kokos_vm_dump(kokos_vm_t* vm)
 {
     kokos_frame_t* frame = current_frame(vm);
 
     printf("stack:\n");
     for (size_t i = 0; i < frame->stack.sp; i++) {
-        kokos_value_t cur = frame->stack.data[i];
-
         printf("\t[%lu] ", i);
 
-        if (IS_DOUBLE(cur)) {
-            printf("%f", cur.as_double);
-        } else if (IS_TRUE(cur)) {
-            printf("true");
-        } else if (IS_FALSE(cur)) {
-            printf("false");
-        } else if (IS_STRING(cur)) {
-            size_t idx = cur.as_int & ~STRING_BITS;
-            kokos_string_t value = vm->store.string_store.items[idx];
-            printf("%.*s", (int)value.len, value.ptr);
-        } else {
-            KOKOS_TODO();
-        }
+        kokos_value_t cur = frame->stack.data[i];
+        print_value(cur);
 
         printf("\n");
     }
@@ -276,5 +381,10 @@ kokos_vm_t kokos_vm_create(kokos_compiler_context_t* ctx)
         .string_store = ctx->string_store,
         .procedure_code = ctx->procedure_code };
     vm.frames.sp = 0;
+
+    kokos_gc_object_list_t gc_objs;
+    DA_INIT(&gc_objs, 0, 100);
+    vm.gc = (kokos_gc_t) { .objects = gc_objs, .max_objs = 200 };
+
     return vm;
 }

@@ -21,6 +21,7 @@ typedef enum {
     I_EQ,
     I_NEQ,
     I_RET,
+    I_ALLOC,
 } kokos_instruction_type_e;
 
 typedef struct {
@@ -47,6 +48,8 @@ typedef struct {
 
 #define INSTR_CMP ((kokos_instruction_t) { .type = I_CMP })
 #define INSTR_RET ((kokos_instruction_t) { .type = I_RET })
+
+#define INSTR_ALLOC(t, count) ((kokos_instruction_t) { .type = I_ALLOC, .operand = (t) | (count) })
 
 typedef struct {
     kokos_instruction_t* items;

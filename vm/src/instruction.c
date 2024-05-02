@@ -20,35 +20,36 @@ const char* kokos_instruction_type_str(kokos_instruction_type_e type)
     case I_EQ:          return "eq";
     case I_NEQ:         return "neq";
     case I_RET:         return "ret";
+    case I_ALLOC:       return "alloc";
     default:            KOKOS_TODO();
     }
 }
 
-// clang-format off
 void kokos_instruction_dump(kokos_instruction_t instruction)
 {
     const char* type = kokos_instruction_type_str(instruction.type);
 
     switch (instruction.type) {
-    case I_PUSH:        printf("%s 0x%lx",  type, instruction.operand); break;
-    case I_POP:         printf("%s",        type); break;
-    case I_ADD:         printf("%s %lu",    type, instruction.operand); break;
-    case I_MUL:         printf("%s %lu",    type, instruction.operand); break;
-    case I_DIV:         printf("%s %lu",    type, instruction.operand); break;
-    case I_SUB:         printf("%s %lu",    type, instruction.operand); break;
-    case I_PUSH_LOCAL:  printf("%s %lu",    type, instruction.operand); break;
-    case I_CALL:        printf("%s 0x%lx",  type, instruction.operand); break;
-    case I_JZ:          printf("%s %ld",    type, (int64_t)instruction.operand); break;
-    case I_JNZ:         printf("%s %ld",    type, (int64_t)instruction.operand); break;
-    case I_BRANCH:      printf("%s %ld",    type, (int64_t)instruction.operand); break;
-    case I_CALL_NATIVE: printf("%s 0x%lx",  type, instruction.operand); break;
-    case I_CMP:         printf("%s",        type); break;
-    case I_EQ:          printf("%s 0x%lx",  type, instruction.operand); break;
-    case I_NEQ:         printf("%s 0x%lx",  type, instruction.operand); break;
-    case I_RET:         printf("%s",        type); break;
+    case I_PUSH:        printf("%s 0x%lx", type, instruction.operand); break;
+    case I_POP:         printf("%s", type); break;
+    case I_ADD:         printf("%s %lu", type, instruction.operand); break;
+    case I_MUL:         printf("%s %lu", type, instruction.operand); break;
+    case I_DIV:         printf("%s %lu", type, instruction.operand); break;
+    case I_SUB:         printf("%s %lu", type, instruction.operand); break;
+    case I_PUSH_LOCAL:  printf("%s %lu", type, instruction.operand); break;
+    case I_CALL:        printf("%s 0x%lx", type, instruction.operand); break;
+    case I_JZ:          printf("%s %ld", type, (int64_t)instruction.operand); break;
+    case I_JNZ:         printf("%s %ld", type, (int64_t)instruction.operand); break;
+    case I_BRANCH:      printf("%s %ld", type, (int64_t)instruction.operand); break;
+    case I_CALL_NATIVE: printf("%s 0x%lx", type, instruction.operand); break;
+    case I_CMP:         printf("%s", type); break;
+    case I_EQ:          printf("%s 0x%lx", type, instruction.operand); break;
+    case I_NEQ:         printf("%s 0x%lx", type, instruction.operand); break;
+    case I_RET:         printf("%s", type); break;
+    case I_ALLOC:       printf("%s 0x%lx", type, instruction.operand); break;
+    default:            KOKOS_TODO();
     }
 }
-// clang-format on
 
 void kokos_code_dump(kokos_code_t code)
 {

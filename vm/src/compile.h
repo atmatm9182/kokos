@@ -19,7 +19,7 @@ typedef struct {
 } kokos_string_t;
 
 typedef struct {
-    kokos_string_t* items;
+    kokos_string_t** items;
     size_t len;
     size_t cap;
 } kokos_string_store_t;

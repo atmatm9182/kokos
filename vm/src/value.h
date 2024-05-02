@@ -21,6 +21,11 @@ typedef union {
 #define LIST_BITS 0x7FFF800000000000
 #define VECTOR_BITS 0x7FFD000000000000
 
+#define STRING_TAG (STRING_BITS >> 48)
+#define MAP_TAG (MAP_BITS >> 48)
+#define LIST_TAG (LIST_BITS >> 48)
+#define VECTOR_TAG (VECTOR_BITS >> 48)
+
 #define TRUE_BITS (OBJ_BITS | 1)
 #define FALSE_BITS (OBJ_BITS | 2)
 #define NIL_BITS (OBJ_BITS | 4)
@@ -36,6 +41,13 @@ typedef union {
 #define IS_NIL(val) ((val).as_int == NIL_BITS)
 
 #define TO_VALUE(i)                                                                                \
-    (_Generic((i), long: (kokos_value_t) { .as_int = (i) }, uint64_t: (kokos_value_t) { .as_int = (i) }, double: (kokos_value_t) { .as_double = (i) }))
+    (_Generic((i),                                                                                 \
+        int: (kokos_value_t) { .as_int = (uint64_t)(i) },                                          \
+        long: (kokos_value_t) { .as_int = (uint64_t)(i) },                                         \
+        uint64_t: (kokos_value_t) { .as_int = (i) },                                               \
+        double: (kokos_value_t) { .as_double = (i) }))
+
+#define GET_TAG(i) ((i) >> 48)
+#define VALUE_TAG(val) (GET_TAG((val).as_int))
 
 #endif // VALUE_H_
