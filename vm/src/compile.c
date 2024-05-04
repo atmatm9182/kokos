@@ -69,7 +69,6 @@ static uint64_t to_double_bytes(const kokos_expr_t* expr)
     return TO_VALUE(parsed).as_int;
 }
 
-// TODO: handle variadics
 bool expr_to_params(const kokos_expr_t* expr, kokos_params_t* params)
 {
     kokos_list_t list = expr->list;
@@ -180,7 +179,6 @@ static size_t kokos_ctx_get_var_idx(const kokos_compiler_context_t* ctx, string_
     return (size_t)-1;
 }
 
-// TODO: refactor this
 static bool get_special_value(string_view value, uint64_t* out)
 {
     if (sv_eq_cstr(value, "true")) {
@@ -255,7 +253,12 @@ static bool compile_add(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
 static bool compile_if(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
     // TODO: support other forms of if expression and handle an error
-    KOKOS_VERIFY(expr->list.len == 4);
+    //
+    if (expr->list.len < 3 || expr->list.len > 4) {
+
+        set_error(expr->token.location, "badly formed 'if' expression");
+        return false;
+    }
 
     kokos_list_t exprs = expr->list;
 
@@ -270,21 +273,34 @@ static bool compile_if(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, 
         return false;
     }
 
-    DA_ADD(code, INSTR_BRANCH(0));
+    switch (expr->list.len) {
+    case 4: {
+        DA_ADD(code, INSTR_BRANCH(0));
 
-    size_t consequence_ip = code->len - start_ip;
-    if (!kokos_expr_compile(exprs.items[3], ctx, code)) {
-        return false;
+        size_t consequence_ip = code->len - start_ip;
+        if (!kokos_expr_compile(exprs.items[3], ctx, code)) {
+            return false;
+        }
+
+        KOKOS_ASSERT(code->items[start_ip - 1].type == I_JZ);
+        code->items[start_ip - 1].operand = consequence_ip + 1; // patch the jump instruction
+
+        KOKOS_ASSERT(code->items[consequence_ip + start_ip - 1].type == I_BRANCH);
+        code->items[consequence_ip + start_ip - 1].operand
+            = code->len - (consequence_ip + start_ip) + 1; // patch the branch instruction
+
+        return true;
+    }
+    case 3: {
+        size_t consequence_ip = code->len - start_ip;
+        KOKOS_ASSERT(code->items[start_ip - 1].type == I_JZ);
+        code->items[start_ip - 1].operand = consequence_ip + 1; // patch the jump instruction
+        return true;
+    }
+    default: KOKOS_VERIFY("unreachable");
     }
 
-    KOKOS_ASSERT(code->items[start_ip - 1].type == I_JZ);
-    code->items[start_ip - 1].operand = consequence_ip + 1; // patch the jump instruction
-
-    KOKOS_ASSERT(code->items[consequence_ip + start_ip - 1].type == I_BRANCH);
-    code->items[consequence_ip + start_ip - 1].operand
-        = code->len - (consequence_ip + start_ip) + 1; // patch the branch instruction
-
-    return true;
+    return false;
 }
 
 static bool compile_eq(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
