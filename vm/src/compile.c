@@ -441,6 +441,84 @@ static void kokos_compile_string_lit(
     DA_ADD(code, INSTR_PUSH(string_value));
 }
 
+static bool compile_list(
+    const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
+{
+    kokos_list_t list = expr->list;
+    KOKOS_VERIFY(list.len > 0); // TODO: handle empty list
+    string_view head = list.items[0]->token.value;
+
+    kokos_sform_t sform = get_sform(head);
+    if (sform) {
+        if (!sform(expr, ctx, code)) {
+            return false;
+        }
+        return true;
+    }
+
+    kokos_native_proc_t native = kokos_find_native(head);
+    if (native) {
+        compile_all_args(expr, ctx, code);
+        DA_ADD(code, INSTR_CALL_NATIVE((uint64_t)native));
+        return true;
+    }
+
+    KOKOS_VERIFY(head.size < 256);
+
+    char head_buf[256];
+    sprintf(head_buf, SV_FMT, (int)head.size, head.ptr);
+    head_buf[head.size] = '\0';
+
+    kokos_compiled_proc_t* proc = kokos_ctx_get_proc(ctx, head_buf);
+    if (!proc) {
+        set_error(list.items[0]->token.location, "undefined procedure '" SV_FMT "'", (int)head.size,
+            head.ptr);
+        return false;
+    }
+
+    if (proc->params.variadic) {
+        if (list.len < proc->params.len) {
+            set_error(expr->token.location,
+                "expected at least %lu arguments for procedure '" SV_FMT "', got %lu instead",
+                proc->params.len - 1, (int)head.size, head.ptr, list.len - 1);
+            return false;
+        }
+
+        size_t i;
+        for (i = 1; i < proc->params.len; i++) {
+            if (!kokos_expr_compile(list.items[i], ctx, code)) {
+                return false;
+            }
+        }
+
+        for (size_t j = list.len - 1; j >= i; j--) {
+            if (!kokos_expr_compile(list.items[j], ctx, code)) {
+                return false;
+            }
+        }
+
+        DA_ADD(code, INSTR_ALLOC(VECTOR_BITS, list.len - proc->params.len));
+        DA_ADD(code, INSTR_CALL(proc->params.len, proc->ip));
+        return true;
+    }
+
+    if (proc->params.len != list.len - 1) {
+        set_error(expr->token.location,
+            "expected %lu arguments for procedure '" SV_FMT "', got %lu instead", proc->params.len,
+            (int)head.size, head.ptr, list.len - 1);
+        return false;
+    }
+
+    for (size_t i = 1; i < list.len; i++) {
+        if (!kokos_expr_compile(list.items[i], ctx, code)) {
+            return false;
+        }
+    }
+
+    DA_ADD(code, INSTR_CALL(proc->params.len << 32, proc->ip));
+    return true;
+}
+
 bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
     switch (expr->type) {
@@ -451,79 +529,7 @@ bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
         break;
     }
     case EXPR_LIST: {
-        kokos_list_t list = expr->list;
-        KOKOS_VERIFY(list.len > 0); // TODO: handle empty list
-        string_view head = list.items[0]->token.value;
-
-        kokos_sform_t sform = get_sform(head);
-        if (sform) {
-            if (!sform(expr, ctx, code)) {
-                return false;
-            }
-            break;
-        }
-
-        kokos_native_proc_t native = kokos_find_native(head);
-        if (native) {
-            compile_all_args(expr, ctx, code);
-            DA_ADD(code, INSTR_CALL_NATIVE((uint64_t)native));
-            break;
-        }
-
-        KOKOS_VERIFY(head.size < 256);
-
-        char head_buf[256];
-        sprintf(head_buf, SV_FMT, (int)head.size, head.ptr);
-        head_buf[head.size] = '\0';
-
-        kokos_compiled_proc_t* proc = kokos_ctx_get_proc(ctx, head_buf);
-        if (!proc) {
-            set_error(list.items[0]->token.location, "undefined procedure '" SV_FMT "'",
-                (int)head.size, head.ptr);
-            return false;
-        }
-
-        if (proc->params.variadic) {
-            if (list.len < proc->params.len) {
-                set_error(expr->token.location,
-                    "expected at least %lu arguments for procedure '" SV_FMT "', got %lu instead",
-                    proc->params.len - 1, (int)head.size, head.ptr, list.len - 1);
-                return false;
-            }
-
-            size_t i;
-            for (i = 1; i < proc->params.len; i++) {
-                if (!kokos_expr_compile(list.items[i], ctx, code)) {
-                    return false;
-                }
-            }
-
-            for (size_t j = list.len - 1; j >= i; j--) {
-                if (!kokos_expr_compile(list.items[j], ctx, code)) {
-                    return false;
-                }
-            }
-
-            DA_ADD(code, INSTR_ALLOC(VECTOR_BITS, list.len - proc->params.len));
-            DA_ADD(code, INSTR_CALL(proc->params.len, proc->ip));
-            break;
-        }
-
-        if (proc->params.len != list.len - 1) {
-            set_error(expr->token.location,
-                "expected %lu arguments for procedure '" SV_FMT "', got %lu instead",
-                proc->params.len, (int)head.size, head.ptr, list.len - 1);
-            return false;
-        }
-
-        for (size_t i = 1; i < list.len; i++) {
-            if (!kokos_expr_compile(list.items[i], ctx, code)) {
-                return false;
-            }
-        }
-
-        DA_ADD(code, INSTR_CALL(proc->params.len << 32, proc->ip));
-        break;
+        return compile_list(expr, ctx, code);
     }
     case EXPR_IDENT: {
         uint64_t special;

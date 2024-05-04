@@ -178,7 +178,8 @@ static void exec(kokos_vm_t* vm)
     }
     case I_RET: {
         kokos_frame_t* proc_frame = STACK_POP(&vm->frames);
-        kokos_value_t ret_value = STACK_PEEK(&proc_frame->stack);
+        kokos_value_t ret_value
+            = proc_frame->stack.sp == 0 ? TO_VALUE(NIL_BITS) : STACK_PEEK(&proc_frame->stack);
 
         const size_t ret_mask = (size_t)1 << 63;
         vm->ip = proc_frame->ret_location & ~ret_mask;
