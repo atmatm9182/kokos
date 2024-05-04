@@ -6,4 +6,5 @@ baseinc = include_directories('include')
 
 subdir('lexer')
 subdir('interpreter')
+subdir('vm')
 subdir('tests')
