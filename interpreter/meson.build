@@ -16,7 +16,7 @@ interpreterlibinc = [lexerinc, baseinc]
 interpreterlib = library('kokosinterpreter',
                          interpreterlib_sources,
                          include_directories : interpreterlibinc,
-                         c_args: ['-DBASE_IMPL', '-DBASE_STATIC'],
+                         c_args: ['-DBASE_IMPLEMENTATION', '-DBASE_STATIC'],
                          link_with : lexerlib)
 
 interpreterinc = include_directories('src')

@@ -160,7 +160,12 @@ int kokos_lex_next(kokos_lexer_t* lex, kokos_token_t* token)
 
 kokos_lexer_t kokos_lex_buf(const char* buf, size_t buf_size)
 {
+    return kokos_lex_named_buf(buf, buf_size, NULL);
+}
+
+kokos_lexer_t kokos_lex_named_buf(const char* buf, size_t buf_size, const char* name)
+{
     return (kokos_lexer_t) { .contents = sv_make(buf, buf_size),
         .pos = 0,
-        .location = { .filename = NULL, .row = 1, .col = 1 } };
+        .location = { .filename = name, .row = 1, .col = 1 } };
 }

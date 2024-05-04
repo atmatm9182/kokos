@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -14,14 +15,11 @@
 #endif // BASE_STATIC
 #endif // BASEDEF
 
-// DYNAMIC ARRAYS
-#define DA_DECLARE(name, t)                                                                        \
-    typedef struct {                                                                               \
-        t* items;                                                                                  \
-        size_t len;                                                                                \
-        size_t cap;                                                                                \
-    } name
+#ifndef BASE_ALLOC
+#define BASE_ALLOC malloc
+#endif // BASE_ALLOC
 
+// DYNAMIC ARRAYS
 #define DA_INIT(arr, l, c)                                                                         \
     do {                                                                                           \
         __typeof__(c) __cap = c ? c : 1;                                                           \
@@ -39,8 +37,8 @@
 
 #define DA_RESIZE(arr, c)                                                                          \
     do {                                                                                           \
-        (arr)->cap = c;                                                                            \
-        (arr)->items = realloc((arr)->items, c * sizeof((arr)->items[0]));                         \
+        (arr)->cap = (c);                                                                          \
+        (arr)->items = realloc((arr)->items, (c) * sizeof((arr)->items[0]));                       \
     } while (0)
 
 #define DA_GROW(arr)                                                                               \
@@ -54,7 +52,7 @@
         if ((arr)->len == (arr)->cap) {                                                            \
             DA_GROW(arr);                                                                          \
         }                                                                                          \
-        (arr)->items[(arr)->len++] = elem;                                                         \
+        (arr)->items[(arr)->len++] = (elem);                                                       \
     } while (0)
 
 #define DA_FREE(arr)                                                                               \
@@ -69,9 +67,13 @@ typedef struct {
     void* value;
 } ht_kv_pair;
 
-DA_DECLARE(ht_bucket, ht_kv_pair);
+typedef struct {
+    ht_kv_pair* items;
+    size_t len;
+    size_t cap;
+} ht_bucket;
 
-typedef int64_t (*ht_hash_func)(const void*);
+typedef uint64_t (*ht_hash_func)(const void*);
 typedef bool (*ht_eq_func)(const void*, const void*);
 
 typedef struct {
@@ -79,7 +81,9 @@ typedef struct {
     size_t len;
     size_t cap;
 
+    /// the hash function
     ht_hash_func hash_function;
+    /// the key comparison function
     ht_eq_func equality_function;
 } hash_table;
 
@@ -90,6 +94,9 @@ BASEDEF void* ht_delete(hash_table* ht, const void* key);
 BASEDEF void ht_destroy(hash_table* ht);
 
 // STRING VIEW
+
+#define SV_FMT "%.*s"
+
 typedef struct {
     const char* ptr;
     size_t size;
@@ -105,6 +112,7 @@ BASEDEF bool sv_eq(string_view a, string_view b);
 BASEDEF bool sv_eq_cstr(string_view sv, const char* str);
 BASEDEF int64_t sv_atoi(string_view sv);
 BASEDEF double sv_atof(string_view sv);
+BASEDEF const char* sv_dup(string_view sv);
 
 typedef struct {
     char* items;
@@ -117,7 +125,7 @@ BASEDEF void sb_destroy(string_builder* sb);
 BASEDEF void sb_push_cstr(string_builder* sb, const char* str);
 BASEDEF char* sb_to_cstr(string_builder* sb);
 
-#ifdef BASE_IMPL
+#ifdef BASE_IMPLEMENTATION
 
 #include <stdio.h>
 
@@ -129,7 +137,7 @@ BASEDEF string_view sv_make(const char* str, size_t size)
 
 BASEDEF void sv_print(string_view sv)
 {
-    printf("%.*s", (int)sv.size, sv.ptr);
+    printf(SV_FMT, (int)sv.size, sv.ptr);
 }
 
 BASEDEF string_view sv_slice(string_view sv, size_t start, size_t len)
@@ -198,6 +206,14 @@ BASEDEF double sv_atof(string_view sv)
     return atof(tmp);
 }
 
+BASEDEF const char* sv_dup(string_view sv)
+{
+    char* ptr = BASE_ALLOC(sizeof(char) * (sv.size + 1));
+    memcpy(ptr, sv.ptr, sizeof(char) * sv.size);
+    ptr[sv.size] = '\0';
+    return ptr;
+}
+
 #undef DOUBLE_LIT_MAX_LEN
 
 // STRING BUILDER
@@ -246,9 +262,9 @@ BASEDEF hash_table ht_make(ht_hash_func hash_func, ht_eq_func eq_func, size_t ca
     };
 }
 
-static inline size_t __ht_idx_for(const hash_table* ht, const void* key)
+static inline uint64_t __ht_idx_for(const hash_table* ht, const void* key)
 {
-    int64_t hash = ht->hash_function(key);
+    uint64_t hash = ht->hash_function(key);
     return hash % ht->cap;
 }
 
@@ -264,7 +280,7 @@ BASEDEF void ht_add(hash_table* ht, void* key, void* value)
     ht_kv_pair pair = { .key = key, .value = value };
 
     if (!bucket) {
-        bucket = malloc(sizeof(ht_bucket));
+        bucket = BASE_ALLOC(sizeof(ht_bucket));
         DA_INIT(bucket, 0, 2);
         DA_ADD(bucket, pair);
         ht->buckets[idx] = bucket;

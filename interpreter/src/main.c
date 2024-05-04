@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define BASE_IMPL
+#define BASE_IMPLEMENTATION
 #include "base.h"
 #include "interpreter.h"
 #include "lexer.h"

@@ -1,5 +1,5 @@
 #define BASE_STATIC
-#define BASE_IMPL
+#define BASE_IMPLEMENTATION
 #include "base.h"
 #include "lexer.h"
 
