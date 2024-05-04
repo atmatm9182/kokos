@@ -45,7 +45,8 @@ typedef struct {
 #define INSTR_NEQ(op) ((kokos_instruction_t) { .type = I_NEQ, .operand = (op) })
 
 #define INSTR_SFORM(op) ((kokos_instruction_t) { .type = I_SFORM, .operand = (op) })
-#define INSTR_CALL_NATIVE(op) ((kokos_instruction_t) { .type = I_CALL_NATIVE, .operand = (op) })
+#define INSTR_CALL_NATIVE(nargs, op)                                                               \
+    ((kokos_instruction_t) { .type = I_CALL_NATIVE, .operand = (uint64_t)(nargs) << 48 | (op) })
 
 #define INSTR_CMP ((kokos_instruction_t) { .type = I_CMP })
 #define INSTR_RET ((kokos_instruction_t) { .type = I_RET })

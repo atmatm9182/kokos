@@ -197,6 +197,20 @@ static bool get_special_value(string_view value, uint64_t* out)
     return false;
 }
 
+static bool compile_all_args_reversed(
+    const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
+{
+    kokos_list_t elements = expr->list;
+    for (size_t i = elements.len - 1; i > 0; i--) {
+        const kokos_expr_t* elem = elements.items[i];
+        if (!kokos_expr_compile(elem, ctx, code)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 static bool compile_all_args(
     const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
@@ -474,8 +488,11 @@ static bool compile_list(
 
     kokos_native_proc_t native = kokos_find_native(head);
     if (native) {
-        compile_all_args(expr, ctx, code);
-        DA_ADD(code, INSTR_CALL_NATIVE((uint64_t)native));
+        if (!compile_all_args_reversed(expr, ctx, code)) {
+            return false;
+        }
+
+        DA_ADD(code, INSTR_CALL_NATIVE(list.len - 1, (uint64_t)native));
         return true;
     }
 
@@ -525,13 +542,11 @@ static bool compile_list(
         return false;
     }
 
-    for (size_t i = 1; i < list.len; i++) {
-        if (!kokos_expr_compile(list.items[i], ctx, code)) {
-            return false;
-        }
+    if (!compile_all_args_reversed(expr, ctx, code)) {
+        return false;
     }
 
-    DA_ADD(code, INSTR_CALL(proc->params.len << 32, proc->ip));
+    DA_ADD(code, INSTR_CALL(proc->params.len, proc->ip));
     return true;
 }
 

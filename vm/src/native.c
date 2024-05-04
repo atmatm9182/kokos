@@ -2,12 +2,24 @@
 #include "base.h"
 #include "vm.h"
 
-static void native_print(kokos_vm_t* vm)
+static void native_print(kokos_vm_t* vm, uint16_t nargs)
 {
-    kokos_frame_t* frame = STACK_PEEK(&vm->frames);
-    kokos_value_t value = STACK_POP(&frame->stack);
+    // do this so we don't peek an empty stack
+    if (nargs == 0) {
+        printf("\n");
+        return;
+    }
 
-    kokos_value_print(value);
+    kokos_frame_t* frame = STACK_PEEK(&vm->frames);
+
+    for (uint16_t i = 0; i < nargs; i++) {
+        kokos_value_t value = STACK_POP(&frame->stack);
+
+        kokos_value_print(value);
+        if (i != nargs - 1) {
+            printf(" ");
+        }
+    }
     printf("\n");
 }
 

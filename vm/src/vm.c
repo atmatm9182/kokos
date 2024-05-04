@@ -249,8 +249,10 @@ static void exec(kokos_vm_t* vm)
         break;
     }
     case I_CALL_NATIVE: {
-        kokos_native_proc_t native = (kokos_native_proc_t)instruction.operand;
-        native(vm);
+        uint16_t nargs = instruction.operand >> 48;
+        kokos_native_proc_t native
+            = (kokos_native_proc_t)(instruction.operand & ~((uint64_t)0xFFFF << 48));
+        native(vm, nargs);
         vm->ip++;
         break;
     }
