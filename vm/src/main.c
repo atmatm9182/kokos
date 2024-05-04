@@ -39,7 +39,7 @@ static int run_file(const char* filename)
     char* data = read_file(filename);
     KOKOS_VERIFY(data);
 
-    kokos_lexer_t lexer = kokos_lex_buf(data, strlen(data));
+    kokos_lexer_t lexer = kokos_lex_named_buf(data, strlen(data), filename);
     kokos_parser_t parser = kokos_parser_init(&lexer);
 
     uint64_t parser_start = get_time_stamp();

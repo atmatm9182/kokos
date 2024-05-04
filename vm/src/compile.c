@@ -478,8 +478,8 @@ bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
 
         kokos_compiled_proc_t* proc = kokos_ctx_get_proc(ctx, head_buf);
         if (!proc) {
-            set_error(
-                expr->token.location, "undefined procedure '" SV_FMT "'", (int)head.size, head.ptr);
+            set_error(list.items[0]->token.location, "undefined procedure '" SV_FMT "'",
+                (int)head.size, head.ptr);
             return false;
         }
 
