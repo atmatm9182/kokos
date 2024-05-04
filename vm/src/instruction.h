@@ -36,7 +36,8 @@ typedef struct {
 #define INSTR_DIV(op) ((kokos_instruction_t) { .type = I_DIV, .operand = (op) })
 #define INSTR_SUB(op) ((kokos_instruction_t) { .type = I_SUB, .operand = (op) })
 #define INSTR_PUSH_LOCAL(op) ((kokos_instruction_t) { .type = I_PUSH_LOCAL, .operand = (op) })
-#define INSTR_CALL(op) ((kokos_instruction_t) { .type = I_CALL, .operand = (op) })
+#define INSTR_CALL(arity, proc)                                                                    \
+    ((kokos_instruction_t) { .type = I_CALL, .operand = ((arity) << 32 | (proc)) })
 #define INSTR_JZ(op) ((kokos_instruction_t) { .type = I_JZ, .operand = (op) })
 #define INSTR_JNZ(op) ((kokos_instruction_t) { .type = I_JNZ, .operand = (op) })
 #define INSTR_BRANCH(op) ((kokos_instruction_t) { .type = I_BRANCH, .operand = (op) })

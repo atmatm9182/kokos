@@ -8,6 +8,7 @@ vm_sources = [
   'src/gc.c',
   'src/runtime.c',
   'src/hash.c',
+  'src/value.c',
 ]
 
 kokosvm_cargs = ['-Wno-unused-value', '-DBASE_IMPLEMENTATION', '-DBASE_STATIC']

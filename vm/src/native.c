@@ -7,18 +7,8 @@ static void native_print(kokos_vm_t* vm)
     kokos_frame_t* frame = STACK_PEEK(&vm->frames);
     kokos_value_t value = STACK_POP(&frame->stack);
 
-    if (IS_DOUBLE(value)) {
-        printf("%f\n", value.as_double);
-        return;
-    }
-
-    if (IS_STRING(value)) {
-        kokos_string_t* string = (kokos_string_t*)(value.as_int & ~STRING_BITS);
-        printf("%.*s\n", (int)string->len, string->ptr);
-        return;
-    }
-
-    KOKOS_TODO();
+    kokos_value_print(value);
+    printf("\n");
 }
 
 typedef struct {

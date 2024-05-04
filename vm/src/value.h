@@ -18,7 +18,7 @@ typedef union {
 
 #define STRING_BITS 0x7FFE000000000000
 #define MAP_BITS 0x7FFF000000000000
-#define LIST_BITS 0x7FFF800000000000
+#define LIST_BITS 0x7FFF800000000000 // FIXME: this is bad for sure
 #define VECTOR_BITS 0x7FFD000000000000
 
 #define STRING_TAG (STRING_BITS >> 48)
@@ -49,5 +49,7 @@ typedef union {
 
 #define GET_TAG(i) ((i) >> 48)
 #define VALUE_TAG(val) (GET_TAG((val).as_int))
+
+void kokos_value_print(kokos_value_t value);
 
 #endif // VALUE_H_

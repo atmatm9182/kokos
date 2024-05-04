@@ -10,7 +10,7 @@ uint64_t kokos_djb2(const void* ptr)
     uint64_t value = (uint64_t)ptr;
     switch (GET_TAG(value)) {
     case STRING_TAG: {
-        kokos_string_t* string = (kokos_string_t*)(value & ~STRING_BITS);
+        kokos_runtime_string_t* string = (kokos_runtime_string_t*)(value & ~STRING_BITS);
         return hash_djb2_len(string->ptr, string->len);
     }
     default: KOKOS_TODO();

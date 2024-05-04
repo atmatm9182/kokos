@@ -4,6 +4,7 @@
 #include "ast.h"
 #include "base.h"
 #include "instruction.h"
+#include "runtime.h"
 
 #include <stdint.h>
 
@@ -14,12 +15,7 @@ typedef struct {
 } kokos_variable_list_t;
 
 typedef struct {
-    char* ptr;
-    size_t len;
-} kokos_string_t;
-
-typedef struct {
-    kokos_string_t** items;
+    kokos_runtime_string_t** items;
     size_t len;
     size_t cap;
 } kokos_string_store_t;

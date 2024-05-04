@@ -283,82 +283,6 @@ void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code)
     // NOTE: we do not pop the frame here after the vm has ran
 }
 
-static void print_value(kokos_value_t value)
-{
-
-    if (IS_TRUE(value)) {
-        printf("true");
-        return;
-    }
-
-    if (IS_FALSE(value)) {
-        printf("false");
-        return;
-    }
-
-    if (IS_NIL(value)) {
-        printf("nil");
-        return;
-    }
-
-    switch (VALUE_TAG(value)) {
-    case STRING_TAG: {
-        kokos_string_t* string = (kokos_string_t*)(value.as_int & ~STRING_BITS);
-        printf("%.*s", (int)string->len, string->ptr);
-        break;
-    }
-    case VECTOR_TAG: {
-        kokos_runtime_vector_t* vector = (kokos_runtime_vector_t*)(value.as_int & ~VECTOR_BITS);
-        printf("[");
-        for (size_t i = 0; i < vector->len; i++) {
-            print_value(vector->items[i]);
-            if (i != vector->len - 1) {
-                printf(" ");
-            }
-        }
-        printf("]");
-        break;
-    }
-    case MAP_TAG: {
-        kokos_runtime_map_t* map = (kokos_runtime_map_t*)(value.as_int & ~MAP_BITS);
-        hash_table table = map->table;
-
-        size_t printed_count = 0;
-        printf("{");
-        for (size_t i = 0; i < table.cap; i++) {
-            ht_bucket* bucket = table.buckets[i];
-            if (!bucket) {
-                continue;
-            }
-
-            for (size_t j = 0; j < bucket->len; j++) {
-                ht_kv_pair kv = bucket->items[j];
-                kokos_value_t key = TO_VALUE((uint64_t)kv.key);
-                kokos_value_t value = TO_VALUE((uint64_t)kv.value);
-
-                print_value(key);
-                printf(" ");
-                print_value(value);
-                if (j != bucket->len - 1) {
-                    printf(" ");
-                }
-            }
-
-            if (++printed_count != table.len) {
-                printf(" ");
-            }
-        }
-        printf("}");
-        break;
-    }
-    default: {
-        KOKOS_VERIFY(IS_DOUBLE(value));
-        printf("%f", value.as_double);
-        break;
-    }
-    }
-}
-
 void kokos_vm_dump(kokos_vm_t* vm)
 {
     kokos_frame_t* frame = current_frame(vm);
@@ -368,7 +292,7 @@ void kokos_vm_dump(kokos_vm_t* vm)
         printf("\t[%lu] ", i);
 
         kokos_value_t cur = frame->stack.data[i];
-        print_value(cur);
+        kokos_value_print(cur);
 
         printf("\n");
     }

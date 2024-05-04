@@ -1,5 +1,5 @@
-#include "macros.h"
 #include "hash.h"
+#include "macros.h"
 #include "native.h"
 #include "token.h"
 
@@ -81,6 +81,7 @@ bool expr_to_params(const kokos_expr_t* expr, kokos_params_t* params)
     } names;
     DA_INIT_ZEROED(&names, list.len);
 
+    bool variadic = false;
     for (size_t i = 0; i < list.len; i++) {
         const kokos_expr_t* param = list.items[i];
         if (param->type != EXPR_IDENT) {
@@ -88,10 +89,20 @@ bool expr_to_params(const kokos_expr_t* expr, kokos_params_t* params)
             return false;
         }
 
+        if (sv_eq_cstr(param->token.value, "&")) {
+            if (i != list.len - 2) {
+                set_error(expr->token.location, "malformed variadic paramater list");
+                return false;
+            }
+
+            variadic = true;
+            continue;
+        }
+
         DA_ADD(&names, param->token.value);
     }
 
-    *params = (kokos_params_t) { .names = names.items, .len = names.len, .variadic = false };
+    *params = (kokos_params_t) { .names = names.items, .len = names.len, .variadic = variadic };
     return true;
 }
 
@@ -421,7 +432,7 @@ static void kokos_compile_string_lit(
     char* str = KOKOS_ALLOC(sizeof(char) * value.size);
     memcpy(str, value.ptr, value.size * sizeof(char));
 
-    kokos_string_t* string = KOKOS_ALLOC(sizeof(kokos_string_t));
+    kokos_runtime_string_t* string = KOKOS_ALLOC(sizeof(kokos_runtime_string_t));
     string->ptr = str;
     string->len = value.size;
     DA_ADD(&ctx->string_store, string);
@@ -472,6 +483,32 @@ bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
             return false;
         }
 
+        if (proc->params.variadic) {
+            if (list.len < proc->params.len) {
+                set_error(expr->token.location,
+                    "expected at least %lu arguments for procedure '" SV_FMT "', got %lu instead",
+                    proc->params.len - 1, (int)head.size, head.ptr, list.len - 1);
+                return false;
+            }
+
+            size_t i;
+            for (i = 1; i < proc->params.len; i++) {
+                if (!kokos_expr_compile(list.items[i], ctx, code)) {
+                    return false;
+                }
+            }
+
+            for (size_t j = list.len - 1; j >= i; j--) {
+                if (!kokos_expr_compile(list.items[j], ctx, code)) {
+                    return false;
+                }
+            }
+
+            DA_ADD(code, INSTR_ALLOC(VECTOR_BITS, list.len - proc->params.len));
+            DA_ADD(code, INSTR_CALL(proc->params.len, proc->ip));
+            break;
+        }
+
         if (proc->params.len != list.len - 1) {
             set_error(expr->token.location,
                 "expected %lu arguments for procedure '" SV_FMT "', got %lu instead",
@@ -485,7 +522,7 @@ bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
             }
         }
 
-        DA_ADD(code, INSTR_CALL((proc->params.len << 32) | proc->ip));
+        DA_ADD(code, INSTR_CALL(proc->params.len << 32, proc->ip));
         break;
     }
     case EXPR_IDENT: {
@@ -496,7 +533,12 @@ bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
         }
 
         int64_t local_idx = kokos_ctx_get_var_idx(ctx, expr->token.value);
-        KOKOS_VERIFY(local_idx != (size_t)-1);
+        if (local_idx == -1) {
+            set_error(expr->token.location,
+                "could not find variable " SV_FMT " in the current scope",
+                (int)expr->token.value.size, expr->token.value.ptr);
+            return false;
+        }
 
         DA_ADD(code, INSTR_PUSH_LOCAL((uint64_t)local_idx));
         break;

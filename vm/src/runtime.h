@@ -6,6 +6,11 @@
 #include <stddef.h>
 
 typedef struct {
+    char* ptr;
+    size_t len;
+} kokos_runtime_string_t;
+
+typedef struct {
     kokos_value_t* items;
     size_t len;
     size_t cap;
