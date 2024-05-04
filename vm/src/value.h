@@ -38,6 +38,7 @@ typedef union {
 
 #define IS_TRUE(val) ((val).as_int == TRUE_BITS)
 #define IS_FALSE(val) ((val).as_int == FALSE_BITS)
+#define IS_BOOL(val) (IS_TRUE((val)) || IS_FALSE((val)))
 #define IS_NIL(val) ((val).as_int == NIL_BITS)
 
 #define TO_VALUE(i)                                                                                \
@@ -46,6 +47,9 @@ typedef union {
         long: (kokos_value_t) { .as_int = (uint64_t)(i) },                                         \
         uint64_t: (kokos_value_t) { .as_int = (i) },                                               \
         double: (kokos_value_t) { .as_double = (i) }))
+
+#define TO_VECTOR(val) (TO_VALUE((uint64_t)(val) | VECTOR_BITS))
+#define TO_MAP(val) (TO_VALUE((uint64_t)(val) | MAP_BITS))
 
 #define GET_TAG(i) ((i) >> 48)
 #define VALUE_TAG(val) (GET_TAG((val).as_int))
