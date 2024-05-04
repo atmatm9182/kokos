@@ -26,7 +26,7 @@ Kokos is an interpreted lisp dialect designed for simple scripting.
 - [X] Repl
 - [X] Garbage collector
 - [X] Fully working interpreter
-- [ ] Virtual machine (?)
+- [X] Virtual machine
 - [X] C embedding
 - [ ] C FFI
 - [ ] Tail call optimization
