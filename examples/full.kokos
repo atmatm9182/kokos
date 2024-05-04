@@ -1,0 +1,30 @@
+; this is a little bit extended version of code sample from the readme.
+
+(+ 1 2 3) ; => 6
+(* 4 1.7) ; => 6.8
+(/ 10 5)
+(- 10 4 3)
+
+(print 1 2)
+
+(if (> 3 1) (print "greater!") (print "not greater"))
+
+; you can also use `if` itself as an expression
+(print (if (> 3 1) "greater!" "not greater"))
+
+; or just use collection literals:
+[1 0 3]
+{"hello" "world"}
+
+(proc add (x y) (+ x y))
+
+(add 1 2) ; => 3
+
+(proc variadic (& rest) (print rest))
+(variadic 1 2 3 "some string") ; => [1 2 3 "some string"]
+
+(print 1 2 3)
+
+(make-vec 1 0 3) ; => [1 0 3]
+(make-map "hello" "world") ; => {"hello" "world"}
+
