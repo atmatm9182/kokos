@@ -1,4 +1,4 @@
-project('kokos', 'c', default_options : ['werror=true', 'warning_level=everything'])
+project('kokos', 'c', default_options : ['werror=true', 'warning_level=1'])
 
 add_global_arguments('-Wno-unused-function', '-Wno-unused-result', language : 'c')
 
