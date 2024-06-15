@@ -4,6 +4,7 @@
 #include "macros.h"
 #include "native.h"
 #include "runtime.h"
+#include "src/gc.h"
 
 static void exec(kokos_vm_t* vm);
 
@@ -55,7 +56,7 @@ kokos_value_t kokos_alloc_value(kokos_vm_t* vm, uint64_t params)
 
     switch (GET_TAG(params)) {
     case VECTOR_TAG: {
-        kokos_runtime_vector_t* vec = (kokos_runtime_vector_t*)kokos_gc_alloc(&vm->gc, VECTOR_TAG);
+        kokos_runtime_vector_t* vec = (kokos_runtime_vector_t*)kokos_vm_gc_alloc(vm, VECTOR_TAG);
 
         uint32_t count = params & 0xFFFFFFFF;
         for (size_t i = 0; i < count; i++) {
@@ -65,7 +66,7 @@ kokos_value_t kokos_alloc_value(kokos_vm_t* vm, uint64_t params)
         return TO_VALUE((uint64_t)vec | VECTOR_BITS);
     }
     case MAP_TAG: {
-        kokos_runtime_map_t* map = (kokos_runtime_map_t*)kokos_gc_alloc(&vm->gc, MAP_TAG);
+        kokos_runtime_map_t* map = (kokos_runtime_map_t*)kokos_vm_gc_alloc(vm, MAP_TAG);
 
         uint32_t count = params & 0xFFFFFFFF;
         for (size_t i = 0; i < count; i++) {
@@ -309,9 +310,49 @@ kokos_vm_t kokos_vm_create(kokos_compiler_context_t* ctx)
         .procedure_code = ctx->procedure_code };
     vm.frames.sp = 0;
 
-    kokos_gc_object_list_t gc_objs;
-    DA_INIT(&gc_objs, 0, 100);
-    vm.gc = (kokos_gc_t) { .objects = gc_objs, .max_objs = 200 };
-
+    vm.gc = kokos_gc_new(15);
     return vm;
+}
+
+static void gc_mark_frame(kokos_frame_t const* frame)
+{
+}
+
+static void kokos_gc_collect(kokos_vm_t* vm)
+{
+}
+
+void gc_object_list_add(kokos_gc_object_list_t* list, kokos_value_t value)
+{
+
+}
+
+void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag)
+{
+    kokos_gc_t* gc = &vm->gc;
+
+    if (gc->objects.len > gc->max_objs) {
+        kokos_gc_collect(vm);
+    }
+
+    void* addr;
+    switch (tag) {
+    case VECTOR_TAG: {
+        kokos_runtime_vector_t* vec = KOKOS_ALLOC(sizeof(kokos_runtime_vector_t));
+        DA_INIT(vec, 0, 3);
+        addr = vec;
+        break;
+    }
+    case MAP_TAG: {
+        hash_table table = ht_make(kokos_default_map_hash_func, kokos_default_map_eq_func, 10);
+        kokos_runtime_map_t* map = KOKOS_ALLOC(sizeof(kokos_runtime_map_t));
+        map->table = table;
+        addr = map;
+        break;
+    }
+    default: KOKOS_TODO();
+    }
+
+    kokos_gc_add_obj(gc, TO_VALUE((uint64_t)addr | tag));
+    return addr;
 }

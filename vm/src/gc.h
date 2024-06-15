@@ -3,11 +3,17 @@
 
 #include "value.h"
 #include <stdlib.h>
+#include <stdbool.h>
+
+typedef struct kokos_gc_object_node {
+    kokos_value_t value;
+    struct kokos_gc_object_node* next;
+    bool marked;
+} kokos_gc_object_node_t;
 
 typedef struct {
-    kokos_value_t* items;
+    kokos_gc_object_node_t* root;
     size_t len;
-    size_t cap;
 } kokos_gc_object_list_t;
 
 typedef struct kokos_gc {
@@ -15,7 +21,7 @@ typedef struct kokos_gc {
     size_t max_objs;
 } kokos_gc_t;
 
-/// Allocates a new value of the provided tag on the heap and returns a pointer to it
-void* kokos_gc_alloc(kokos_gc_t* gc, uint64_t tag);
+kokos_gc_t kokos_gc_new(size_t max_objs);
+void kokos_gc_add_obj(kokos_gc_t* gc, kokos_value_t value);
 
 #endif // GC_H_
