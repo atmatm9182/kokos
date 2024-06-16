@@ -27,3 +27,5 @@
 
 (make-vec 1 0 3) ; => [1 0 3]
 (make-map "hello" "world") ; => {"hello" "world"}
+
+(let (a 1 b 2) (+ 1 2)) ; => 3

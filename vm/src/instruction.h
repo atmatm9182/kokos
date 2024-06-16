@@ -12,6 +12,7 @@ typedef enum {
     I_MUL,
     I_DIV,
     I_PUSH_LOCAL,
+    I_STORE_LOCAL,
     I_CALL,
     I_JNZ,
     I_JZ,
@@ -36,6 +37,7 @@ typedef struct {
 #define INSTR_DIV(op) ((kokos_instruction_t) { .type = I_DIV, .operand = (op) })
 #define INSTR_SUB(op) ((kokos_instruction_t) { .type = I_SUB, .operand = (op) })
 #define INSTR_PUSH_LOCAL(op) ((kokos_instruction_t) { .type = I_PUSH_LOCAL, .operand = (op) })
+#define INSTR_STORE_LOCAL(op) ((kokos_instruction_t) { .type = I_STORE_LOCAL, .operand = (op) })
 #define INSTR_CALL(arity, proc)                                                                    \
     ((kokos_instruction_t) { .type = I_CALL, .operand = ((arity) << 32 | (proc)) })
 #define INSTR_JZ(op) ((kokos_instruction_t) { .type = I_JZ, .operand = (op) })

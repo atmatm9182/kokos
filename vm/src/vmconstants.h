@@ -1,0 +1,8 @@
+#ifndef VMCONSTANTS_H_
+#define VMCONSTANTS_H_
+
+#define OP_STACK_SIZE 64
+#define FRAME_STACK_SIZE 1024
+#define MAX_LOCALS 16
+
+#endif // VMCONSTANTS_H_

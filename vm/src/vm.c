@@ -196,6 +196,13 @@ static void exec(kokos_vm_t* vm)
         vm->ip++;
         break;
     }
+    case I_STORE_LOCAL: {
+        kokos_value_t v = STACK_POP(&frame->stack);
+        frame->locals[instruction.operand] = v;
+
+        vm->ip++;
+        break;
+    }
     case I_BRANCH: {
         vm->ip += (int32_t)instruction.operand;
         break;

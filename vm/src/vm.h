@@ -6,10 +6,7 @@
 #include "gc.h"
 #include "instruction.h"
 #include "value.h"
-
-#define OP_STACK_SIZE 64
-#define FRAME_STACK_SIZE 1024
-#define MAX_LOCALS 16
+#include "vmconstants.h"
 
 #define STACK_PUSH(stack, value)                                                                   \
     do {                                                                                           \

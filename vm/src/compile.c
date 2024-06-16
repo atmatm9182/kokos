@@ -1,7 +1,9 @@
+#include "ast.h"
 #include "hash.h"
 #include "macros.h"
 #include "native.h"
 #include "token.h"
+#include "vmconstants.h"
 
 #include "base.h"
 
@@ -12,6 +14,21 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+
+#define VERIFY_TYPE(expr, t)                                                                       \
+    do {                                                                                           \
+        if ((expr)->type != (t)) {                                                                 \
+            set_error((expr)->token.location, "type mismatch: expected '%s', found '%s'\n",        \
+                kokos_expr_type_str((t)), kokos_expr_type_str((expr)->type));                      \
+            return false;                                                                          \
+        }                                                                                          \
+    } while (0)
+
+#define TRY(e)                                                                                     \
+    do {                                                                                           \
+        if (!(e))                                                                                  \
+            return false;                                                                          \
+    } while (0)
 
 static char err_buf[512];
 
@@ -415,6 +432,37 @@ static bool compile_lt(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, 
     return true;
 }
 
+bool compile_let(kokos_expr_t const* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
+{
+    KOKOS_ASSERT(expr->type == EXPR_LIST);
+
+    VERIFY_TYPE(expr->list.items[1], EXPR_LIST);
+    kokos_list_t vars = expr->list.items[1]->list;
+
+    for (size_t i = 0; i < vars.len; i += 2) {
+        if (ctx->locals.len >= MAX_LOCALS) {
+            set_error(vars.items[i]->token.location, "local limit exceeded");
+            return false;
+        }
+
+        kokos_expr_t const* key = vars.items[i];
+        VERIFY_TYPE(key, EXPR_IDENT);
+
+        kokos_expr_t const* value = vars.items[i + 1];
+        TRY(kokos_expr_compile(value, ctx, code));
+
+        DA_ADD(&ctx->locals, key->token.value);
+        DA_ADD(code, INSTR_STORE_LOCAL(ctx->locals.len - 1));
+    }
+
+    // compile body with the new bindings
+    for (size_t i = 0; i < expr->list.len - 2; i++) {
+        TRY(kokos_expr_compile(expr->list.items[i + 2], ctx, code));
+    }
+    
+    return true;
+}
+
 typedef bool (*kokos_sform_t)(
     const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code);
 
@@ -425,6 +473,7 @@ typedef struct {
 
 static kokos_sform_pair_t sforms[] = {
     { "proc", compile_procedure_def },
+    { "let", compile_let },
     { "+", compile_add },
     { "-", compile_sub },
     { "*", compile_mul },

@@ -11,6 +11,7 @@ const char* kokos_instruction_type_str(kokos_instruction_type_e type)
     case I_MUL:         return "mul";
     case I_DIV:         return "div";
     case I_PUSH_LOCAL:  return "push_local";
+    case I_STORE_LOCAL: return "store_local";
     case I_CALL:        return "call";
     case I_JZ:          return "jz";
     case I_JNZ:         return "jnz";
@@ -37,6 +38,7 @@ void kokos_instruction_dump(kokos_instruction_t instruction)
     case I_DIV:         printf("%s %lu", type, instruction.operand); break;
     case I_SUB:         printf("%s %lu", type, instruction.operand); break;
     case I_PUSH_LOCAL:  printf("%s %lu", type, instruction.operand); break;
+    case I_STORE_LOCAL: printf("%s %lu", type, instruction.operand); break;
     case I_CALL:        printf("%s 0x%lx", type, instruction.operand); break;
     case I_JZ:          printf("%s %ld", type, (int64_t)instruction.operand); break;
     case I_JNZ:         printf("%s %ld", type, (int64_t)instruction.operand); break;
