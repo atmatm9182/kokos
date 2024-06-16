@@ -368,10 +368,19 @@ static inline uint64_t __ht_idx_for(const hash_table* ht, const void* key) {
     return hash % ht->cap;
 }
 
+static inline void __ht_grow(hash_table* ht, size_t size) {
+    hash_table new_ht = ht_make(ht->hash_function, ht->equality_function, size);
+
+    HT_ITER(*ht, {
+        ht_add(&new_ht, kv.key, kv.value);
+    });
+
+    *ht = new_ht;
+}
+
 BASEDEF void ht_add(hash_table* ht, void* key, void* value) {
     if (ht_load(ht) >= 70) {
-        ht->cap *= 2;
-        ht->buckets = (ht_bucket**)realloc(ht->buckets, ht->cap);
+        __ht_grow(ht, ht->cap * 2);
     }
 
     size_t idx = __ht_idx_for(ht, key);
