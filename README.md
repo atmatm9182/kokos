@@ -71,3 +71,6 @@ $ meson compile
 
 ### Macros
 Kokos currently supports macros, however the reader macros are not yet implemented. The macros will be documented once the reader macros are implemented.
+
+# Notes
+- The vm is currenly about 5 times faster than the interpreter, but does not have a lot of features and procedures implemented yet
