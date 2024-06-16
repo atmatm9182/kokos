@@ -29,3 +29,9 @@
 (make-map "hello" "world") ; => {"hello" "world"}
 
 (let (a 1 b 2) (+ 1 2)) ; => 3
+
+(proc mul (x y) (* x y))
+    
+(proc square-sum (x y) (+ (mul x x) (mul y y)))
+
+(print (square-sum 3 5)) ; => 34
