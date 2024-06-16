@@ -100,10 +100,7 @@ bool expr_to_params(const kokos_expr_t* expr, kokos_params_t* params)
     bool variadic = false;
     for (size_t i = 0; i < list.len; i++) {
         const kokos_expr_t* param = list.items[i];
-        if (param->type != EXPR_IDENT) {
-            set_error(param->token.location, "procedure parameters must all be valid identifiers");
-            return false;
-        }
+        VERIFY_TYPE(param, EXPR_IDENT);
 
         if (sv_eq_cstr(param->token.value, "&")) {
             if (i != list.len - 2) {
@@ -156,9 +153,7 @@ static bool compile_procedure_def(
     }
 
     kokos_params_t params;
-    if (!expr_to_params(params_expr, &params)) {
-        return false;
-    }
+    TRY(expr_to_params(params_expr, &params));
 
     kokos_compiler_context_t new_ctx = kokos_ctx_empty();
     new_ctx.parent = ctx;
@@ -175,9 +170,7 @@ static bool compile_procedure_def(
 
     size_t proc_ip = ctx->procedure_code.len;
     for (size_t i = 3; i < list.len; i++) {
-        if (!kokos_expr_compile(list.items[i], &new_ctx, &ctx->procedure_code)) {
-            return false;
-        }
+        TRY(kokos_expr_compile(list.items[i], &new_ctx, &ctx->procedure_code));
     }
 
     proc->ip = proc_ip;
@@ -220,9 +213,7 @@ static bool compile_all_args_reversed(
     kokos_list_t elements = expr->list;
     for (size_t i = elements.len - 1; i > 0; i--) {
         const kokos_expr_t* elem = elements.items[i];
-        if (!kokos_expr_compile(elem, ctx, code)) {
-            return false;
-        }
+        TRY(kokos_expr_compile(elem, ctx, code));
     }
 
     return true;
@@ -234,9 +225,7 @@ static bool compile_all_args(
     kokos_list_t elements = expr->list;
     for (size_t i = 1; i < elements.len; i++) {
         const kokos_expr_t* elem = elements.items[i];
-        if (!kokos_expr_compile(elem, ctx, code)) {
-            return false;
-        }
+        TRY(kokos_expr_compile(elem, ctx, code));
     }
 
     return true;
@@ -244,28 +233,22 @@ static bool compile_all_args(
 
 static bool compile_mul(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-    if (!compile_all_args(expr, ctx, code)) {
-        return false;
-    }
-
+    TRY(compile_all_args(expr, ctx, code));
+    
     DA_ADD(code, INSTR_MUL(expr->list.len - 1));
     return true;
 }
 
 static bool compile_div(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-    if (!compile_all_args(expr, ctx, code)) {
-        return false;
-    }
+    TRY(compile_all_args(expr, ctx, code));
 
     DA_ADD(code, INSTR_DIV(expr->list.len - 1));
     return true;
 }
 static bool compile_sub(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-    if (!compile_all_args(expr, ctx, code)) {
-        return false;
-    }
+    TRY(compile_all_args(expr, ctx, code));
 
     DA_ADD(code, INSTR_SUB(expr->list.len - 1));
     return true;
@@ -273,9 +256,7 @@ static bool compile_sub(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
 
 static bool compile_add(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-    if (!compile_all_args(expr, ctx, code)) {
-        return false;
-    }
+    TRY(compile_all_args(expr, ctx, code));
 
     DA_ADD(code, INSTR_ADD(expr->list.len - 1));
     return true;
@@ -291,25 +272,19 @@ static bool compile_if(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, 
 
     kokos_list_t exprs = expr->list;
 
-    if (!kokos_expr_compile(exprs.items[1], ctx, code)) {
-        return false;
-    }
+    TRY(kokos_expr_compile(exprs.items[1], ctx, code));
 
     DA_ADD(code, INSTR_JZ(0));
 
     size_t start_ip = code->len;
-    if (!kokos_expr_compile(exprs.items[2], ctx, code)) {
-        return false;
-    }
+    TRY(kokos_expr_compile(exprs.items[2], ctx, code));
 
     switch (expr->list.len) {
     case 4: {
         DA_ADD(code, INSTR_BRANCH(0));
 
         size_t consequence_ip = code->len - start_ip;
-        if (!kokos_expr_compile(exprs.items[3], ctx, code)) {
-            return false;
-        }
+        TRY(kokos_expr_compile(exprs.items[3], ctx, code));
 
         KOKOS_ASSERT(code->items[start_ip - 1].type == I_JZ);
         code->items[start_ip - 1].operand = consequence_ip + 1; // patch the jump instruction
@@ -334,17 +309,11 @@ static bool compile_if(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, 
 
 static bool compile_eq(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-    if (!expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL)) {
-        return false;
-    }
+    TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
 
-    if (!compile_all_args(expr, ctx, code)) {
-        return false;
-    }
+    TRY(compile_all_args(expr, ctx, code));
 
-    if (!compile_all_args(expr, ctx, code)) {
-        return false;
-    }
+    TRY(compile_all_args(expr, ctx, code));
 
     DA_ADD(code, INSTR_CMP);
     DA_ADD(code, INSTR_EQ(0));
@@ -354,13 +323,9 @@ static bool compile_eq(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, 
 
 static bool compile_neq(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-    if (!expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL)) {
-        return false;
-    }
+    TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
 
-    if (!compile_all_args(expr, ctx, code)) {
-        return false;
-    }
+    TRY(compile_all_args(expr, ctx, code));
 
     DA_ADD(code, INSTR_CMP);
     DA_ADD(code, INSTR_NEQ(0));
@@ -370,13 +335,9 @@ static bool compile_neq(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
 
 static bool compile_lte(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-    if (!expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL)) {
-        return false;
-    }
+    TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
 
-    if (!compile_all_args(expr, ctx, code)) {
-        return false;
-    }
+    TRY(compile_all_args(expr, ctx, code));
 
     DA_ADD(code, INSTR_CMP);
     DA_ADD(code, INSTR_NEQ(1));
@@ -386,13 +347,9 @@ static bool compile_lte(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
 
 static bool compile_gte(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-    if (!expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL)) {
-        return false;
-    }
+    TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
 
-    if (!compile_all_args(expr, ctx, code)) {
-        return false;
-    }
+    TRY(compile_all_args(expr, ctx, code));
 
     DA_ADD(code, INSTR_CMP);
     DA_ADD(code, INSTR_NEQ((uint64_t)-1));
@@ -402,13 +359,9 @@ static bool compile_gte(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
 
 static bool compile_gt(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-    if (!expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL)) {
-        return false;
-    }
+    TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
 
-    if (!compile_all_args(expr, ctx, code)) {
-        return false;
-    }
+    TRY(compile_all_args(expr, ctx, code));
 
     DA_ADD(code, INSTR_CMP);
     DA_ADD(code, INSTR_EQ(1));
@@ -418,13 +371,9 @@ static bool compile_gt(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, 
 
 static bool compile_lt(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-    if (!expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL)) {
-        return false;
-    }
+    TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
 
-    if (!compile_all_args(expr, ctx, code)) {
-        return false;
-    }
+    TRY(compile_all_args(expr, ctx, code));
 
     DA_ADD(code, INSTR_CMP);
     DA_ADD(code, INSTR_EQ((uint64_t)-1));
@@ -527,17 +476,13 @@ static bool compile_list(
 
     kokos_sform_t sform = get_sform(head);
     if (sform) {
-        if (!sform(expr, ctx, code)) {
-            return false;
-        }
+        TRY(sform(expr, ctx, code));
         return true;
     }
 
     kokos_native_proc_t native = kokos_find_native(head);
     if (native) {
-        if (!compile_all_args_reversed(expr, ctx, code)) {
-            return false;
-        }
+        TRY(compile_all_args_reversed(expr, ctx, code));
 
         DA_ADD(code, INSTR_CALL_NATIVE(list.len - 1, (uint64_t)native));
         return true;
@@ -566,15 +511,11 @@ static bool compile_list(
 
         size_t i;
         for (i = 1; i < proc->params.len; i++) {
-            if (!kokos_expr_compile(list.items[i], ctx, code)) {
-                return false;
-            }
+            TRY(kokos_expr_compile(list.items[i], ctx, code));
         }
 
         for (size_t j = list.len - 1; j >= i; j--) {
-            if (!kokos_expr_compile(list.items[j], ctx, code)) {
-                return false;
-            }
+            TRY(kokos_expr_compile(list.items[j], ctx, code));
         }
 
         DA_ADD(code, INSTR_ALLOC(VECTOR_BITS, list.len - proc->params.len));
@@ -589,10 +530,8 @@ static bool compile_list(
         return false;
     }
 
-    if (!compile_all_args_reversed(expr, ctx, code)) {
-        return false;
-    }
-
+    TRY(compile_all_args_reversed(expr, ctx, code));
+    
     DA_ADD(code, INSTR_CALL(proc->params.len, proc->ip));
     return true;
 }
@@ -634,12 +573,8 @@ bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
     case EXPR_MAP: {
         kokos_map_t map = expr->map;
         for (size_t i = 0; i < map.len; i++) {
-            if (!kokos_expr_compile(map.keys[i], ctx, code)) {
-                return false;
-            }
-            if (!kokos_expr_compile(map.values[i], ctx, code)) {
-                return false;
-            }
+            TRY(kokos_expr_compile(map.keys[i], ctx, code));
+            TRY(kokos_expr_compile(map.values[i], ctx, code));
         }
 
         DA_ADD(code, INSTR_ALLOC(MAP_BITS, map.len));
@@ -648,9 +583,7 @@ bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
     case EXPR_VECTOR: {
         kokos_vec_t vec = expr->vec;
         for (ssize_t i = vec.len - 1; i >= 0; i--) {
-            if (!kokos_expr_compile(vec.items[i], ctx, code)) {
-                return false;
-            }
+            TRY(kokos_expr_compile(vec.items[i], ctx, code));
         }
 
         DA_ADD(code, INSTR_ALLOC(VECTOR_BITS, vec.len));
