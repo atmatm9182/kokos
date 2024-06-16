@@ -1,10 +1,10 @@
 #include "vm.h"
 #include "base.h"
 #include "compile.h"
+#include "gc.h"
 #include "macros.h"
 #include "native.h"
 #include "runtime.h"
-#include "gc.h"
 
 static void exec(kokos_vm_t* vm);
 
@@ -183,9 +183,9 @@ static void exec(kokos_vm_t* vm)
         uint32_t ip = instruction.operand & 0xFFFFFFFF;
         vm->ip = ip;
         vm->current_instructions = &vm->store.procedure_code;
-        
+
         kokos_frame_t* new_frame = push_frame(vm, ret_location);
-        
+
         for (size_t i = 0; i < arity; i++) {
             new_frame->locals[i] = STACK_POP(&frame->stack);
         }
@@ -332,7 +332,7 @@ kokos_vm_t kokos_vm_create(kokos_compiler_context_t* ctx)
         .procedure_code = ctx->procedure_code };
     vm.frames.sp = 0;
 
-    vm.gc = kokos_gc_new(15);
+    vm.gc = kokos_gc_new(GC_INITIAL_CAP);
     return vm;
 }
 
