@@ -39,6 +39,7 @@ typedef struct {
 typedef struct {
     kokos_frame_t* data[FRAME_STACK_SIZE];
     size_t sp;
+    size_t cap; // store this so we can reuse `popped` frames
 } kokos_frame_stack_t;
 
 typedef struct kokos_vm {

@@ -4,7 +4,7 @@
 #include "macros.h"
 #include "native.h"
 #include "runtime.h"
-#include "src/gc.h"
+#include "gc.h"
 
 static void exec(kokos_vm_t* vm);
 
@@ -79,6 +79,25 @@ kokos_value_t kokos_alloc_value(kokos_vm_t* vm, uint64_t params)
         KOKOS_TODO(buf);
     }
     }
+}
+
+static kokos_frame_t* push_frame(kokos_vm_t* vm, size_t ret_location)
+{
+    if (vm->frames.sp >= vm->frames.cap) {
+        kokos_frame_t* new_frame = alloc_frame(ret_location);
+        STACK_PUSH(&vm->frames, new_frame);
+        vm->frames.cap++;
+
+        return new_frame;
+    }
+
+    // reuse the old frame if we have enough capacity
+    kokos_frame_t* old_frame = vm->frames.data[vm->frames.sp];
+    old_frame->ret_location = ret_location;
+    old_frame->stack.sp = 0;
+
+    STACK_PUSH(&vm->frames, old_frame);
+    return old_frame;
 }
 
 static void exec(kokos_vm_t* vm)
@@ -164,12 +183,13 @@ static void exec(kokos_vm_t* vm)
         uint32_t ip = instruction.operand & 0xFFFFFFFF;
         vm->ip = ip;
         vm->current_instructions = &vm->store.procedure_code;
-
-        kokos_frame_t* new_frame = alloc_frame(ret_location);
+        
+        kokos_frame_t* new_frame = push_frame(vm, ret_location);
+        
         for (size_t i = 0; i < arity; i++) {
             new_frame->locals[i] = STACK_POP(&frame->stack);
         }
-        STACK_PUSH(&vm->frames, new_frame);
+
         break;
     }
     case I_RET: {
