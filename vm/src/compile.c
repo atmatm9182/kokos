@@ -266,8 +266,6 @@ static bool compile_add(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
 
 static bool compile_if(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-    // TODO: support other forms of if expression and handle an error
-    //
     if (expr->list.len < 3 || expr->list.len > 4) {
 
         set_error(expr->token.location, "badly formed 'if' expression");

@@ -7,8 +7,9 @@
 #include "instruction.h"
 #include "value.h"
 
-#define OP_STACK_SIZE 1024
+#define OP_STACK_SIZE 64
 #define FRAME_STACK_SIZE 1024
+#define MAX_LOCALS 16
 
 #define STACK_PUSH(stack, value)                                                                   \
     do {                                                                                           \
@@ -33,7 +34,7 @@ typedef struct {
 } kokos_op_stack_t;
 
 typedef struct {
-    kokos_value_t locals[256];
+    kokos_value_t locals[MAX_LOCALS];
     kokos_op_stack_t stack;
     size_t ret_location; // set the highest bit to indicate whether to return to procedure code
 } kokos_frame_t;

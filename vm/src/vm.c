@@ -8,11 +8,6 @@
 
 static void exec(kokos_vm_t* vm);
 
-kokos_compiled_proc_t* kokos_store_get_proc(kokos_runtime_store_t* store, const char* name)
-{
-    return ht_find(&store->procedures, name);
-}
-
 static kokos_frame_t* alloc_frame(size_t ret_location)
 {
     kokos_frame_t* frame = KOKOS_ALLOC(sizeof(kokos_frame_t));
@@ -314,24 +309,46 @@ kokos_vm_t kokos_vm_create(kokos_compiler_context_t* ctx)
     return vm;
 }
 
-static void gc_mark_frame(kokos_frame_t const* frame)
+static void gc_mark_frame(kokos_gc_t* gc, kokos_frame_t const* frame)
 {
+    // NOTE: we don't mark locals. should we?
+    for (size_t l = 0; l < frame->stack.sp; l++) {
+        kokos_value_t value = frame->stack.data[l];
+        kokos_gc_obj_t* obj = kokos_gc_find(gc, value);
+
+        if (obj) {
+            obj->flags |= OBJ_FLAG_MARKED;
+        }
+    }
 }
 
 static void kokos_gc_collect(kokos_vm_t* vm)
 {
-}
+    for (size_t i = 0; i < vm->frames.sp; i++) {
+        kokos_frame_t const* frame = vm->frames.data[i];
+        gc_mark_frame(&vm->gc, frame);
+    }
 
-void gc_object_list_add(kokos_gc_object_list_t* list, kokos_value_t value)
-{
+    for (size_t i = 0; i < vm->gc.objects.cap; i++) {
+        kokos_gc_obj_t* obj = &vm->gc.objects.values[i];
+        if (!IS_OCCUPIED(*obj) || IS_MARKED(*obj)) {
+            continue;
+        }
 
+        obj->flags = 0;
+
+        void* ptr = (void*)GET_PTR(obj->value);
+        KOKOS_FREE(ptr);
+
+        vm->gc.objects.len--;
+    }
 }
 
 void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag)
 {
     kokos_gc_t* gc = &vm->gc;
 
-    if (gc->objects.len > gc->max_objs) {
+    if (gc->objects.len >= gc->max_objs) {
         kokos_gc_collect(vm);
     }
 
@@ -353,6 +370,6 @@ void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag)
     default: KOKOS_TODO();
     }
 
-    kokos_gc_add_obj(gc, TO_VALUE((uint64_t)addr | tag));
+    kokos_gc_add_obj(gc, TO_VALUE((uint64_t)addr | (tag << 48)));
     return addr;
 }

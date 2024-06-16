@@ -54,6 +54,8 @@ typedef union {
 #define GET_TAG(i) ((i) >> 48)
 #define VALUE_TAG(val) (GET_TAG((val).as_int))
 
+#define GET_PTR(v) ((v).as_int & 0x0000FFFFFFFFFFFF)
+
 void kokos_value_print(kokos_value_t value);
 
 #endif // VALUE_H_

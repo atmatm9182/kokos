@@ -5,23 +5,31 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-typedef struct kokos_gc_object_node {
+typedef struct marked_value {
     kokos_value_t value;
-    struct kokos_gc_object_node* next;
-    bool marked;
-} kokos_gc_object_node_t;
+    uint8_t flags; // 0x02 - marked
+                   // 0x01 - present in the set
+} kokos_gc_obj_t;
 
-typedef struct {
-    kokos_gc_object_node_t* root;
+#define OBJ_FLAG_MARKED 0x02
+#define OBJ_FLAG_OCCUPIED 0x01
+
+#define IS_MARKED(v) ((v).flags & OBJ_FLAG_MARKED)
+#define IS_OCCUPIED(v) ((v).flags & OBJ_FLAG_OCCUPIED)
+
+typedef struct objs {
+    kokos_gc_obj_t* values;
+    size_t cap;
     size_t len;
-} kokos_gc_object_list_t;
+} kokos_gc_objs_t;
 
 typedef struct kokos_gc {
-    kokos_gc_object_list_t objects;
+    kokos_gc_objs_t objects;
     size_t max_objs;
 } kokos_gc_t;
 
 kokos_gc_t kokos_gc_new(size_t max_objs);
 void kokos_gc_add_obj(kokos_gc_t* gc, kokos_value_t value);
+kokos_gc_obj_t* kokos_gc_find(kokos_gc_t* gc, kokos_value_t value);
 
 #endif // GC_H_

@@ -12,6 +12,14 @@
 #define KOKOS_FREE free
 #endif // KOKOS_FREE
 
+#ifndef KOKOS_REALLOC
+#define KOKOS_REALLOC realloc
+#endif
+
+#ifndef KOKOS_CALLOC
+#define KOKOS_CALLOC calloc
+#endif
+
 #define __ESC_RED "\e[31m"
 #define __ESC_RESET "\e[39;49m"
 
