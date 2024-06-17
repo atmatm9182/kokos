@@ -5,6 +5,8 @@
 #include "macros.h"
 #include "native.h"
 #include "runtime.h"
+#include "src/value.h"
+#include <stdio.h>
 
 static void exec(kokos_vm_t* vm);
 
@@ -336,6 +338,50 @@ kokos_vm_t kokos_vm_create(kokos_compiler_context_t* ctx)
     return vm;
 }
 
+static void mark_obj(kokos_gc_t* gc, kokos_gc_obj_t* obj)
+{
+    obj->flags |= OBJ_FLAG_MARKED;
+
+    switch (GET_TAG(obj->value.as_int)) {
+    case VECTOR_TAG: {
+        kokos_runtime_vector_t* vec = (kokos_runtime_vector_t*)(GET_PTR(obj->value));
+        for (size_t i = 0; i < vec->len; i++) {
+            kokos_gc_obj_t* gobj = kokos_gc_find(gc, vec->items[i]);
+
+            if (!gobj) {
+                continue;
+            }
+
+            mark_obj(gc, gobj);
+        }
+
+        break;
+    }
+    case MAP_TAG: {
+        kokos_runtime_map_t* map = (kokos_runtime_map_t*)(GET_PTR(obj->value));
+        HT_ITER(map->table, {
+            kokos_gc_obj_t* key = kokos_gc_find(gc, TO_VALUE((uint64_t)kv.key));
+            kokos_gc_obj_t* value = kokos_gc_find(gc, TO_VALUE((uint64_t)kv.value));
+
+            if (key) {
+                mark_obj(gc, key);
+            }
+
+            if (value) {
+                mark_obj(gc, value);
+            }
+        });
+
+        break;
+    }
+    default: {
+        char buf[128];
+        sprintf(buf, "tag: %lx, value: %lx", GET_TAG(obj->value.as_int), obj->value.as_int);
+        KOKOS_TODO(buf);
+    }        
+    }
+}
+
 static void gc_mark_frame(kokos_gc_t* gc, kokos_frame_t const* frame)
 {
     // NOTE: we don't mark locals. should we?
@@ -344,7 +390,8 @@ static void gc_mark_frame(kokos_gc_t* gc, kokos_frame_t const* frame)
         kokos_gc_obj_t* obj = kokos_gc_find(gc, value);
 
         if (obj) {
-            obj->flags |= OBJ_FLAG_MARKED;
+            KOKOS_ASSERT(IS_OCCUPIED(*obj));
+            mark_obj(gc, obj);
         }
     }
 }

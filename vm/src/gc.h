@@ -8,7 +8,7 @@
 typedef struct marked_value {
     kokos_value_t value;
     uint8_t flags; // 0x02 - marked
-                   // 0x01 - present in the set
+                   // 0x01 - occupied
 } kokos_gc_obj_t;
 
 #define OBJ_FLAG_MARKED 0x02
