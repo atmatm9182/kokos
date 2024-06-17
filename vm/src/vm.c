@@ -378,7 +378,7 @@ static void mark_obj(kokos_gc_t* gc, kokos_gc_obj_t* obj)
         char buf[128];
         sprintf(buf, "tag: %lx, value: %lx", GET_TAG(obj->value.as_int), obj->value.as_int);
         KOKOS_TODO(buf);
-    }        
+    }
     }
 }
 
@@ -396,6 +396,21 @@ static void gc_mark_frame(kokos_gc_t* gc, kokos_frame_t const* frame)
     }
 }
 
+static void obj_free(kokos_gc_obj_t* obj)
+{
+    switch (GET_TAG(obj->value.as_int)) {
+    case STRING_TAG: {
+        kokos_runtime_string_t* str = (void*)GET_PTR(obj->value);
+        KOKOS_FREE(str->ptr);
+        break;
+    }
+    default: {
+    }
+    }
+
+    KOKOS_FREE((void*)GET_PTR(obj->value));
+}
+
 static void kokos_gc_collect(kokos_vm_t* vm)
 {
     for (size_t i = 0; i < vm->frames.sp; i++) {
@@ -411,8 +426,7 @@ static void kokos_gc_collect(kokos_vm_t* vm)
 
         obj->flags = 0;
 
-        void* ptr = (void*)GET_PTR(obj->value);
-        KOKOS_FREE(ptr);
+        obj_free(obj);
 
         vm->gc.objects.len--;
     }
@@ -439,6 +453,13 @@ void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag)
         kokos_runtime_map_t* map = KOKOS_ALLOC(sizeof(kokos_runtime_map_t));
         map->table = table;
         addr = map;
+        break;
+    }
+    case STRING_TAG: {
+        kokos_runtime_string_t* str = KOKOS_ALLOC(sizeof(kokos_runtime_string_t));
+        str->ptr = NULL;
+        str->len = 0;
+        addr = str;
         break;
     }
     default: KOKOS_TODO();

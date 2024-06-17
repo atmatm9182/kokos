@@ -1,0 +1,3 @@
+(let (filename "some-file")
+  (write-file filename "file contents would go here")
+  (print (read-file filename)))
