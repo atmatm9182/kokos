@@ -53,4 +53,10 @@
         exit(1);                                                                                   \
     } while (0)
 
+#define TRY(e)                                                                                     \
+    do {                                                                                           \
+        if (!(e))                                                                                  \
+            return false;                                                                          \
+    } while (0)
+
 #endif // MACROS_H_

@@ -24,12 +24,6 @@
         }                                                                                          \
     } while (0)
 
-#define TRY(e)                                                                                     \
-    do {                                                                                           \
-        if (!(e))                                                                                  \
-            return false;                                                                          \
-    } while (0)
-
 static char err_buf[512];
 
 bool kokos_compile_ok(void)

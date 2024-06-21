@@ -5,10 +5,37 @@
 #include "macros.h"
 #include "native.h"
 #include "runtime.h"
-#include "src/value.h"
+#include "value.h"
 #include <stdio.h>
 
-static void exec(kokos_vm_t* vm);
+#define DOUBLE_TAG 0
+
+#define CHECK_DOUBLE(val)                                                                          \
+    do {                                                                                           \
+        if (!IS_DOUBLE((val))) {                                                                   \
+            set_type_mismatch(vm, DOUBLE_TAG, VALUE_TAG((val)));                                   \
+            return false;                                                                          \
+        }                                                                                          \
+    } while (0)
+
+#define CHECK_TYPE(val, t)                                                                         \
+    do {                                                                                           \
+        if (VALUE_TAG((val)) != (t)) {                                                             \
+            set_type_mismatch(vm, (t), VALUE_TAG((val)));                                          \
+            return false;                                                                          \
+        }                                                                                          \
+    } while (0)
+
+static void set_type_mismatch(kokos_vm_t* vm, int16_t expected, int16_t got)
+{
+    vm->exception_reg = (kokos_exception_t) {
+        .type = EX_TYPE_MISMATCH,
+    };
+    vm->exception_reg.type_mismatch.expected = expected;
+    vm->exception_reg.type_mismatch.got = got;
+}
+
+static bool exec(kokos_vm_t* vm);
 
 static kokos_frame_t* alloc_frame(size_t ret_location)
 {
@@ -36,15 +63,19 @@ static bool kokos_value_to_bool(kokos_value_t value)
     return !IS_FALSE(value) && !IS_NIL(value);
 }
 
-static uint64_t kokos_cmp_values(kokos_value_t lhs, kokos_value_t rhs)
+static bool kokos_cmp_values(kokos_vm_t* vm, kokos_value_t lhs, kokos_value_t rhs)
 {
     if (lhs.as_int == rhs.as_int) {
         return 0;
     }
 
-    KOKOS_VERIFY(
-        IS_DOUBLE(lhs) && IS_DOUBLE(rhs)); // TODO: allow comparing of any values or throw an error
-    return lhs.as_double < rhs.as_double ? -1 : 1;
+    CHECK_DOUBLE(lhs);
+    CHECK_DOUBLE(rhs);
+
+    uint64_t res = lhs.as_double < rhs.as_double ? -1 : 1;
+    STACK_PUSH(&current_frame(vm)->stack, TO_VALUE(res));
+
+    return true;
 }
 
 kokos_value_t kokos_alloc_value(kokos_vm_t* vm, uint64_t params)
@@ -102,7 +133,7 @@ static kokos_frame_t* push_frame(kokos_vm_t* vm, size_t ret_location)
     return old_frame;
 }
 
-static void exec(kokos_vm_t* vm)
+static bool exec(kokos_vm_t* vm)
 {
     kokos_frame_t* frame = STACK_PEEK(&vm->frames);
     kokos_instruction_t instruction = current_instruction(vm);
@@ -121,7 +152,7 @@ static void exec(kokos_vm_t* vm)
         double acc = 0.0;
         for (size_t i = 0; i < instruction.operand; i++) {
             kokos_value_t val = STACK_POP(&frame->stack);
-            KOKOS_VERIFY(IS_DOUBLE(val));
+            CHECK_DOUBLE(val);
             acc += val.as_double;
         }
         STACK_PUSH(&frame->stack, TO_VALUE(acc));
@@ -133,7 +164,7 @@ static void exec(kokos_vm_t* vm)
         double acc = 0.0;
         for (ssize_t i = 0; i < instruction.operand - 1; i++) {
             kokos_value_t val = STACK_POP(&frame->stack);
-            KOKOS_VERIFY(IS_DOUBLE(val));
+            CHECK_DOUBLE(val);
             acc -= val.as_double;
         }
 
@@ -147,7 +178,7 @@ static void exec(kokos_vm_t* vm)
         double acc = 1.0;
         for (size_t i = 0; i < instruction.operand; i++) {
             kokos_value_t val = STACK_POP(&frame->stack);
-            KOKOS_VERIFY(IS_DOUBLE(val));
+            CHECK_DOUBLE(val);
             acc *= val.as_double;
         }
         STACK_PUSH(&frame->stack, TO_VALUE(acc));
@@ -165,12 +196,12 @@ static void exec(kokos_vm_t* vm)
         double divisor = 1.0;
         for (size_t i = 0; i < instruction.operand - 1; i++) {
             kokos_value_t val = STACK_POP(&frame->stack);
-            KOKOS_VERIFY(IS_DOUBLE(val));
+            CHECK_DOUBLE(val);
             divisor *= val.as_double;
         }
 
         kokos_value_t divident = STACK_POP(&frame->stack);
-        KOKOS_VERIFY(IS_DOUBLE(divident));
+        CHECK_DOUBLE(divident);
 
         STACK_PUSH(&frame->stack, TO_VALUE(divident.as_double / divisor));
 
@@ -253,8 +284,7 @@ static void exec(kokos_vm_t* vm)
         kokos_value_t rhs = STACK_POP(&frame->stack);
         kokos_value_t lhs = STACK_POP(&frame->stack);
 
-        uint64_t cmp = kokos_cmp_values(lhs, rhs);
-        STACK_PUSH(&frame->stack, TO_VALUE(cmp));
+        TRY(kokos_cmp_values(vm, lhs, rhs));
 
         vm->ip++;
         break;
@@ -294,6 +324,31 @@ static void exec(kokos_vm_t* vm)
         KOKOS_TODO(buf);
     }
     }
+
+    return true;
+}
+
+static char const* tag_str(uint16_t tag)
+{
+    switch (tag) {
+    case DOUBLE_TAG: return "double";
+    case STRING_TAG: return "string";
+    case MAP_TAG:    return "map";
+    case VECTOR_TAG: return "vector";
+    }
+
+    KOKOS_VERIFY(false);
+}
+
+static void report_exception(kokos_vm_t* vm)
+{
+    switch (vm->exception_reg.type) {
+    case EX_TYPE_MISMATCH: {
+        char const* expected = tag_str(vm->exception_reg.type_mismatch.expected);
+        char const* got = tag_str(vm->exception_reg.type_mismatch.got);
+        fprintf(stderr, "type mismatch: expected %s, but got %s", expected, got);
+    }
+    }
 }
 
 void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code)
@@ -305,7 +360,10 @@ void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code)
     STACK_PUSH(&vm->frames, frame);
 
     while (vm->ip < vm->current_instructions->len) {
-        exec(vm);
+        if (!exec(vm)) {
+            report_exception(vm);
+            exit(1);
+        }
     }
 
     // NOTE: we do not pop the frame here after the vm has ran

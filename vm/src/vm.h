@@ -42,10 +42,28 @@ typedef struct {
     size_t cap; // store this so we can reuse `popped` frames
 } kokos_frame_stack_t;
 
+typedef enum {
+    EX_TYPE_MISMATCH,
+} kokos_exception_type_e;
+
+typedef struct kokos_exception {
+    kokos_exception_type_e type;
+
+    union {
+        // identify the types of values using the tag, use 0 for doubles,
+        // since they are not tagged
+        struct {
+            uint16_t expected;
+            uint16_t got;
+        } type_mismatch;
+    };
+} kokos_exception_t;
+
 typedef struct kokos_vm {
     kokos_gc_t gc;
     kokos_runtime_store_t store;
     kokos_frame_stack_t frames;
+    kokos_exception_t exception_reg;
 
     kokos_code_t instructions;
     kokos_code_t* current_instructions;
