@@ -6,7 +6,7 @@
 
 typedef struct kokos_vm kokos_vm_t;
 
-typedef void (*kokos_native_proc_t)(kokos_vm_t* vm, uint16_t nargs);
+typedef bool (*kokos_native_proc_t)(kokos_vm_t* vm, uint16_t nargs);
 
 kokos_native_proc_t kokos_find_native(string_view name);
 

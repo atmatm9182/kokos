@@ -19,6 +19,49 @@
 
 #define TO_BOOL(b) (TO_VALUE(b ? TRUE_BITS : FALSE_BITS))
 
+// use this only for macros and exceptions below
+#define DOUBLE_TAG 0
+
+#define CHECK_DOUBLE(val)                                                                          \
+    do {                                                                                           \
+        if (!IS_DOUBLE((val))) {                                                                   \
+            kokos_vm_ex_set_type_mismatch(vm, DOUBLE_TAG, VALUE_TAG((val)));                       \
+            return false;                                                                          \
+        }                                                                                          \
+    } while (0)
+
+#define CHECK_TYPE(val, t)                                                                         \
+    do {                                                                                           \
+        if (VALUE_TAG((val)) != (t)) {                                                             \
+            kokos_vm_ex_set_type_mismatch(vm, (t), VALUE_TAG((val)));                              \
+            return false;                                                                          \
+        }                                                                                          \
+    } while (0)
+
+#define CHECK_ARITY(e, g)                                                                          \
+    do {                                                                                           \
+        if ((e) != (g)) {                                                                          \
+            kokos_vm_ex_set_arity_mismatch(vm, (e), (g));                                          \
+            return false;                                                                          \
+        }                                                                                          \
+    } while (0)
+
+#define CHECK_CUSTOM(cond, fmt)                                                                    \
+    do {                                                                                           \
+        if (!(cond)) {                                                                             \
+            kokos_vm_ex_custom_printf(vm, fmt);                                                    \
+            return false;                                                                          \
+        }                                                                                          \
+    } while (0)
+
+#define CHECK_CUSTOM_PRINT(cond, fmt, ...)                                                         \
+    do {                                                                                           \
+        if (!(cond)) {                                                                             \
+            kokos_vm_ex_custom_printf(vm, fmt, __VA_ARGS__);                                       \
+            return false;                                                                          \
+        }                                                                                          \
+    } while (0)
+
 typedef struct {
     hash_table procedures;
     kokos_code_t procedure_code;
@@ -44,6 +87,8 @@ typedef struct {
 
 typedef enum {
     EX_TYPE_MISMATCH,
+    EX_ARITY_MISMATCH,
+    EX_CUSTOM,
 } kokos_exception_type_e;
 
 typedef struct kokos_exception {
@@ -56,6 +101,13 @@ typedef struct kokos_exception {
             uint16_t expected;
             uint16_t got;
         } type_mismatch;
+
+        struct {
+            size_t expected;
+            size_t got;
+        } arity_mismatch;
+
+        char const* custom;
     };
 } kokos_exception_t;
 
@@ -76,5 +128,10 @@ void kokos_vm_dump(kokos_vm_t* vm);
 
 /// Allocates a new value of the provided tag on the heap and returns a pointer to it
 void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag);
+
+void kokos_vm_ex_set_type_mismatch(kokos_vm_t* vm, uint16_t expected, uint16_t got);
+void kokos_vm_ex_set_arity_mismatch(kokos_vm_t* vm, size_t expected, size_t got);
+void kokos_vm_ex_custom_printf(kokos_vm_t* vm, char const* fmt, ...)
+    __attribute__((format(printf, 2, 3)));
 
 #endif // VM_H_

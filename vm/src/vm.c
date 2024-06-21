@@ -6,34 +6,8 @@
 #include "native.h"
 #include "runtime.h"
 #include "value.h"
+#include <stdarg.h>
 #include <stdio.h>
-
-#define DOUBLE_TAG 0
-
-#define CHECK_DOUBLE(val)                                                                          \
-    do {                                                                                           \
-        if (!IS_DOUBLE((val))) {                                                                   \
-            set_type_mismatch(vm, DOUBLE_TAG, VALUE_TAG((val)));                                   \
-            return false;                                                                          \
-        }                                                                                          \
-    } while (0)
-
-#define CHECK_TYPE(val, t)                                                                         \
-    do {                                                                                           \
-        if (VALUE_TAG((val)) != (t)) {                                                             \
-            set_type_mismatch(vm, (t), VALUE_TAG((val)));                                          \
-            return false;                                                                          \
-        }                                                                                          \
-    } while (0)
-
-static void set_type_mismatch(kokos_vm_t* vm, int16_t expected, int16_t got)
-{
-    vm->exception_reg = (kokos_exception_t) {
-        .type = EX_TYPE_MISMATCH,
-    };
-    vm->exception_reg.type_mismatch.expected = expected;
-    vm->exception_reg.type_mismatch.got = got;
-}
 
 static bool exec(kokos_vm_t* vm);
 
@@ -66,7 +40,8 @@ static bool kokos_value_to_bool(kokos_value_t value)
 static bool kokos_cmp_values(kokos_vm_t* vm, kokos_value_t lhs, kokos_value_t rhs)
 {
     if (lhs.as_int == rhs.as_int) {
-        return 0;
+        STACK_PUSH(&current_frame(vm)->stack, TO_VALUE(0));
+        return true;
     }
 
     CHECK_DOUBLE(lhs);
@@ -307,7 +282,7 @@ static bool exec(kokos_vm_t* vm)
         uint16_t nargs = instruction.operand >> 48;
         kokos_native_proc_t native
             = (kokos_native_proc_t)(instruction.operand & ~((uint64_t)0xFFFF << 48));
-        native(vm, nargs);
+        TRY(native(vm, nargs));
         vm->ip++;
         break;
     }
@@ -331,10 +306,10 @@ static bool exec(kokos_vm_t* vm)
 static char const* tag_str(uint16_t tag)
 {
     switch (tag) {
-    case DOUBLE_TAG: return "double";
     case STRING_TAG: return "string";
     case MAP_TAG:    return "map";
     case VECTOR_TAG: return "vector";
+    case DOUBLE_TAG: return "double";
     }
 
     KOKOS_VERIFY(false);
@@ -346,7 +321,17 @@ static void report_exception(kokos_vm_t* vm)
     case EX_TYPE_MISMATCH: {
         char const* expected = tag_str(vm->exception_reg.type_mismatch.expected);
         char const* got = tag_str(vm->exception_reg.type_mismatch.got);
-        fprintf(stderr, "type mismatch: expected %s, but got %s", expected, got);
+        fprintf(stderr, "type mismatch: expected %s, but got %s\n", expected, got);
+        break;
+    }
+    case EX_ARITY_MISMATCH: {
+        fprintf(stderr, "arity mismatch: expected %lu arguments, but got %lu\n",
+            vm->exception_reg.arity_mismatch.expected, vm->exception_reg.arity_mismatch.got);
+        break;
+    }
+    case EX_CUSTOM: {
+        fprintf(stderr, "error: %s\n", vm->exception_reg.custom);
+        break;
     }
     }
 }
@@ -525,4 +510,38 @@ void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag)
 
     kokos_gc_add_obj(gc, TO_VALUE((uint64_t)addr | (tag << 48)));
     return addr;
+}
+
+void kokos_vm_ex_set_type_mismatch(kokos_vm_t* vm, uint16_t expected, uint16_t got)
+{
+    vm->exception_reg = (kokos_exception_t) {
+        .type = EX_TYPE_MISMATCH,
+    };
+    vm->exception_reg.type_mismatch.expected = expected;
+    vm->exception_reg.type_mismatch.got = got;
+}
+
+void kokos_vm_ex_set_arity_mismatch(kokos_vm_t* vm, size_t expected, size_t got)
+{
+    vm->exception_reg = (kokos_exception_t) {
+        .type = EX_ARITY_MISMATCH,
+    };
+    vm->exception_reg.arity_mismatch.expected = expected;
+    vm->exception_reg.arity_mismatch.got = got;
+}
+
+void kokos_vm_ex_custom_printf(kokos_vm_t* vm, const char* fmt, ...)
+{
+    vm->exception_reg = (kokos_exception_t) {
+        .type = EX_CUSTOM,
+    };
+
+    string_builder sb = sb_new(256);
+
+    va_list args;
+    va_start(args, fmt);
+    sb_sprintf(&sb, fmt, args);
+    va_end(args);
+
+    vm->exception_reg.custom = sb_to_cstr(&sb);
 }

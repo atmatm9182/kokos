@@ -1,17 +1,17 @@
 #include "native.h"
 #include "base.h"
-#include "src/macros.h"
-#include "src/runtime.h"
-#include "src/value.h"
+#include "macros.h"
+#include "runtime.h"
+#include "value.h"
 #include "vm.h"
 #include <stdio.h>
 
-static void native_print(kokos_vm_t* vm, uint16_t nargs)
+static bool native_print(kokos_vm_t* vm, uint16_t nargs)
 {
     // do this so we don't peek an empty stack
     if (nargs == 0) {
         printf("\n");
-        return;
+        return true;
     }
 
     kokos_frame_t* frame = STACK_PEEK(&vm->frames);
@@ -25,9 +25,11 @@ static void native_print(kokos_vm_t* vm, uint16_t nargs)
         }
     }
     printf("\n");
+
+    return true;
 }
 
-static void native_make_vec(kokos_vm_t* vm, uint16_t nargs)
+static bool native_make_vec(kokos_vm_t* vm, uint16_t nargs)
 {
     kokos_frame_t* frame = STACK_PEEK(&vm->frames);
 
@@ -38,11 +40,13 @@ static void native_make_vec(kokos_vm_t* vm, uint16_t nargs)
     }
 
     STACK_PUSH(&frame->stack, TO_VECTOR(vector));
+
+    return true;
 }
 
-static void native_make_map(kokos_vm_t* vm, uint16_t nargs)
+static bool native_make_map(kokos_vm_t* vm, uint16_t nargs)
 {
-    KOKOS_VERIFY(nargs % 2 == 0);
+    CHECK_CUSTOM(nargs % 2 == 0, "expected the number of arguments to be even");
 
     kokos_frame_t* frame = STACK_PEEK(&vm->frames);
 
@@ -55,16 +59,18 @@ static void native_make_map(kokos_vm_t* vm, uint16_t nargs)
     }
 
     STACK_PUSH(&frame->stack, TO_MAP(map));
+
+    return true;
 }
 
 // TODO: handle relative filepaths
-static void native_read_file(kokos_vm_t* vm, uint16_t nargs)
+static bool native_read_file(kokos_vm_t* vm, uint16_t nargs)
 {
-    KOKOS_VERIFY(nargs == 1);
+    CHECK_ARITY(1, nargs);
 
     kokos_frame_t* frame = STACK_PEEK(&vm->frames);
     kokos_value_t filename = STACK_POP(&frame->stack);
-    KOKOS_VERIFY(IS_STRING(filename));
+    CHECK_TYPE(filename, STRING_TAG);
 
     kokos_runtime_string_t* filename_string = (kokos_runtime_string_t*)GET_PTR(filename);
     char fname[filename_string->len + 1];
@@ -90,26 +96,28 @@ static void native_read_file(kokos_vm_t* vm, uint16_t nargs)
     STACK_PUSH(&frame->stack, TO_VALUE((uint64_t)str | STRING_BITS));
 
     fclose(f);
-    return;
+    return true;
 
 fail:
     if (f) {
         fclose(f);
     }
     STACK_PUSH(&frame->stack, TO_VALUE(NIL_BITS));
+
+    return true;
 }
 
 // TODO: handle relative filepaths
-static void native_write_file(kokos_vm_t* vm, uint16_t nargs)
+static bool native_write_file(kokos_vm_t* vm, uint16_t nargs)
 {
-    KOKOS_VERIFY(nargs == 2);
+    CHECK_ARITY(2, nargs);
 
     kokos_frame_t* frame = STACK_PEEK(&vm->frames);
     kokos_value_t filename = STACK_POP(&frame->stack);
-    KOKOS_VERIFY(IS_STRING(filename));
+    CHECK_TYPE(filename, STRING_TAG);
 
     kokos_value_t data = STACK_POP(&frame->stack);
-    KOKOS_VERIFY(IS_STRING(data));
+    CHECK_TYPE(filename, STRING_TAG);
 
     kokos_runtime_string_t* filename_string = (kokos_runtime_string_t*)GET_PTR(filename);
     char fname[filename_string->len + 1];
@@ -125,13 +133,14 @@ static void native_write_file(kokos_vm_t* vm, uint16_t nargs)
     STACK_PUSH(&frame->stack, TO_VALUE(TRUE_BITS));
 
     fclose(f);
-    return;
+    return true;
 
 fail:
     if (f) {
         fclose(f);
     }
     STACK_PUSH(&frame->stack, TO_VALUE(FALSE_BITS));
+    return true;
 }
 
 typedef struct {
