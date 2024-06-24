@@ -1,9 +1,9 @@
 #include "runtime.h"
 #include "base.h"
-#include "compile.h"
 #include "hash.h"
 #include "macros.h"
 #include "value.h"
+#include <stdio.h>
 
 uint64_t kokos_djb2(const void* ptr)
 {
@@ -19,8 +19,65 @@ uint64_t kokos_djb2(const void* ptr)
 
 bool kokos_eq(const void* lhs, const void* rhs)
 {
-    // FIXME: define equality for collection types
-    return lhs == rhs;
+    kokos_value_t l = { .as_int = (uintptr_t)lhs };
+    kokos_value_t r = { .as_int = (uintptr_t)rhs };
+
+    if (IS_DOUBLE(l) && IS_DOUBLE(r)) {
+        return lhs == rhs;
+    }
+
+    uint16_t ltag = VALUE_TAG(l);
+    uint16_t rtag = VALUE_TAG(r);
+
+    if (ltag != rtag) {
+        return false;
+    }
+
+    switch (VALUE_TAG(l)) {
+    case STRING_TAG: {
+        kokos_runtime_string_t* ls = GET_STRING(l);
+        kokos_runtime_string_t* rs = GET_STRING(r);
+
+        if (ls->len != rs->len) {
+            return false;
+        }
+
+        for (size_t i = 0; i < ls->len; i++) {
+            if (ls->ptr[i] != rs->ptr[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+    case VECTOR_TAG: {
+        kokos_runtime_vector_t* lv = GET_VECTOR(l);
+        kokos_runtime_vector_t* rv = GET_VECTOR(r);
+
+        if (lv->len != rv->len) {
+            return false;
+        }
+
+        for (size_t i = 0; i < lv->len; i++) {
+            void* lhs = TO_PTR(lv->items[i]);
+            void* rhs = TO_PTR(rv->items[i]);
+
+            if (!kokos_eq(lhs, rhs)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+    case MAP_TAG: {
+        return lhs == rhs; // should we somehow check for equality of all keys?
+    }
+    default: {
+        char buf[512];
+        sprintf(buf, "kokos_eq not implemented for values with tag %lx", VALUE_TAG(l));
+        KOKOS_TODO(buf);
+    }
+    }
 }
 
 ht_eq_func kokos_default_map_eq_func = kokos_eq;

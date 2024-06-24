@@ -184,8 +184,7 @@ static bool exec(kokos_vm_t* vm)
         break;
     }
     case I_CALL: {
-        size_t ret_location = (vm->ip + 1)
-            | ((size_t)(vm->frames.sp != 1) << 63); // FIXME: this should use uint64_t values
+        size_t ret_location = (vm->ip + 1) | ((size_t)(vm->frames.sp != 1) << 63);
 
         uint32_t arity = instruction.operand >> 32;
         uint32_t ip = instruction.operand & 0xFFFFFFFF;

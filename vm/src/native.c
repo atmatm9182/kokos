@@ -4,7 +4,9 @@
 #include "runtime.h"
 #include "value.h"
 #include "vm.h"
+#include <errno.h>
 #include <stdio.h>
+#include <string.h>
 
 static bool native_print(kokos_vm_t* vm, uint16_t nargs)
 {
@@ -82,9 +84,9 @@ static bool native_read_file(kokos_vm_t* vm, uint16_t nargs)
     }
 
     // FIXME: check for errors here and report them in some way
-    fseek(f, 0, SEEK_END);
+    CHECK_CUSTOM_PRINT(fseek(f, 0, SEEK_END) == 0, "could not fseek the file: %s", strerror(errno));
     size_t fsize = ftell(f);
-    rewind(f);
+    rewind(f); // this never fails according to the documentation
 
     char* buf = KOKOS_ALLOC(sizeof(char) * fsize);
     fread(buf, sizeof(char), fsize, f);

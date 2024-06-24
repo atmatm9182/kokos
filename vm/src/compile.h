@@ -37,7 +37,7 @@ typedef struct {
 
 typedef struct {
     kokos_params_t params;
-    size_t ip;
+    uint64_t ip;
 } kokos_compiled_proc_t;
 
 kokos_compiler_context_t kokos_ctx_empty(void);

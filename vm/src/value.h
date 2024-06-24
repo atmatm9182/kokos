@@ -16,6 +16,10 @@ typedef union {
     uint64_t as_int;
 } kokos_value_t;
 
+_Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
+    "kokos_value_t shoud have the size of platform's pointer"); // TODO: make this true for 32-bit
+                                                                // targets
+
 #define STRING_BITS 0x7FFE000000000000
 #define MAP_BITS 0x7FFF000000000000
 // #define LIST_BITS 0x7FFF800000000000 // FIXME: this is bad for sure
@@ -30,7 +34,9 @@ typedef union {
 #define FALSE_BITS (OBJ_BITS | 2)
 #define NIL_BITS (OBJ_BITS | 4)
 
-#define IS_DOUBLE(val) (((val).as_int & OBJ_BITS) != OBJ_BITS)
+#define IS_DOUBLE_INT(i) (((i) & OBJ_BITS) != OBJ_BITS)
+
+#define IS_DOUBLE(val) (IS_DOUBLE_INT((val).as_int))
 #define IS_STRING(val) (((val).as_int & STRING_BITS) == STRING_BITS)
 #define IS_LIST(val) (((val).as_int & LIST_BITS) == LIST_BITS)
 #define IS_MAP(val) (((val).as_int & MAP_BITS) == MAP_BITS)
@@ -51,10 +57,19 @@ typedef union {
 #define TO_VECTOR(val) (TO_VALUE((uint64_t)(val) | VECTOR_BITS))
 #define TO_MAP(val) (TO_VALUE((uint64_t)(val) | MAP_BITS))
 
+#define TO_PTR(val) ((void*)(val).as_int)
+
 #define GET_TAG(i) ((i) >> 48)
 #define VALUE_TAG(val) (GET_TAG((val).as_int))
 
-#define GET_PTR(v) ((v).as_int & 0x0000FFFFFFFFFFFF)
+#define GET_PTR_INT(i) ((i) & 0x0000FFFFFFFFFFFF)
+#define GET_PTR(v) (GET_PTR_INT((v).as_int))
+
+#define GET_STRING_INT(i) ((kokos_runtime_string_t*)GET_PTR_INT((i)))
+#define GET_STRING(val) (GET_STRING_INT((val).as_int))
+
+#define GET_VECTOR_INT(i) ((kokos_runtime_vector_t*)GET_PTR_INT((i)))
+#define GET_VECTOR(val) (GET_VECTOR_INT((val).as_int))
 
 void kokos_value_print(kokos_value_t value);
 
