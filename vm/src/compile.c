@@ -228,7 +228,7 @@ static bool compile_all_args(
 static bool compile_mul(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
     TRY(compile_all_args(expr, ctx, code));
-    
+
     DA_ADD(code, INSTR_MUL(expr->list.len - 1));
     return true;
 }
@@ -402,7 +402,7 @@ bool compile_let(kokos_expr_t const* expr, kokos_compiler_context_t* ctx, kokos_
     for (size_t i = 0; i < expr->list.len - 2; i++) {
         TRY(kokos_expr_compile(expr->list.items[i + 2], ctx, code));
     }
-    
+
     return true;
 }
 
@@ -465,7 +465,12 @@ static bool compile_list(
     const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
     kokos_list_t list = expr->list;
-    KOKOS_VERIFY(list.len > 0); // TODO: handle empty list
+    if (list.len == 0) {
+        DA_ADD(code, INSTR_ALLOC(LIST_BITS, 0));
+        return true;
+    }
+
+    KOKOS_ASSERT(list.len > 0); // TODO: handle empty list
     string_view head = list.items[0]->token.value;
 
     kokos_sform_t sform = get_sform(head);
@@ -525,7 +530,7 @@ static bool compile_list(
     }
 
     TRY(compile_all_args_reversed(expr, ctx, code));
-    
+
     DA_ADD(code, INSTR_CALL(proc->params.len, proc->ip));
     return true;
 }

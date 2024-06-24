@@ -35,7 +35,7 @@ static bool native_make_vec(kokos_vm_t* vm, uint16_t nargs)
 {
     kokos_frame_t* frame = STACK_PEEK(&vm->frames);
 
-    kokos_runtime_vector_t* vector = kokos_vm_gc_alloc(vm, VECTOR_TAG);
+    kokos_runtime_vector_t* vector = kokos_vm_gc_alloc(vm, VECTOR_TAG, nargs);
 
     for (size_t i = 0; i < nargs; i++) {
         DA_ADD(vector, STACK_POP(&frame->stack));
@@ -52,7 +52,7 @@ static bool native_make_map(kokos_vm_t* vm, uint16_t nargs)
 
     kokos_frame_t* frame = STACK_PEEK(&vm->frames);
 
-    kokos_runtime_map_t* map = kokos_vm_gc_alloc(vm, MAP_TAG);
+    kokos_runtime_map_t* map = kokos_vm_gc_alloc(vm, MAP_TAG, nargs);
 
     for (size_t i = 0; i < nargs / 2; i++) {
         kokos_value_t key = STACK_POP(&frame->stack);
@@ -92,7 +92,7 @@ static bool native_read_file(kokos_vm_t* vm, uint16_t nargs)
     fread(buf, sizeof(char), fsize, f);
 
     // TODO: refactor this into a separate procedure
-    kokos_runtime_string_t* str = kokos_vm_gc_alloc(vm, STRING_TAG);
+    kokos_runtime_string_t* str = kokos_vm_gc_alloc(vm, STRING_TAG, fsize);
     str->ptr = buf;
     str->len = fsize;
     STACK_PUSH(&frame->stack, TO_VALUE((uint64_t)str | STRING_BITS));

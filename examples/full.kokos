@@ -35,3 +35,5 @@
 (proc square-sum (x y) (+ (mul x x) (mul y y)))
 
 (print (square-sum 3 5)) ; => 34
+
+() ; this creates an empty list

@@ -70,6 +70,19 @@ void kokos_value_print(kokos_value_t value)
         printf("}");
         break;
     }
+    case LIST_TAG: {
+        kokos_runtime_list_t* list = GET_LIST(value);
+
+        printf("(");
+        for (size_t i = 0; i < list->len; i++) {
+            kokos_value_print(list->items[i]);
+            if (i != list->len - 1) {
+                printf(" ");
+            }
+        }
+        printf(")");
+        break;
+    }
     default: {
         KOKOS_VERIFY(IS_DOUBLE(value));
         printf("%f", value.as_double);

@@ -127,7 +127,7 @@ void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code);
 void kokos_vm_dump(kokos_vm_t* vm);
 
 /// Allocates a new value of the provided tag on the heap and returns a pointer to it
-void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag);
+void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag, size_t cap);
 
 void kokos_vm_ex_set_type_mismatch(kokos_vm_t* vm, uint16_t expected, uint16_t got);
 void kokos_vm_ex_set_arity_mismatch(kokos_vm_t* vm, size_t expected, size_t got);

@@ -9,6 +9,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#define INSTR_OP_ARG_MASK 0xFFFFFFFF
+
 static bool exec(kokos_vm_t* vm);
 
 static kokos_frame_t* alloc_frame(size_t ret_location)
@@ -59,26 +61,42 @@ kokos_value_t kokos_alloc_value(kokos_vm_t* vm, uint64_t params)
 
     switch (GET_TAG(params)) {
     case VECTOR_TAG: {
-        kokos_runtime_vector_t* vec = (kokos_runtime_vector_t*)kokos_vm_gc_alloc(vm, VECTOR_TAG);
+        uint32_t count = params & INSTR_OP_ARG_MASK;
+        kokos_runtime_vector_t* vec
+            = (kokos_runtime_vector_t*)kokos_vm_gc_alloc(vm, VECTOR_TAG, count);
 
-        uint32_t count = params & 0xFFFFFFFF;
         for (size_t i = 0; i < count; i++) {
-            DA_ADD(vec, STACK_POP(&frame->stack));
+            DA_ADD(vec,
+                STACK_POP(&frame->stack)); // BUG: when using plain DA_ADD, reallocation will
+                                           // happen, invalidating the vector's `items` pointer,
+                                           // meaning that the gc will have a dangling reference.
+                                           // this is actually okay here, but when we implement
+                                           // `vec-push` or whatever, this should be fixed
         }
 
-        return TO_VALUE((uint64_t)vec | VECTOR_BITS);
+        return TO_VECTOR(vec);
     }
     case MAP_TAG: {
-        kokos_runtime_map_t* map = (kokos_runtime_map_t*)kokos_vm_gc_alloc(vm, MAP_TAG);
+        uint32_t count = params & INSTR_OP_ARG_MASK;
+        kokos_runtime_map_t* map = (kokos_runtime_map_t*)kokos_vm_gc_alloc(vm, MAP_TAG, count);
 
-        uint32_t count = params & 0xFFFFFFFF;
         for (size_t i = 0; i < count; i++) {
             kokos_value_t value = STACK_POP(&frame->stack);
             kokos_value_t key = STACK_POP(&frame->stack);
-            kokos_runtime_map_add(map, key, value);
+            kokos_runtime_map_add(map, key, value); // BUG: same as above
         }
 
-        return TO_VALUE((uint64_t)map | MAP_BITS);
+        return TO_MAP(map);
+    }
+    case LIST_TAG: {
+        uint32_t count = params & INSTR_OP_ARG_MASK;
+        kokos_runtime_list_t* list = (kokos_runtime_list_t*)kokos_vm_gc_alloc(vm, LIST_TAG, count);
+
+        for (size_t i = 0; i < count; i++) {
+            list->items[i] = STACK_POP(&frame->stack);
+        }
+
+        return TO_LIST(list);
     }
     default: {
         char buf[128] = { 0 };
@@ -474,7 +492,7 @@ static void kokos_gc_collect(kokos_vm_t* vm)
     }
 }
 
-void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag)
+void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag, size_t cap)
 {
     kokos_gc_t* gc = &vm->gc;
 
@@ -486,12 +504,12 @@ void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag)
     switch (tag) {
     case VECTOR_TAG: {
         kokos_runtime_vector_t* vec = KOKOS_ALLOC(sizeof(kokos_runtime_vector_t));
-        DA_INIT(vec, 0, 3);
+        DA_INIT(vec, 0, cap);
         addr = vec;
         break;
     }
     case MAP_TAG: {
-        hash_table table = ht_make(kokos_default_map_hash_func, kokos_default_map_eq_func, 10);
+        hash_table table = ht_make(kokos_default_map_hash_func, kokos_default_map_eq_func, cap);
         kokos_runtime_map_t* map = KOKOS_ALLOC(sizeof(kokos_runtime_map_t));
         map->table = table;
         addr = map;
@@ -502,6 +520,13 @@ void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag)
         str->ptr = NULL;
         str->len = 0;
         addr = str;
+        break;
+    }
+    case LIST_TAG: {
+        kokos_runtime_list_t* list = KOKOS_ALLOC(sizeof(kokos_runtime_list_t));
+        list->len = cap;
+        list->items = KOKOS_CALLOC(cap, sizeof(list->items[0]));
+        addr = list;
         break;
     }
     default: KOKOS_TODO();
