@@ -2,6 +2,7 @@
 #ifndef VALUE_H_
 #define VALUE_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 // here we use the technique called 'NaN boxing'
@@ -21,6 +22,16 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
     "kokos_value_t shoud have the size of platform's pointer"); // TODO: make this true for 32-bit
                                                                 // targets
 
+#define ENUMERATE_HEAP_TYPES                                                                       \
+    X(STRING)                                                                                      \
+    X(VECTOR)                                                                                      \
+    X(LIST)                                                                                        \
+    X(MAP)
+
+#define ENUMERATE_ALL_TYPES                                                                        \
+    ENUMERATE_HEAP_TYPES                                                                           \
+    X(DOUBLE)
+
 #define STRING_BITS 0x7FFE000000000000
 #define MAP_BITS 0x7FFF000000000000
 #define LIST_BITS 0xFFFC000000000000
@@ -38,10 +49,15 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
 #define IS_DOUBLE_INT(i) (((i) & OBJ_BITS) != OBJ_BITS)
 #define IS_DOUBLE(val) (IS_DOUBLE_INT((val).as_int))
 
-#define IS_STRING(val) (((val).as_int & STRING_BITS) == STRING_BITS)
-#define IS_LIST(val) (((val).as_int & LIST_BITS) == LIST_BITS)
-#define IS_MAP(val) (((val).as_int & MAP_BITS) == MAP_BITS)
-#define IS_VECTOR(val) (((val).as_int & VECTOR_BITS) == VECTOR_BITS)
+#define X(t)                                                                                       \
+    static inline bool IS_##t(kokos_value_t val)                                                   \
+    {                                                                                              \
+        return (val.as_int & t##_BITS) == t##_BITS;                                                \
+    }
+
+ENUMERATE_HEAP_TYPES
+
+#undef X
 
 #define IS_TRUE(val) ((val).as_int == TRUE_BITS)
 #define IS_FALSE(val) ((val).as_int == FALSE_BITS)
@@ -57,9 +73,14 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
 
 #define FROM_PTR(p) ((kokos_value_t) { .as_int = (uintptr_t)(p) })
 
-#define TO_VECTOR(val) (TO_VALUE((uint64_t)(val) | VECTOR_BITS))
-#define TO_MAP(val) (TO_VALUE((uint64_t)(val) | MAP_BITS))
-#define TO_LIST(val) (TO_VALUE((uint64_t)(val) | LIST_BITS))
+#define X(t)                                                                                       \
+    static inline kokos_value_t TO_##t(void* ptr)                                                  \
+    {                                                                                              \
+        return TO_VALUE((uint64_t)ptr | t##_BITS);                                                 \
+    }
+
+ENUMERATE_HEAP_TYPES
+#undef X
 
 #define TO_PTR(val) ((void*)(val).as_int)
 
@@ -68,15 +89,6 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
 
 #define GET_PTR_INT(i) ((i) & 0x0000FFFFFFFFFFFF)
 #define GET_PTR(v) (GET_PTR_INT((v).as_int))
-
-#define GET_STRING_INT(i) ((kokos_runtime_string_t*)GET_PTR_INT((i)))
-#define GET_STRING(val) (GET_STRING_INT((val).as_int))
-
-#define GET_VECTOR_INT(i) ((kokos_runtime_vector_t*)GET_PTR_INT((i)))
-#define GET_VECTOR(val) (GET_VECTOR_INT((val).as_int))
-
-#define GET_LIST_INT(i) ((kokos_runtime_list_t*)GET_PTR_INT((i)))
-#define GET_LIST(val) (GET_LIST_INT((val).as_int))
 
 void kokos_value_print(kokos_value_t value);
 
