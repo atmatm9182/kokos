@@ -121,6 +121,210 @@ static kokos_frame_t* push_frame(kokos_vm_t* vm, size_t ret_location)
     return old_frame;
 }
 
+static kokos_value_t nan = TO_VALUE(NAN_BITS);
+
+// this looks sooo ugly
+static inline bool vm_exec_add(kokos_vm_t* vm, uint64_t count)
+{
+    kokos_frame_t* frame = current_frame(vm);
+
+    uint32_t acc = 0;
+    double dacc = nan.as_double;
+
+    for (size_t i = 0; i < count; i++) {
+        kokos_value_t val = STACK_POP(&frame->stack);
+
+        if (VALUE_TAG(val) == INT_TAG) {
+            uint32_t i = GET_INT(STACK_POP(&frame->stack));
+            if (dacc == nan.as_double) {
+                acc += i;
+                break;
+            }
+
+            dacc += (double)i;
+            continue;
+        }
+
+        CHECK_DOUBLE(val);
+
+        if (dacc == nan.as_double) {
+            dacc = (double)acc + val.as_double;
+            continue;
+        }
+
+        dacc += val.as_double;
+    }
+
+    if (dacc == nan.as_double) {
+        STACK_PUSH(&frame->stack, TO_VALUE(TO_INT(acc)));
+    } else {
+        STACK_PUSH(&frame->stack, TO_VALUE(dacc));
+    }
+
+    return true;
+}
+
+static inline bool vm_exec_sub(kokos_vm_t* vm, uint64_t count)
+{
+    kokos_frame_t* frame = current_frame(vm);
+
+    uint32_t acc = 0;
+    double dacc = nan.as_double;
+
+    for (size_t i = 0; i < count - 1; i++) {
+        kokos_value_t val = STACK_POP(&frame->stack);
+
+        if (VALUE_TAG(val) == INT_TAG) {
+            uint32_t i = GET_INT(STACK_POP(&frame->stack));
+            if (dacc == nan.as_double) {
+                acc -= i;
+                break;
+            }
+
+            dacc += (double)i;
+            continue;
+        }
+
+        CHECK_DOUBLE(val);
+
+        if (dacc == nan.as_double) {
+            dacc = (double)acc - val.as_double;
+            continue;
+        }
+
+        dacc += val.as_double;
+    }
+
+    kokos_value_t val = STACK_POP(&frame->stack);
+    if (VALUE_TAG(val) == INT_TAG) {
+        if (dacc == nan.as_double) {
+            acc += GET_INT(val);
+            STACK_PUSH(&frame->stack, TO_VALUE(TO_INT(acc)));
+            goto success;
+        }
+
+        dacc += (double)GET_INT(val);
+        STACK_PUSH(&frame->stack, TO_VALUE(dacc));
+        goto success;
+    }
+
+    CHECK_DOUBLE(val);
+
+    if (dacc == nan.as_double) {
+        dacc = (double)acc + val.as_double;
+        STACK_PUSH(&frame->stack, TO_VALUE(dacc));
+        goto success;
+    }
+
+    STACK_PUSH(&frame->stack, TO_VALUE(dacc + val.as_double));
+
+success:
+    return true;
+}
+
+static inline bool vm_exec_mul(kokos_vm_t* vm, uint64_t count)
+{
+    kokos_frame_t* frame = current_frame(vm);
+
+    uint32_t acc = 1;
+    double dacc = nan.as_double;
+
+    for (size_t i = 0; i < count; i++) {
+        kokos_value_t val = STACK_POP(&frame->stack);
+
+        if (VALUE_TAG(val) == INT_TAG) {
+            uint32_t i = GET_INT(STACK_POP(&frame->stack));
+            if (dacc == nan.as_double) {
+                acc *= i;
+                break;
+            }
+
+            dacc *= (double)i;
+            continue;
+        }
+
+        CHECK_DOUBLE(val);
+
+        if (dacc == nan.as_double) {
+            dacc = (double)acc * val.as_double;
+            continue;
+        }
+
+        dacc *= val.as_double;
+    }
+
+    if (dacc == nan.as_double) {
+        STACK_PUSH(&frame->stack, TO_VALUE(TO_INT(acc)));
+    } else {
+        STACK_PUSH(&frame->stack, TO_VALUE(dacc));
+    }
+
+    return true;
+}
+
+static inline bool vm_exec_div(kokos_vm_t* vm, uint64_t count)
+{
+    kokos_frame_t* frame = current_frame(vm);
+
+    if (count == 0) {
+        STACK_PUSH(&frame->stack, TO_VALUE(NAN_BITS));
+        return true;
+    }
+
+    uint32_t divisor = 1;
+    double d_divisor = nan.as_double;
+
+    for (size_t i = 0; i < count - 1; i++) {
+        kokos_value_t val = STACK_POP(&frame->stack);
+
+        if (VALUE_TAG(val) == INT_TAG) {
+            uint32_t i = GET_INT(STACK_POP(&frame->stack));
+            if (d_divisor == nan.as_double) {
+                divisor *= i;
+                break;
+            }
+
+            d_divisor *= (double)i;
+            continue;
+        }
+
+        CHECK_DOUBLE(val);
+
+        if (d_divisor == nan.as_double) {
+            d_divisor = (double)divisor * val.as_double;
+            continue;
+        }
+
+        d_divisor *= val.as_double;
+    }
+
+    kokos_value_t divident = STACK_POP(&frame->stack);
+    if (VALUE_TAG(divident) == INT_TAG) {
+        if (d_divisor == nan.as_double) {
+            uint32_t res = TO_INT(GET_INT(divident) / divisor);
+            STACK_PUSH(&frame->stack, TO_VALUE(res));
+            goto success;
+        }
+
+        double res = (double)GET_INT(divident) / d_divisor;
+        STACK_PUSH(&frame->stack, TO_VALUE(res));
+        goto success;
+    }
+
+    CHECK_DOUBLE(divident);
+
+    if (d_divisor == nan.as_double) {
+        double res = divident.as_double / (double)divisor;
+        STACK_PUSH(&frame->stack, TO_VALUE(res));
+        goto success;
+    }
+
+    STACK_PUSH(&frame->stack, TO_VALUE(divident.as_double / d_divisor));
+
+success:
+    return true;
+}
+
 static bool exec(kokos_vm_t* vm)
 {
     kokos_frame_t* frame = STACK_PEEK(&vm->frames);
@@ -137,62 +341,22 @@ static bool exec(kokos_vm_t* vm)
         break;
     }
     case I_ADD: {
-        double acc = 0.0;
-        for (size_t i = 0; i < instruction.operand; i++) {
-            kokos_value_t val = STACK_POP(&frame->stack);
-            CHECK_DOUBLE(val);
-            acc += val.as_double;
-        }
-        STACK_PUSH(&frame->stack, TO_VALUE(acc));
-
+        TRY(vm_exec_add(vm, instruction.operand));
         vm->ip++;
         break;
     }
     case I_SUB: {
-        double acc = 0.0;
-        for (ssize_t i = 0; i < instruction.operand - 1; i++) {
-            kokos_value_t val = STACK_POP(&frame->stack);
-            CHECK_DOUBLE(val);
-            acc -= val.as_double;
-        }
-
-        acc += STACK_POP(&frame->stack).as_double;
-        STACK_PUSH(&frame->stack, TO_VALUE(acc));
-
+        TRY(vm_exec_sub(vm, instruction.operand));
         vm->ip++;
         break;
     }
     case I_MUL: {
-        double acc = 1.0;
-        for (size_t i = 0; i < instruction.operand; i++) {
-            kokos_value_t val = STACK_POP(&frame->stack);
-            CHECK_DOUBLE(val);
-            acc *= val.as_double;
-        }
-        STACK_PUSH(&frame->stack, TO_VALUE(acc));
-
+        TRY(vm_exec_mul(vm, instruction.operand));
         vm->ip++;
         break;
     }
     case I_DIV: {
-        if (instruction.operand == 0) {
-            STACK_PUSH(&frame->stack, TO_VALUE(NAN_BITS));
-            vm->ip++;
-            break;
-        }
-
-        double divisor = 1.0;
-        for (size_t i = 0; i < instruction.operand - 1; i++) {
-            kokos_value_t val = STACK_POP(&frame->stack);
-            CHECK_DOUBLE(val);
-            divisor *= val.as_double;
-        }
-
-        kokos_value_t divident = STACK_POP(&frame->stack);
-        CHECK_DOUBLE(divident);
-
-        STACK_PUSH(&frame->stack, TO_VALUE(divident.as_double / divisor));
-
+        TRY(vm_exec_div(vm, instruction.operand));
         vm->ip++;
         break;
     }

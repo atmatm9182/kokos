@@ -59,6 +59,7 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
 #define TO_VALUE(i)                                                                                \
     (_Generic((i),                                                                                 \
         int: (kokos_value_t) { .as_int = (uint64_t)(i) },                                          \
+        uint32_t: (kokos_value_t) { .as_int = (uint64_t)(i) },                                          \
         long: (kokos_value_t) { .as_int = (uint64_t)(i) },                                         \
         uint64_t: (kokos_value_t) { .as_int = (i) },                                               \
         double: (kokos_value_t) { .as_double = (i) }))
@@ -77,6 +78,7 @@ ENUMERATE_HEAP_TYPES
 #define TO_PTR(val) ((void*)(val).as_int)
 
 #define TO_INT(i) ((uint64_t)(i) | INT_BITS)
+#define GET_INT(val) ((val).as_int & ~INT_BITS)
 
 #define GET_TAG(i) ((i) >> 48)
 #define VALUE_TAG(val) (GET_TAG((val).as_int))
