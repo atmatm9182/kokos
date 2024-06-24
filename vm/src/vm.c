@@ -66,12 +66,7 @@ kokos_value_t kokos_alloc_value(kokos_vm_t* vm, uint64_t params)
             = (kokos_runtime_vector_t*)kokos_vm_gc_alloc(vm, VECTOR_TAG, count);
 
         for (size_t i = 0; i < count; i++) {
-            DA_ADD(vec,
-                STACK_POP(&frame->stack)); // BUG: when using plain DA_ADD, reallocation will
-                                           // happen, invalidating the vector's `items` pointer,
-                                           // meaning that the gc will have a dangling reference.
-                                           // this is actually okay here, but when we implement
-                                           // `vec-push` or whatever, this should be fixed
+            DA_ADD(vec, STACK_POP(&frame->stack));
         }
 
         return TO_VECTOR(vec);
@@ -83,7 +78,7 @@ kokos_value_t kokos_alloc_value(kokos_vm_t* vm, uint64_t params)
         for (size_t i = 0; i < count; i++) {
             kokos_value_t value = STACK_POP(&frame->stack);
             kokos_value_t key = STACK_POP(&frame->stack);
-            kokos_runtime_map_add(map, key, value); // BUG: same as above
+            kokos_runtime_map_add(map, key, value);
         }
 
         return TO_MAP(map);
