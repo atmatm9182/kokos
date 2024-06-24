@@ -321,7 +321,9 @@ static char const* tag_str(uint16_t tag)
     case STRING_TAG: return "string";
     case MAP_TAG:    return "map";
     case VECTOR_TAG: return "vector";
+    case LIST_TAG:   return "list";
     case DOUBLE_TAG: return "double";
+    case INT_TAG:    return "int";
     }
 
     KOKOS_VERIFY(false);

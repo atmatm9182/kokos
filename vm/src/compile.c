@@ -13,6 +13,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define VERIFY_TYPE(expr, t)                                                                       \
@@ -538,10 +539,14 @@ static bool compile_list(
 bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
     switch (expr->type) {
-    case EXPR_FLOAT_LIT:
-    case EXPR_INT_LIT:   {
+    case EXPR_FLOAT_LIT: {
         uint64_t value = to_double_bytes(expr);
         DA_ADD(code, INSTR_PUSH(value));
+        break;
+    }
+    case EXPR_INT_LIT: {
+        uint64_t value = sv_atoi(expr->token.value);
+        DA_ADD(code, INSTR_PUSH(TO_INT(value)));
         break;
     }
     case EXPR_LIST: {

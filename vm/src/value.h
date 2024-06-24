@@ -28,15 +28,21 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
     X(LIST)                                                                                        \
     X(MAP)
 
+#define ENUMERATE_TAGGED_TYPES                                                                     \
+    ENUMERATE_HEAP_TYPES                                                                           \
+    X(INT)
+
 #define STRING_BITS 0x7FFE000000000000
 #define MAP_BITS 0x7FFF000000000000
 #define LIST_BITS 0xFFFC000000000000
 #define VECTOR_BITS 0x7FFD000000000000
+#define INT_BITS 0xFFFE000000000000
 
 #define STRING_TAG (STRING_BITS >> 48)
 #define MAP_TAG (MAP_BITS >> 48)
 #define LIST_TAG (LIST_BITS >> 48)
 #define VECTOR_TAG (VECTOR_BITS >> 48)
+#define INT_TAG (INT_BITS >> 48)
 
 #define TRUE_BITS (OBJ_BITS | 1)
 #define FALSE_BITS (OBJ_BITS | 2)
@@ -44,16 +50,6 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
 
 #define IS_DOUBLE_INT(i) (((i) & OBJ_BITS) != OBJ_BITS)
 #define IS_DOUBLE(val) (IS_DOUBLE_INT((val).as_int))
-
-#define X(t)                                                                                       \
-    static inline bool IS_##t(kokos_value_t val)                                                   \
-    {                                                                                              \
-        return (val.as_int & t##_BITS) == t##_BITS;                                                \
-    }
-
-ENUMERATE_HEAP_TYPES
-
-#undef X
 
 #define IS_TRUE(val) ((val).as_int == TRUE_BITS)
 #define IS_FALSE(val) ((val).as_int == FALSE_BITS)
@@ -79,6 +75,8 @@ ENUMERATE_HEAP_TYPES
 #undef X
 
 #define TO_PTR(val) ((void*)(val).as_int)
+
+#define TO_INT(i) ((uint64_t)(i) | INT_BITS)
 
 #define GET_TAG(i) ((i) >> 48)
 #define VALUE_TAG(val) (GET_TAG((val).as_int))
