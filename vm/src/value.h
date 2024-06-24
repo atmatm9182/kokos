@@ -28,10 +28,6 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
     X(LIST)                                                                                        \
     X(MAP)
 
-#define ENUMERATE_ALL_TYPES                                                                        \
-    ENUMERATE_HEAP_TYPES                                                                           \
-    X(DOUBLE)
-
 #define STRING_BITS 0x7FFE000000000000
 #define MAP_BITS 0x7FFF000000000000
 #define LIST_BITS 0xFFFC000000000000
