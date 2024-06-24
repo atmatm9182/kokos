@@ -83,6 +83,11 @@ void kokos_value_print(kokos_value_t value)
         printf(")");
         break;
     }
+    case INT_TAG: {
+        uint32_t i = GET_INT(value);
+        printf("%d", i);
+        break;
+    }
     default: {
         KOKOS_VERIFY(IS_DOUBLE(value));
         printf("%f", value.as_double);
