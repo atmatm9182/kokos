@@ -162,19 +162,19 @@ static inline bool vm_exec_add(kokos_vm_t* vm, uint64_t count)
         kokos_value_t val = STACK_POP(&frame->stack);
 
         if (VALUE_TAG(val) == INT_TAG) {
-            uint32_t i = GET_INT(STACK_POP(&frame->stack));
-            if (dacc == nan.as_double) {
-                acc += i;
-                break;
+            uint32_t iv = GET_INT(val);
+            if (IS_NAN_DOUBLE(dacc)) {
+                acc += iv;
+                continue;
             }
 
-            dacc += (double)i;
+            dacc += (double)iv;
             continue;
         }
 
         CHECK_DOUBLE(val);
 
-        if (dacc == nan.as_double) {
+        if (IS_NAN_DOUBLE(dacc)) {
             dacc = (double)acc + val.as_double;
             continue;
         }
@@ -182,7 +182,7 @@ static inline bool vm_exec_add(kokos_vm_t* vm, uint64_t count)
         dacc += val.as_double;
     }
 
-    if (dacc == nan.as_double) {
+    if (IS_NAN_DOUBLE(dacc)) {
         STACK_PUSH(&frame->stack, TO_VALUE(TO_INT(acc)));
     } else {
         STACK_PUSH(&frame->stack, TO_VALUE(dacc));
@@ -202,10 +202,10 @@ static inline bool vm_exec_sub(kokos_vm_t* vm, uint64_t count)
         kokos_value_t val = STACK_POP(&frame->stack);
 
         if (VALUE_TAG(val) == INT_TAG) {
-            uint32_t i = GET_INT(STACK_POP(&frame->stack));
-            if (dacc == nan.as_double) {
+            uint32_t i = GET_INT(val);
+            if (IS_NAN_DOUBLE(dacc)) {
                 acc -= i;
-                break;
+                continue;
             }
 
             dacc += (double)i;
@@ -214,7 +214,7 @@ static inline bool vm_exec_sub(kokos_vm_t* vm, uint64_t count)
 
         CHECK_DOUBLE(val);
 
-        if (dacc == nan.as_double) {
+        if (IS_NAN_DOUBLE(dacc)) {
             dacc = (double)acc - val.as_double;
             continue;
         }
@@ -224,7 +224,7 @@ static inline bool vm_exec_sub(kokos_vm_t* vm, uint64_t count)
 
     kokos_value_t val = STACK_POP(&frame->stack);
     if (VALUE_TAG(val) == INT_TAG) {
-        if (dacc == nan.as_double) {
+        if (IS_NAN_DOUBLE(dacc)) {
             acc += GET_INT(val);
             STACK_PUSH(&frame->stack, TO_VALUE(TO_INT(acc)));
             goto success;
@@ -237,7 +237,7 @@ static inline bool vm_exec_sub(kokos_vm_t* vm, uint64_t count)
 
     CHECK_DOUBLE(val);
 
-    if (dacc == nan.as_double) {
+    if (IS_NAN_DOUBLE(dacc)) {
         dacc = (double)acc + val.as_double;
         STACK_PUSH(&frame->stack, TO_VALUE(dacc));
         goto success;
@@ -260,10 +260,10 @@ static inline bool vm_exec_mul(kokos_vm_t* vm, uint64_t count)
         kokos_value_t val = STACK_POP(&frame->stack);
 
         if (VALUE_TAG(val) == INT_TAG) {
-            uint32_t i = GET_INT(STACK_POP(&frame->stack));
-            if (dacc == nan.as_double) {
+            uint32_t i = GET_INT(val);
+            if (IS_NAN_DOUBLE(dacc)) {
                 acc *= i;
-                break;
+                continue;
             }
 
             dacc *= (double)i;
@@ -272,7 +272,7 @@ static inline bool vm_exec_mul(kokos_vm_t* vm, uint64_t count)
 
         CHECK_DOUBLE(val);
 
-        if (dacc == nan.as_double) {
+        if (IS_NAN_DOUBLE(dacc)) {
             dacc = (double)acc * val.as_double;
             continue;
         }
@@ -280,7 +280,7 @@ static inline bool vm_exec_mul(kokos_vm_t* vm, uint64_t count)
         dacc *= val.as_double;
     }
 
-    if (dacc == nan.as_double) {
+    if (IS_NAN_DOUBLE(dacc)) {
         STACK_PUSH(&frame->stack, TO_VALUE(TO_INT(acc)));
     } else {
         STACK_PUSH(&frame->stack, TO_VALUE(dacc));
@@ -305,10 +305,10 @@ static inline bool vm_exec_div(kokos_vm_t* vm, uint64_t count)
         kokos_value_t val = STACK_POP(&frame->stack);
 
         if (VALUE_TAG(val) == INT_TAG) {
-            uint32_t i = GET_INT(STACK_POP(&frame->stack));
-            if (d_divisor == nan.as_double) {
+            uint32_t i = GET_INT(val);
+            if (IS_NAN_DOUBLE(d_divisor)) {
                 divisor *= i;
-                break;
+                continue;
             }
 
             d_divisor *= (double)i;
@@ -317,9 +317,8 @@ static inline bool vm_exec_div(kokos_vm_t* vm, uint64_t count)
 
         CHECK_DOUBLE(val);
 
-        if (d_divisor == nan.as_double) {
-            d_divisor = (double)divisor * val.as_double;
-            continue;
+        if (IS_NAN_DOUBLE(d_divisor)) {
+            d_divisor = (double)divisor;
         }
 
         d_divisor *= val.as_double;
@@ -327,8 +326,8 @@ static inline bool vm_exec_div(kokos_vm_t* vm, uint64_t count)
 
     kokos_value_t divident = STACK_POP(&frame->stack);
     if (VALUE_TAG(divident) == INT_TAG) {
-        if (d_divisor == nan.as_double) {
-            uint32_t res = TO_INT(GET_INT(divident) / divisor);
+        if (IS_NAN_DOUBLE(d_divisor)) {
+            uint64_t res = TO_INT(GET_INT(divident) / divisor);
             STACK_PUSH(&frame->stack, TO_VALUE(res));
             goto success;
         }
@@ -340,7 +339,7 @@ static inline bool vm_exec_div(kokos_vm_t* vm, uint64_t count)
 
     CHECK_DOUBLE(divident);
 
-    if (d_divisor == nan.as_double) {
+    if (IS_NAN_DOUBLE(d_divisor)) {
         double res = divident.as_double / (double)divisor;
         STACK_PUSH(&frame->stack, TO_VALUE(res));
         goto success;
@@ -551,6 +550,7 @@ void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code)
 
     while (vm->ip < vm->current_instructions->len) {
         if (!exec(vm)) {
+            kokos_vm_dump(vm);
             report_exception(vm);
             exit(1);
         }

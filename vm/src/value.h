@@ -75,6 +75,8 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
 ENUMERATE_HEAP_TYPES
 #undef X
 
+#define IS_NAN_DOUBLE(d) (TO_VALUE((d)).as_int == NAN_BITS)
+
 #define TO_PTR(val) ((void*)(val).as_int)
 
 #define TO_INT(i) ((uint64_t)(i) | INT_BITS)
