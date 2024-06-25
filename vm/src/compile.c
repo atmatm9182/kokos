@@ -159,15 +159,14 @@ static bool compile_procedure_def(
     kokos_compiled_proc_t* proc = KOKOS_ALLOC(sizeof(kokos_compiled_proc_t));
     const char* name_str = sv_dup(name);
     proc->params = params;
+    proc->ip = ctx->procedure_code.len;
 
     kokos_ctx_add_proc(ctx, name_str, proc);
 
-    size_t proc_ip = ctx->procedure_code.len;
     for (size_t i = 3; i < list.len; i++) {
         TRY(kokos_expr_compile(list.items[i], &new_ctx, &ctx->procedure_code));
     }
 
-    proc->ip = proc_ip;
     DA_ADD(&ctx->procedure_code, INSTR_RET);
     return true;
 }
