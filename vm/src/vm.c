@@ -8,6 +8,7 @@
 #include "value.h"
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 #define INSTR_OP_ARG_MASK 0xFFFFFFFF
 
@@ -15,7 +16,7 @@ static bool exec(kokos_vm_t* vm);
 
 static kokos_frame_t* alloc_frame(size_t ret_location)
 {
-    kokos_frame_t* frame = KOKOS_ALLOC(sizeof(kokos_frame_t));
+    kokos_frame_t* frame = KOKOS_CALLOC(1, sizeof(kokos_frame_t));
     frame->ret_location = ret_location;
     return frame;
 }
@@ -143,6 +144,7 @@ static kokos_frame_t* push_frame(kokos_vm_t* vm, size_t ret_location)
     kokos_frame_t* old_frame = vm->frames.data[vm->frames.sp];
     old_frame->ret_location = ret_location;
     old_frame->stack.sp = 0;
+    memset(old_frame->locals, 0, sizeof(old_frame->locals));
 
     STACK_PUSH(&vm->frames, old_frame);
     return old_frame;
@@ -632,9 +634,18 @@ static void mark_obj(kokos_gc_t* gc, kokos_gc_obj_t* obj)
 
 static void gc_mark_frame(kokos_gc_t* gc, kokos_frame_t const* frame)
 {
-    // NOTE: we don't mark locals. should we?
-    for (size_t l = 0; l < frame->stack.sp; l++) {
-        kokos_value_t value = frame->stack.data[l];
+    for (size_t i = 0; i < MAX_LOCALS; i++) {
+        kokos_value_t local = frame->locals[i];
+        kokos_gc_obj_t* obj = kokos_gc_find(gc, local);
+
+        if (obj) {
+            KOKOS_ASSERT(IS_OCCUPIED(*obj));
+            mark_obj(gc, obj);
+        }
+    }
+
+    for (size_t i = 0; i < frame->stack.sp; i++) {
+        kokos_value_t value = frame->stack.data[i];
         kokos_gc_obj_t* obj = kokos_gc_find(gc, value);
 
         if (obj) {
