@@ -39,10 +39,37 @@ static bool kokos_value_to_bool(kokos_value_t value)
     return !IS_FALSE(value) && !IS_NIL(value);
 }
 
+// TODO: refactor those to just use regular substraction like on x86_64
+static int cmp_ints(uint32_t lhs, uint32_t rhs)
+{
+    if (lhs == rhs) {
+        return 0;
+    }
+
+    return lhs < rhs ? -1 : 1;
+}
+
 static bool kokos_cmp_values(kokos_vm_t* vm, kokos_value_t lhs, kokos_value_t rhs)
 {
+    kokos_frame_t* frame = current_frame(vm);
+
     if (lhs.as_int == rhs.as_int) {
-        STACK_PUSH(&current_frame(vm)->stack, TO_VALUE(0));
+        STACK_PUSH(&frame->stack, TO_VALUE(0));
+        return true;
+    }
+
+    uint16_t ltag = VALUE_TAG(lhs);
+    uint16_t rtag = VALUE_TAG(rhs);
+
+    // is there a better way to do this?
+    if (ltag != rtag) {
+        STACK_PUSH(&frame->stack, TO_VALUE(-1));
+        return true;
+    }
+
+    if (ltag == INT_TAG) {
+        int v = cmp_ints(GET_INT(lhs), GET_INT(rhs));
+        STACK_PUSH(&frame->stack, TO_VALUE(v));
         return true;
     }
 
