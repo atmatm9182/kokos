@@ -6,5 +6,5 @@
 - [ ] UTF-8 strings
 - [ ] Module system
 - [ ] Tail call optimizations
-- [ ] Add integers to the VM
+- [X] Add integers to the VM
 - [ ] Better error reporting in the VM
