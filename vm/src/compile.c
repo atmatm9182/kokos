@@ -491,13 +491,12 @@ static bool compile_list(
     KOKOS_VERIFY(head.size < 256);
 
     char head_buf[256];
-    sprintf(head_buf, SV_FMT, (int)head.size, head.ptr);
+    sprintf(head_buf, SV_FMT, SV_ARG(head));
     head_buf[head.size] = '\0';
 
     kokos_compiled_proc_t* proc = kokos_ctx_get_proc(ctx, head_buf);
     if (!proc) {
-        set_error(list.items[0]->token.location, "undefined procedure '" SV_FMT "'", (int)head.size,
-            head.ptr);
+        set_error(list.items[0]->token.location, "undefined procedure '" SV_FMT "'", SV_ARG(head));
         return false;
     }
 
@@ -505,7 +504,7 @@ static bool compile_list(
         if (list.len < proc->params.len) {
             set_error(expr->token.location,
                 "expected at least %lu arguments for procedure '" SV_FMT "', got %lu instead",
-                proc->params.len - 1, (int)head.size, head.ptr, list.len - 1);
+                proc->params.len - 1, SV_ARG(head), list.len - 1);
             return false;
         }
 
@@ -526,7 +525,7 @@ static bool compile_list(
     if (proc->params.len != list.len - 1) {
         set_error(expr->token.location,
             "expected %lu arguments for procedure '" SV_FMT "', got %lu instead", proc->params.len,
-            (int)head.size, head.ptr, list.len - 1);
+            SV_ARG(head), list.len - 1);
         return false;
     }
 
@@ -563,7 +562,7 @@ bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
         if (local_idx == -1) {
             set_error(expr->token.location,
                 "could not find variable " SV_FMT " in the current scope",
-                (int)expr->token.value.size, expr->token.value.ptr);
+                SV_ARG(expr->token.value));
             return false;
         }
 

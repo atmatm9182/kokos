@@ -13,8 +13,7 @@ char err_buf[512];
 static void set_unterminated_literal_err(const char* what, kokos_token_t token)
 {
     sprintf(err_buf, "unterminated %s literal: '" SV_FMT "' at %s:%zu:%zu", what,
-        (int)token.value.size, token.value.ptr, token.location.filename, token.location.row,
-        token.location.col);
+        SV_ARG(token.value), token.location.filename, token.location.row, token.location.col);
 }
 
 static kokos_expr_t* alloc_empty(const kokos_token_t* token, kokos_expr_type_e expr_type)
@@ -229,8 +228,8 @@ kokos_expr_t* kokos_parser_next(kokos_parser_t* parser)
     case TT_RBRACKET:
     case TT_STR_LIT_UNCLOSED:
     case TT_ILLEGAL:
-        sprintf(err_buf, "unexpected token '" SV_FMT "' at %s:%lu:%lu", (int)cur->value.size,
-            cur->value.ptr, cur->location.filename, cur->location.row, cur->location.col);
+        sprintf(err_buf, "unexpected token '" SV_FMT "' at %s:%lu:%lu", SV_ARG(cur->value),
+            cur->location.filename, cur->location.row, cur->location.col);
         break;
     case TT_QUOTE: {
         KOKOS_TODO();
