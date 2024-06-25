@@ -40,7 +40,7 @@ static bool kokos_value_to_bool(kokos_value_t value)
 }
 
 // TODO: refactor those to just use regular substraction like on x86_64
-static int cmp_ints(uint32_t lhs, uint32_t rhs)
+static int cmp_ints(int32_t lhs, int32_t rhs)
 {
     if (lhs == rhs) {
         return 0;
@@ -155,14 +155,14 @@ static inline bool vm_exec_add(kokos_vm_t* vm, uint64_t count)
 {
     kokos_frame_t* frame = current_frame(vm);
 
-    uint32_t acc = 0;
+    int32_t acc = 0;
     double dacc = nan.as_double;
 
     for (size_t i = 0; i < count; i++) {
         kokos_value_t val = STACK_POP(&frame->stack);
 
         if (VALUE_TAG(val) == INT_TAG) {
-            uint32_t iv = GET_INT(val);
+            int32_t iv = GET_INT(val);
             if (IS_NAN_DOUBLE(dacc)) {
                 acc += iv;
                 continue;
@@ -195,14 +195,14 @@ static inline bool vm_exec_sub(kokos_vm_t* vm, uint64_t count)
 {
     kokos_frame_t* frame = current_frame(vm);
 
-    uint32_t acc = 0;
+    int32_t acc = 0;
     double dacc = nan.as_double;
 
     for (size_t i = 0; i < count - 1; i++) {
         kokos_value_t val = STACK_POP(&frame->stack);
 
         if (VALUE_TAG(val) == INT_TAG) {
-            uint32_t i = GET_INT(val);
+            int32_t i = GET_INT(val);
             if (IS_NAN_DOUBLE(dacc)) {
                 acc -= i;
                 continue;
@@ -253,14 +253,14 @@ static inline bool vm_exec_mul(kokos_vm_t* vm, uint64_t count)
 {
     kokos_frame_t* frame = current_frame(vm);
 
-    uint32_t acc = 1;
+    int32_t acc = 1;
     double dacc = nan.as_double;
 
     for (size_t i = 0; i < count; i++) {
         kokos_value_t val = STACK_POP(&frame->stack);
 
         if (VALUE_TAG(val) == INT_TAG) {
-            uint32_t i = GET_INT(val);
+            int32_t i = GET_INT(val);
             if (IS_NAN_DOUBLE(dacc)) {
                 acc *= i;
                 continue;
@@ -298,14 +298,14 @@ static inline bool vm_exec_div(kokos_vm_t* vm, uint64_t count)
         return true;
     }
 
-    uint32_t divisor = 1;
+    int32_t divisor = 1;
     double d_divisor = nan.as_double;
 
     for (size_t i = 0; i < count - 1; i++) {
         kokos_value_t val = STACK_POP(&frame->stack);
 
         if (VALUE_TAG(val) == INT_TAG) {
-            uint32_t i = GET_INT(val);
+            int32_t i = GET_INT(val);
             if (IS_NAN_DOUBLE(d_divisor)) {
                 divisor *= i;
                 continue;
@@ -327,7 +327,7 @@ static inline bool vm_exec_div(kokos_vm_t* vm, uint64_t count)
     kokos_value_t divident = STACK_POP(&frame->stack);
     if (VALUE_TAG(divident) == INT_TAG) {
         if (IS_NAN_DOUBLE(d_divisor)) {
-            uint64_t res = TO_INT(GET_INT(divident) / divisor);
+            int64_t res = TO_INT(GET_INT(divident) / divisor);
             STACK_PUSH(&frame->stack, TO_VALUE(res));
             goto success;
         }
