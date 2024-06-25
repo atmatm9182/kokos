@@ -40,7 +40,7 @@ typedef struct {
     uint64_t ip;
 } kokos_compiled_proc_t;
 
-kokos_compiler_context_t kokos_ctx_empty(void);
+kokos_compiler_context_t kokos_ctx_empty(kokos_compiler_context_t* parent);
 void kokos_ctx_add_proc(
     kokos_compiler_context_t* ctx, const char* name, kokos_compiled_proc_t* proc);
 kokos_compiled_proc_t* kokos_ctx_get_proc(kokos_compiler_context_t* ctx, const char* name);

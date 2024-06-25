@@ -150,8 +150,7 @@ static bool compile_procedure_def(
     kokos_params_t params;
     TRY(expr_to_params(params_expr, &params));
 
-    kokos_compiler_context_t new_ctx = kokos_ctx_empty();
-    new_ctx.parent = ctx;
+    kokos_compiler_context_t new_ctx = kokos_ctx_empty(ctx);
     for (size_t i = 0; i < params.len; i++) {
         kokos_ctx_add_local(&new_ctx, params.names[i]);
     }
@@ -630,7 +629,7 @@ static bool string_eq_func(const void* lhs, const void* rhs)
     return strcmp(ls, rs) == 0;
 }
 
-kokos_compiler_context_t kokos_ctx_empty(void)
+kokos_compiler_context_t kokos_ctx_empty(kokos_compiler_context_t* parent)
 {
     hash_table functions = ht_make(string_hash_func, string_eq_func, 11);
     kokos_variable_list_t vars;
@@ -642,7 +641,7 @@ kokos_compiler_context_t kokos_ctx_empty(void)
 
     return (kokos_compiler_context_t) { .procedures = functions,
         .locals = vars,
-        .parent = NULL,
+        .parent = parent,
         .string_store = strings,
         .procedure_code = code };
 }

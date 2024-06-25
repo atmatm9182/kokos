@@ -57,7 +57,7 @@ static int run_file(const char* filename)
     kokos_program_dump(program);
     printf("--------------------------------------------------\n\n");
 
-    kokos_compiler_context_t compiler_context = kokos_ctx_empty();
+    kokos_compiler_context_t compiler_context = kokos_ctx_empty(NULL);
 
     uint64_t compile_start = get_time_stamp();
     kokos_code_t code = kokos_compile_program(program, &compiler_context);
