@@ -471,7 +471,6 @@ static bool compile_list(
         return true;
     }
 
-    KOKOS_ASSERT(list.len > 0); // TODO: handle empty list
     string_view head = list.items[0]->token.value;
 
     kokos_sform_t sform = get_sform(head);
