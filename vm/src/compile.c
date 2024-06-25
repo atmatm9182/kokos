@@ -632,13 +632,13 @@ static bool string_eq_func(const void* lhs, const void* rhs)
 
 kokos_compiler_context_t kokos_ctx_empty(void)
 {
-    hash_table functions = ht_make(string_hash_func, string_eq_func, 1);
+    hash_table functions = ht_make(string_hash_func, string_eq_func, 11);
     kokos_variable_list_t vars;
     kokos_string_store_t strings;
     kokos_code_t code;
-    DA_INIT(&vars, 0, 0);
-    DA_INIT(&strings, 0, 0);
-    DA_INIT(&code, 0, 0);
+    DA_INIT(&vars, 0, 7);
+    DA_INIT(&strings, 0, 7);
+    DA_INIT(&code, 0, 77);
 
     return (kokos_compiler_context_t) { .procedures = functions,
         .locals = vars,
