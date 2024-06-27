@@ -130,10 +130,11 @@ kokos_value_t kokos_alloc_value(kokos_vm_t* vm, uint64_t params)
     }
 }
 
-static kokos_frame_t* push_frame(kokos_vm_t* vm, size_t ret_location)
+static kokos_frame_t* push_frame(kokos_vm_t* vm, size_t ret_location, kokos_token_t where)
 {
     if (vm->frames.sp >= vm->frames.cap) {
         kokos_frame_t* new_frame = alloc_frame(ret_location);
+        new_frame->where = where;
         STACK_PUSH(&vm->frames, new_frame);
         vm->frames.cap++;
 
@@ -144,6 +145,7 @@ static kokos_frame_t* push_frame(kokos_vm_t* vm, size_t ret_location)
     kokos_frame_t* old_frame = vm->frames.data[vm->frames.sp];
     old_frame->ret_location = ret_location;
     old_frame->stack.sp = 0;
+    old_frame->where = where;
     memset(old_frame->locals, 0, sizeof(old_frame->locals));
 
     STACK_PUSH(&vm->frames, old_frame);
@@ -353,6 +355,14 @@ success:
     return true;
 }
 
+static kokos_token_t get_call_location(kokos_vm_t* vm, size_t ip)
+{
+    kokos_token_t* tok = ht_find(&vm->store.call_locations, (void*)ip);
+    KOKOS_ASSERT(tok);
+
+    return *tok;
+}
+
 static bool exec(kokos_vm_t* vm)
 {
     kokos_frame_t* frame = STACK_PEEK(&vm->frames);
@@ -393,10 +403,10 @@ static bool exec(kokos_vm_t* vm)
 
         uint32_t arity = instruction.operand >> 32;
         uint32_t ip = instruction.operand & 0xFFFFFFFF;
+
+        kokos_frame_t* new_frame = push_frame(vm, ret_location, get_call_location(vm, vm->ip));
         vm->ip = ip;
         vm->current_instructions = &vm->store.procedure_code;
-
-        kokos_frame_t* new_frame = push_frame(vm, ret_location);
 
         for (size_t i = 0; i < arity; i++) {
             new_frame->locals[i] = STACK_POP(&frame->stack);
@@ -521,6 +531,15 @@ static char const* tag_str(uint16_t tag)
     KOKOS_VERIFY(false);
 }
 
+static void vm_dump_stack_trace(kokos_vm_t* vm)
+{
+    while (vm->frames.sp != 1) {
+        kokos_frame_t* frame = STACK_POP(&vm->frames);
+        kokos_location_t where = frame->where.location;
+        printf("%s:%lu:%lu\n", where.filename, where.row, where.col);
+    }
+}
+
 static void report_exception(kokos_vm_t* vm)
 {
     switch (vm->exception_reg.type) {
@@ -540,6 +559,8 @@ static void report_exception(kokos_vm_t* vm)
         break;
     }
     }
+
+    vm_dump_stack_trace(vm);
 }
 
 void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code)
@@ -581,7 +602,8 @@ kokos_vm_t kokos_vm_create(kokos_compiler_context_t* ctx)
     kokos_vm_t vm = { 0 };
     vm.store = (kokos_runtime_store_t) { .procedures = ctx->procedures,
         .string_store = ctx->string_store,
-        .procedure_code = ctx->procedure_code };
+        .procedure_code = ctx->procedure_code,
+        .call_locations = ctx->call_locations };
     vm.frames.sp = 0;
 
     vm.gc = kokos_gc_new(GC_INITIAL_CAP);

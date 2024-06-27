@@ -25,6 +25,7 @@ typedef struct kokos_compiler_context {
     kokos_variable_list_t locals;
     kokos_string_store_t string_store;
     kokos_code_t procedure_code;
+    hash_table call_locations;
 
     struct kokos_compiler_context* parent;
 } kokos_compiler_context_t;

@@ -64,6 +64,7 @@
 
 typedef struct {
     hash_table procedures;
+    hash_table call_locations;
     kokos_code_t procedure_code;
     kokos_string_store_t string_store;
 } kokos_runtime_store_t;
@@ -76,6 +77,7 @@ typedef struct {
 typedef struct {
     kokos_value_t locals[MAX_LOCALS];
     kokos_op_stack_t stack;
+    kokos_token_t where;
     size_t ret_location; // set the highest bit to indicate whether to return to procedure code
 } kokos_frame_t;
 

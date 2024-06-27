@@ -443,6 +443,24 @@ static kokos_sform_t get_sform(string_view name)
     return NULL;
 }
 
+static kokos_compiler_context_t* ctx_get_root(kokos_compiler_context_t* ctx)
+{
+    while (ctx->parent != NULL) {
+        ctx = ctx->parent;
+    }
+
+    return ctx;
+}
+
+static void ctx_add_call_location(kokos_compiler_context_t* ctx, size_t ip, kokos_token_t where)
+{
+    ctx = ctx_get_root(ctx);
+    kokos_token_t* tok = KOKOS_ALLOC(sizeof(kokos_token_t));
+    *tok = where;
+
+    ht_add(&ctx->call_locations, (void*)ip, tok);
+}
+
 static void kokos_compile_string_lit(
     const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
@@ -515,8 +533,8 @@ static bool compile_list(
         }
 
         DA_ADD(code, INSTR_ALLOC(VECTOR_BITS, list.len - proc->params.len));
-        DA_ADD(code, INSTR_CALL(proc->params.len, proc->ip));
-        return true;
+
+        goto success;
     }
 
     if (proc->params.len != list.len - 1) {
@@ -528,6 +546,8 @@ static bool compile_list(
 
     TRY(compile_all_args_reversed(expr, ctx, code));
 
+success:
+    ctx_add_call_location(ctx, code->len, expr->token);
     DA_ADD(code, INSTR_CALL(proc->params.len, proc->ip));
     return true;
 }
@@ -628,9 +648,20 @@ static bool string_eq_func(const void* lhs, const void* rhs)
     return strcmp(ls, rs) == 0;
 }
 
+static uint64_t size_t_hash_func(void const* ptr)
+{
+    return (size_t)ptr;
+}
+
+static bool size_t_eq_func(void const* lhs, void const* rhs)
+{
+    return (size_t)lhs == (size_t)rhs;
+}
+
 kokos_compiler_context_t kokos_ctx_empty(kokos_compiler_context_t* parent)
 {
     hash_table functions = ht_make(string_hash_func, string_eq_func, 11);
+    hash_table call_locations = ht_make(size_t_hash_func, size_t_eq_func, 73);
     kokos_variable_list_t vars;
     kokos_string_store_t strings;
     kokos_code_t code;
@@ -642,7 +673,8 @@ kokos_compiler_context_t kokos_ctx_empty(kokos_compiler_context_t* parent)
         .locals = vars,
         .parent = parent,
         .string_store = strings,
-        .procedure_code = code };
+        .procedure_code = code,
+        .call_locations = call_locations };
 }
 
 kokos_compiled_proc_t* kokos_ctx_get_proc(kokos_compiler_context_t* ctx, const char* name)

@@ -57,6 +57,8 @@ void kokos_code_dump(kokos_code_t code)
 {
     for (size_t i = 0; i < code.len; i++) {
         kokos_instruction_t instr = code.items[i];
+
+        printf("[%lu] ", i);
         kokos_instruction_dump(instr);
         printf("\n");
     }
