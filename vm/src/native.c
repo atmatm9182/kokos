@@ -91,7 +91,6 @@ static bool native_read_file(kokos_vm_t* vm, uint16_t nargs)
     char* buf = KOKOS_ALLOC(sizeof(char) * fsize);
     fread(buf, sizeof(char), fsize, f);
 
-    // TODO: refactor this into a separate procedure
     kokos_runtime_string_t* str = kokos_vm_gc_alloc(vm, STRING_TAG, fsize);
     str->ptr = buf;
     str->len = fsize;

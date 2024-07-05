@@ -1,4 +1,3 @@
-// TODO: refactor all of this
 #ifndef VALUE_H_
 #define VALUE_H_
 
@@ -19,8 +18,7 @@ typedef union {
 } kokos_value_t;
 
 _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
-    "kokos_value_t shoud have the size of platform's pointer"); // TODO: make this true for 32-bit
-                                                                // targets
+    "kokos_value_t shoud have the size of platform's pointer");
 
 #define ENUMERATE_HEAP_TYPES                                                                       \
     X(STRING)                                                                                      \
@@ -59,7 +57,7 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
 #define TO_VALUE(i)                                                                                \
     (_Generic((i),                                                                                 \
         int: (kokos_value_t) { .as_int = (uint64_t)(i) },                                          \
-        uint32_t: (kokos_value_t) { .as_int = (uint64_t)(i) },                                          \
+        uint32_t: (kokos_value_t) { .as_int = (uint64_t)(i) },                                     \
         long: (kokos_value_t) { .as_int = (uint64_t)(i) },                                         \
         uint64_t: (kokos_value_t) { .as_int = (i) },                                               \
         double: (kokos_value_t) { .as_double = (i) }))

@@ -6,7 +6,6 @@
 #include <assert.h>
 #include <stdint.h>
 
-// TODO: replace this by a better hash function
 int64_t djb2(const char* str)
 {
     int64_t hash = 5381;
