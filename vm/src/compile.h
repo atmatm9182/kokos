@@ -15,9 +15,10 @@ typedef struct {
 } kokos_variable_list_t;
 
 typedef struct {
-    kokos_runtime_string_t** items;
-    size_t len;
-    size_t cap;
+    kokos_runtime_string_t const** items;
+    // use longer field names so the struct can't be used as a dynamic array
+    size_t length;
+    size_t capacity;
 } kokos_string_store_t;
 
 typedef struct kokos_compiler_context {

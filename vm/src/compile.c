@@ -461,21 +461,100 @@ static void ctx_add_call_location(kokos_compiler_context_t* ctx, size_t ip, koko
     ht_add(&ctx->call_locations, (void*)ip, tok);
 }
 
+static inline float string_store_load(kokos_string_store_t const* store)
+{
+    return (float)store->length / (float)store->capacity * 100;
+}
+
+static void string_store_init(kokos_string_store_t* store, size_t cap)
+{
+    store->items = KOKOS_CALLOC(sizeof(kokos_runtime_string_t*), cap);
+    store->length = 0;
+    store->capacity = cap;
+}
+
+static void string_store_add(kokos_string_store_t* store, kokos_runtime_string_t const* string)
+{
+    if (string_store_load(store) >= 70) {
+        kokos_string_store_t new_store;
+        string_store_init(&new_store, store->capacity * 2);
+
+        for (size_t i = 0; i < store->capacity; i++) {
+            kokos_runtime_string_t const* str = store->items[i];
+            if (!str)
+                continue;
+
+            string_store_add(&new_store, str);
+        }
+
+        *store = new_store;
+    }
+
+    uint64_t idx = hash_djb2_len(string->ptr, string->len) % store->capacity;
+    while (store->items[idx]) {
+        idx = (idx + 1) % store->capacity;
+    }
+
+    store->items[idx] = string;
+}
+
+static inline bool runtime_string_eq_string_view(
+    kokos_runtime_string_t const* string, string_view sv)
+{
+    if (string->len != sv.size) {
+        return false;
+    }
+
+    for (size_t i = 0; i < sv.size; i++) {
+        if (string->ptr[i] != sv.ptr[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static kokos_runtime_string_t const* string_store_find(
+    kokos_string_store_t const* store, string_view key)
+{
+    uint64_t idx = hash_djb2_len(key.ptr, key.size) % store->capacity;
+
+    while (store->items[idx]) {
+        if (runtime_string_eq_string_view(store->items[idx], key)) {
+            return store->items[idx];
+        }
+
+        idx = (idx + 1) % store->capacity;
+    }
+
+    return NULL;
+}
+
 static void kokos_compile_string_lit(
     const kokos_expr_t* expr, kokos_compiler_context_t* ctx, kokos_code_t* code)
 {
-
     string_view value = expr->token.value;
+
+    kokos_runtime_string_t const* string;
+    kokos_runtime_string_t const* existing = string_store_find(&ctx->string_store, value);
+    if (existing) {
+        string = existing;
+        goto end;
+    }
+
     char* str = KOKOS_ALLOC(sizeof(char) * value.size);
     memcpy(str, value.ptr, value.size * sizeof(char));
 
-    kokos_runtime_string_t* string = KOKOS_ALLOC(sizeof(kokos_runtime_string_t));
-    string->ptr = str;
-    string->len = value.size;
-    DA_ADD(&ctx->string_store, string);
+    kokos_runtime_string_t* s = KOKOS_ALLOC(sizeof(kokos_runtime_string_t));
+    s->ptr = str;
+    s->len = value.size;
+    string_store_add(&ctx->string_store, s);
+    string = s;
 
+end: {
     uint64_t string_value = STRING_BITS | (uint64_t)string;
     DA_ADD(code, INSTR_PUSH(string_value));
+}
 }
 
 static bool compile_list(
@@ -666,7 +745,7 @@ kokos_compiler_context_t kokos_ctx_empty(kokos_compiler_context_t* parent)
     kokos_string_store_t strings;
     kokos_code_t code;
     DA_INIT(&vars, 0, 7);
-    DA_INIT(&strings, 0, 7);
+    string_store_init(&strings, 7);
     DA_INIT(&code, 0, 77);
 
     return (kokos_compiler_context_t) { .procedures = functions,
