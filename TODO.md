@@ -7,4 +7,4 @@
 - [ ] Module system
 - [ ] Tail call optimizations
 - [X] Add integers to the VM
-- [ ] Better error reporting in the VM
+- [X] Better error reporting in the VM
