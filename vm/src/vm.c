@@ -737,10 +737,7 @@ void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag, size_t cap)
         break;
     }
     case STRING_TAG: {
-        kokos_runtime_string_t* str = KOKOS_ALLOC(sizeof(kokos_runtime_string_t));
-        str->ptr = NULL;
-        str->len = 0;
-        addr = str;
+        addr = kokos_runtime_string_new(NULL, 0);
         break;
     }
     case LIST_TAG: {

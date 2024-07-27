@@ -58,4 +58,6 @@ extern ht_eq_func kokos_default_map_eq_func;
 void kokos_runtime_map_add(kokos_runtime_map_t* map, kokos_value_t key, kokos_value_t value);
 kokos_value_t kokos_runtime_map_find(kokos_runtime_map_t* map, kokos_value_t key);
 
+kokos_runtime_string_t* kokos_runtime_string_new(char const* data, size_t len);
+
 #endif // RUNTIME_H_

@@ -2,6 +2,7 @@
 #include "hash.h"
 #include "macros.h"
 #include "native.h"
+#include "src/runtime.h"
 #include "token.h"
 #include "vmconstants.h"
 
@@ -545,9 +546,7 @@ static void kokos_compile_string_lit(
     char* str = KOKOS_ALLOC(sizeof(char) * value.size);
     memcpy(str, value.ptr, value.size * sizeof(char));
 
-    kokos_runtime_string_t* s = KOKOS_ALLOC(sizeof(kokos_runtime_string_t));
-    s->ptr = str;
-    s->len = value.size;
+    kokos_runtime_string_t* s = kokos_runtime_string_new(str, value.size);
     string_store_add(&ctx->string_store, s);
     string = s;
 

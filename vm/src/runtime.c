@@ -2,6 +2,7 @@
 #include "base.h"
 #include "hash.h"
 #include "macros.h"
+#include "string.h"
 #include "value.h"
 #include <stdio.h>
 
@@ -87,4 +88,13 @@ ht_hash_func kokos_default_map_hash_func = kokos_djb2;
 void kokos_runtime_map_add(kokos_runtime_map_t* map, kokos_value_t key, kokos_value_t value)
 {
     ht_add(&map->table, (void*)key.as_int, (void*)value.as_int);
+}
+
+kokos_runtime_string_t* kokos_runtime_string_new(char const* data, size_t len)
+{
+    kokos_runtime_string_t* string = KOKOS_ALLOC(sizeof(kokos_runtime_string_t));
+    string->ptr = KOKOS_CALLOC(len + 1, sizeof(char));
+    string->len = len;
+    memcpy(string->ptr, data, string->len);
+    return string;
 }
