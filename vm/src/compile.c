@@ -714,33 +714,10 @@ kokos_code_t kokos_compile_module(kokos_module_t module, kokos_compiler_context_
     return code;
 }
 
-static uint64_t string_hash_func(const void* ptr)
-{
-    return hash_djb2((const char*)ptr);
-}
-
-static bool string_eq_func(const void* lhs, const void* rhs)
-{
-    const char* ls = (const char*)lhs;
-    const char* rs = (const char*)rhs;
-
-    return strcmp(ls, rs) == 0;
-}
-
-static uint64_t size_t_hash_func(void const* ptr)
-{
-    return (size_t)ptr;
-}
-
-static bool size_t_eq_func(void const* lhs, void const* rhs)
-{
-    return (size_t)lhs == (size_t)rhs;
-}
-
 kokos_compiler_context_t kokos_ctx_empty(kokos_compiler_context_t* parent)
 {
-    hash_table functions = ht_make(string_hash_func, string_eq_func, 11);
-    hash_table call_locations = ht_make(size_t_hash_func, size_t_eq_func, 73);
+    hash_table functions = ht_make(hash_string_func, hash_string_eq_func, 11);
+    hash_table call_locations = ht_make(hash_sizet_func, hash_sizet_eq_func, 73);
     kokos_variable_list_t vars;
     kokos_string_store_t strings;
     kokos_code_t code;
