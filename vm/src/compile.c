@@ -699,13 +699,13 @@ bool kokos_expr_compile(const kokos_expr_t* expr, kokos_compiler_context_t* ctx,
     return true;
 }
 
-kokos_code_t kokos_compile_program(kokos_program_t program, kokos_compiler_context_t* ctx)
+kokos_code_t kokos_compile_module(kokos_module_t module, kokos_compiler_context_t* ctx)
 {
     kokos_code_t code;
     DA_INIT(&code, 0, 10);
 
-    for (size_t i = 0; i < program.len; i++) {
-        if (!kokos_expr_compile(program.items[i], ctx, &code)) {
+    for (size_t i = 0; i < module.len; i++) {
+        if (!kokos_expr_compile(module.items[i], ctx, &code)) {
             DA_FREE(&code);
             break;
         }

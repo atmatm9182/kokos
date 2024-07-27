@@ -46,7 +46,7 @@ typedef struct {
     kokos_expr_t** items;
     size_t len;
     size_t cap;
-} kokos_program_t;
+} kokos_module_t;
 
 static inline void kokos_expr_dump(const kokos_expr_t* expr)
 {
@@ -115,10 +115,10 @@ static inline const char* kokos_expr_type_str(kokos_expr_type_e type)
     }
 }
 
-static void kokos_program_dump(kokos_program_t program)
+static void kokos_module_dump(kokos_module_t module)
 {
-    for (size_t i = 0; i < program.len; i++) {
-        kokos_expr_dump(program.items[i]);
+    for (size_t i = 0; i < module.len; i++) {
+        kokos_expr_dump(module.items[i]);
         printf("\n");
     }
 }

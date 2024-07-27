@@ -250,9 +250,9 @@ kokos_parser_t kokos_parser_init(kokos_lexer_t* lexer)
     return parser;
 }
 
-kokos_program_t kokos_parser_program(kokos_parser_t* parser)
+kokos_module_t kokos_parser_parse_module(kokos_parser_t* parser)
 {
-    kokos_program_t prog;
+    kokos_module_t prog;
     DA_INIT(&prog, 0, 0);
 
     kokos_expr_t* expr;

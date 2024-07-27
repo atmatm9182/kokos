@@ -50,7 +50,7 @@ kokos_compiled_proc_t* kokos_ctx_get_proc(kokos_compiler_context_t* ctx, const c
 // NOTE: maybe create a compiler structure so we potentially can run it multithreaded
 bool kokos_expr_compile(
     const kokos_expr_t* expr, kokos_compiler_context_t* context, kokos_code_t* code);
-kokos_code_t kokos_compile_program(kokos_program_t program, kokos_compiler_context_t* ctx);
+kokos_code_t kokos_compile_module(kokos_module_t module, kokos_compiler_context_t* ctx);
 
 bool kokos_compile_ok(void);
 const char* kokos_compile_get_err(void);

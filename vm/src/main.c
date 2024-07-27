@@ -43,33 +43,33 @@ static int run_file(const char* filename)
     kokos_parser_t parser = kokos_parser_init(&lexer);
 
     uint64_t parser_start = get_time_stamp();
-    kokos_program_t program = kokos_parser_program(&parser);
+    kokos_module_t module = kokos_parser_parse_module(&parser);
     uint64_t parser_end = get_time_stamp();
 
     if (!kokos_parser_ok(&parser)) {
         const char* error_msg = kokos_parser_get_err(&parser);
-        fprintf(stderr, "Error while parsing the program: %s\n", error_msg);
+        fprintf(stderr, "Error while parsing the module: %s\n", error_msg);
         return 1;
     }
 
-    printf("program ast:\n");
+    printf("module ast:\n");
     printf("--------------------------------------------------\n");
-    kokos_program_dump(program);
+    kokos_module_dump(module);
     printf("--------------------------------------------------\n\n");
 
     kokos_compiler_context_t compiler_context = kokos_ctx_empty(NULL);
 
     uint64_t compile_start = get_time_stamp();
-    kokos_code_t code = kokos_compile_program(program, &compiler_context);
+    kokos_code_t code = kokos_compile_module(module, &compiler_context);
     uint64_t compile_end = get_time_stamp();
 
     if (!kokos_compile_ok()) {
         const char* error_msg = kokos_compile_get_err();
-        fprintf(stderr, "Error while compiling the program: %s\n", error_msg);
+        fprintf(stderr, "Error while compiling the module: %s\n", error_msg);
         return 1;
     }
 
-    printf("program code:\n");
+    printf("module code:\n");
     printf("--------------------------------------------------\n");
     kokos_code_dump(code);
     printf("--------------------------------------------------\n\n");
