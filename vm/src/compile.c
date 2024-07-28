@@ -471,7 +471,6 @@ static void scope_add_call_location(kokos_scope_t* scope, size_t ip, kokos_token
     kokos_token_t* tok = KOKOS_ALLOC(sizeof(kokos_token_t));
     *tok = where;
 
-    // TODO: add these mf call locations
     ht_add(scope->call_locations, (void*)ip, tok);
 }
 
