@@ -597,13 +597,13 @@ void kokos_vm_dump(kokos_vm_t* vm)
     }
 }
 
-kokos_vm_t kokos_vm_create(kokos_compiler_context_t* ctx)
+kokos_vm_t kokos_vm_create(kokos_scope_t* ctx)
 {
     kokos_vm_t vm = { 0 };
-    vm.store = (kokos_runtime_store_t) { .procedures = ctx->procedures,
-        .string_store = ctx->string_store,
-        .procedure_code = ctx->procedure_code,
-        .call_locations = ctx->call_locations };
+    vm.store = (kokos_runtime_store_t) { .procedures = ctx->procs,
+        .string_store = *ctx->string_store,
+        .procedure_code = *ctx->code,
+        .call_locations = *ctx->call_locations };
     vm.frames.sp = 0;
 
     vm.gc = kokos_gc_new(GC_INITIAL_CAP);

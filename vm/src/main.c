@@ -57,10 +57,10 @@ static int run_file(const char* filename)
     kokos_module_dump(module);
     printf("--------------------------------------------------\n\n");
 
-    kokos_compiler_context_t compiler_context = kokos_ctx_empty(NULL);
+    kokos_scope_t global_scope = kokos_scope_empty(NULL);
 
     uint64_t compile_start = get_time_stamp();
-    kokos_code_t code = kokos_compile_module(module, &compiler_context);
+    kokos_code_t code = kokos_compile_module(module, &global_scope);
     uint64_t compile_end = get_time_stamp();
 
     if (!kokos_compile_ok()) {
@@ -76,10 +76,10 @@ static int run_file(const char* filename)
 
     printf("procedure code:\n");
     printf("--------------------------------------------------\n");
-    kokos_code_dump(compiler_context.procedure_code);
+    kokos_code_dump(*global_scope.code);
     printf("--------------------------------------------------\n\n");
 
-    kokos_vm_t vm = kokos_vm_create(&compiler_context);
+    kokos_vm_t vm = kokos_vm_create(&global_scope);
 
     uint64_t runtime_start = get_time_stamp();
     kokos_vm_run(&vm, code);

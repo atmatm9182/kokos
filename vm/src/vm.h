@@ -124,7 +124,7 @@ typedef struct kokos_vm {
     size_t ip;
 } kokos_vm_t;
 
-kokos_vm_t kokos_vm_create(kokos_compiler_context_t* ctx);
+kokos_vm_t kokos_vm_create(kokos_scope_t* ctx);
 void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code);
 void kokos_vm_dump(kokos_vm_t* vm);
 
