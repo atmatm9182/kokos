@@ -279,15 +279,19 @@ static bool compile_if(const kokos_expr_t* expr, kokos_scope_t* scope)
 
     DA_ADD(code, INSTR_JZ(0));
 
+    kokos_scope_t consequence_scope = kokos_scope_empty(scope, kokos_scope_is_top_level(scope));
+
     size_t start_ip = code->len;
-    TRY(kokos_expr_compile(exprs.items[2], scope));
+    TRY(kokos_expr_compile(exprs.items[2], &consequence_scope));
 
     switch (expr->list.len) {
     case 4: {
         DA_ADD(code, INSTR_BRANCH(0));
 
+        kokos_scope_t alternative_scope = kokos_scope_empty(scope, kokos_scope_is_top_level(scope));
+        
         size_t consequence_ip = code->len - start_ip;
-        TRY(kokos_expr_compile(exprs.items[3], scope));
+        TRY(kokos_expr_compile(exprs.items[3], &alternative_scope));
 
         KOKOS_ASSERT(code->items[start_ip - 1].type == I_JZ);
         code->items[start_ip - 1].operand = consequence_ip + 1; // patch the jump instruction
