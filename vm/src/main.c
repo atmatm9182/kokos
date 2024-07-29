@@ -57,13 +57,14 @@ static int run_file(const char* filename)
     kokos_module_dump(module);
     printf("--------------------------------------------------\n\n");
 
-    kokos_scope_t global_scope = kokos_scope_empty(NULL);
+    kokos_scope_t global_scope = kokos_scope_empty(NULL, true);
+    kokos_compiled_module_t compiled_module;
 
     uint64_t compile_start = get_time_stamp();
-    kokos_code_t code = kokos_compile_module(module, &global_scope);
+    bool ok = kokos_compile_module(module, &global_scope, &compiled_module);
     uint64_t compile_end = get_time_stamp();
 
-    if (!kokos_compile_ok()) {
+    if (!ok) {
         const char* error_msg = kokos_compile_get_err();
         fprintf(stderr, "Error while compiling the module: %s\n", error_msg);
         return 1;
@@ -71,18 +72,18 @@ static int run_file(const char* filename)
 
     printf("module code:\n");
     printf("--------------------------------------------------\n");
-    kokos_code_dump(code);
+    kokos_code_dump(compiled_module.instructions);
     printf("--------------------------------------------------\n\n");
 
     printf("procedure code:\n");
     printf("--------------------------------------------------\n");
-    kokos_code_dump(*global_scope.code);
+    kokos_code_dump(*global_scope.proc_code);
     printf("--------------------------------------------------\n\n");
 
     kokos_vm_t vm = kokos_vm_create(&global_scope);
 
     uint64_t runtime_start = get_time_stamp();
-    kokos_vm_run(&vm, code);
+    kokos_vm_load_module(&vm, &compiled_module);
     uint64_t runtime_end = get_time_stamp();
 
     printf("vm state:\n");

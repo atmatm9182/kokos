@@ -10,6 +10,7 @@ vm_sources = [
   'src/hash.c',
   'src/value.c',
   'src/env.c',
+  'src/string-store.c',
 ]
 
 kokosvm_cargs = ['-Wno-unused-value', '-DBASE_IMPLEMENTATION', '-DBASE_STATIC']

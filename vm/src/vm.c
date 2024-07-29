@@ -2,9 +2,11 @@
 #include "base.h"
 #include "compile.h"
 #include "gc.h"
+#include "instruction.h"
 #include "macros.h"
 #include "native.h"
 #include "runtime.h"
+#include "string-store.h"
 #include "value.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -12,7 +14,7 @@
 
 #define INSTR_OP_ARG_MASK 0xFFFFFFFF
 
-static bool exec(kokos_vm_t* vm);
+static bool kokos_vm_exec_cur(kokos_vm_t* vm);
 
 static kokos_frame_t* alloc_frame(size_t ret_location)
 {
@@ -23,16 +25,16 @@ static kokos_frame_t* alloc_frame(size_t ret_location)
 
 static kokos_frame_t* current_frame(kokos_vm_t* vm)
 {
-    if (vm->frames.sp == 0) {
+    if (VM_CTX(vm).frames.sp == 0) {
         KOKOS_VERIFY(0);
     }
 
-    return STACK_PEEK(&vm->frames);
+    return STACK_PEEK(&VM_CTX(vm).frames);
 }
 
 static kokos_instruction_t current_instruction(const kokos_vm_t* vm)
 {
-    return vm->current_instructions->items[vm->ip];
+    return VM_CTX(vm).instructions.items[VM_CTX(vm).ip];
 }
 
 static bool kokos_value_to_bool(kokos_value_t value)
@@ -85,7 +87,7 @@ static bool kokos_cmp_values(kokos_vm_t* vm, kokos_value_t lhs, kokos_value_t rh
 
 kokos_value_t kokos_alloc_value(kokos_vm_t* vm, uint64_t params)
 {
-    kokos_frame_t* frame = STACK_PEEK(&vm->frames);
+    kokos_frame_t* frame = STACK_PEEK(&VM_CTX(vm).frames);
 
     switch (GET_TAG(params)) {
     case VECTOR_TAG: {
@@ -132,23 +134,23 @@ kokos_value_t kokos_alloc_value(kokos_vm_t* vm, uint64_t params)
 
 static kokos_frame_t* push_frame(kokos_vm_t* vm, size_t ret_location, kokos_token_t where)
 {
-    if (vm->frames.sp >= vm->frames.cap) {
+    if (VM_CTX(vm).frames.sp >= VM_CTX(vm).frames.cap) {
         kokos_frame_t* new_frame = alloc_frame(ret_location);
         new_frame->where = where;
-        STACK_PUSH(&vm->frames, new_frame);
-        vm->frames.cap++;
+        STACK_PUSH(&VM_CTX(vm).frames, new_frame);
+        VM_CTX(vm).frames.cap++;
 
         return new_frame;
     }
 
     // reuse the old frame if we have enough capacity
-    kokos_frame_t* old_frame = vm->frames.data[vm->frames.sp];
+    kokos_frame_t* old_frame = VM_CTX(vm).frames.data[VM_CTX(vm).frames.sp];
     old_frame->ret_location = ret_location;
     old_frame->stack.sp = 0;
     old_frame->where = where;
     memset(old_frame->locals, 0, sizeof(old_frame->locals));
 
-    STACK_PUSH(&vm->frames, old_frame);
+    STACK_PUSH(&VM_CTX(vm).frames, old_frame);
     return old_frame;
 }
 
@@ -363,15 +365,15 @@ static kokos_token_t get_call_location(kokos_vm_t* vm, size_t ip)
     return *tok;
 }
 
-static bool exec(kokos_vm_t* vm)
+static bool kokos_vm_exec_cur(kokos_vm_t* vm)
 {
-    kokos_frame_t* frame = STACK_PEEK(&vm->frames);
+    kokos_frame_t* frame = STACK_PEEK(&VM_CTX(vm).frames);
     kokos_instruction_t instruction = current_instruction(vm);
 
     switch (instruction.type) {
     case I_PUSH: {
         STACK_PUSH(&frame->stack, TO_VALUE(instruction.operand));
-        vm->ip++;
+        VM_CTX(vm).ip++;
         break;
     }
     case I_POP: {
@@ -380,33 +382,34 @@ static bool exec(kokos_vm_t* vm)
     }
     case I_ADD: {
         TRY(vm_exec_add(vm, instruction.operand));
-        vm->ip++;
+        VM_CTX(vm).ip++;
         break;
     }
     case I_SUB: {
         TRY(vm_exec_sub(vm, instruction.operand));
-        vm->ip++;
+        VM_CTX(vm).ip++;
         break;
     }
     case I_MUL: {
         TRY(vm_exec_mul(vm, instruction.operand));
-        vm->ip++;
+        VM_CTX(vm).ip++;
         break;
     }
     case I_DIV: {
         TRY(vm_exec_div(vm, instruction.operand));
-        vm->ip++;
+        VM_CTX(vm).ip++;
         break;
     }
     case I_CALL: {
-        size_t ret_location = (vm->ip + 1) | ((size_t)(vm->frames.sp != 1) << 63);
+        size_t ret_location = VM_CTX(vm).ip + 1;
+
+        // uint32_t absolute_ip = VM_CTX(vm).ip + VM_CTX(vm).proc_ip;
+        // kokos_frame_t* new_frame = push_frame(vm, ret_location, get_call_location(vm,
+        // absolute_ip));
+        kokos_frame_t* new_frame = push_frame(vm, ret_location, (kokos_token_t) { 0 });
 
         uint32_t arity = instruction.operand >> 32;
-        uint32_t ip = instruction.operand & 0xFFFFFFFF;
-
-        kokos_frame_t* new_frame = push_frame(vm, ret_location, get_call_location(vm, vm->ip));
-        vm->ip = ip;
-        vm->current_instructions = &vm->store.procedure_code;
+        VM_CTX(vm).ip = instruction.operand & 0xFFFFFFFF;
 
         for (size_t i = 0; i < arity; i++) {
             new_frame->locals[i] = STACK_POP(&frame->stack);
@@ -415,18 +418,19 @@ static bool exec(kokos_vm_t* vm)
         break;
     }
     case I_RET: {
-        kokos_frame_t* proc_frame = STACK_POP(&vm->frames);
+        // NOTE: use peek here so we can examine the top-level stack frame
+        // of the vm after it has ran
+        kokos_frame_t* proc_frame = STACK_PEEK(&VM_CTX(vm).frames);
+        VM_CTX(vm).ip = proc_frame->ret_location;
+
+        if (VM_CTX(vm).frames.sp == 1) {
+            return true;
+        }
+
+        STACK_POP(&VM_CTX(vm).frames);
+
         kokos_value_t ret_value
             = proc_frame->stack.sp == 0 ? TO_VALUE(NIL_BITS) : STACK_PEEK(&proc_frame->stack);
-
-        const size_t ret_mask = (size_t)1 << 63;
-        vm->ip = proc_frame->ret_location & ~ret_mask;
-
-        if (ret_mask & proc_frame->ret_location) {
-            vm->current_instructions = &vm->store.procedure_code;
-        } else {
-            vm->current_instructions = &vm->instructions;
-        }
 
         STACK_PUSH(&current_frame(vm)->stack, ret_value);
         break;
@@ -435,38 +439,38 @@ static bool exec(kokos_vm_t* vm)
         kokos_value_t local = frame->locals[instruction.operand];
         STACK_PUSH(&frame->stack, local);
 
-        vm->ip++;
+        VM_CTX(vm).ip++;
         break;
     }
     case I_STORE_LOCAL: {
         kokos_value_t v = STACK_POP(&frame->stack);
         frame->locals[instruction.operand] = v;
 
-        vm->ip++;
+        VM_CTX(vm).ip++;
         break;
     }
     case I_BRANCH: {
-        vm->ip += (int32_t)instruction.operand;
+        VM_CTX(vm).ip += (int32_t)instruction.operand;
         break;
     }
     case I_JZ: {
         kokos_value_t test = STACK_POP(&frame->stack);
         if (!kokos_value_to_bool(test)) {
-            vm->ip += (int32_t)instruction.operand;
+            VM_CTX(vm).ip += (int32_t)instruction.operand;
             break;
         }
 
-        vm->ip++;
+        VM_CTX(vm).ip++;
         break;
     }
     case I_JNZ: {
         kokos_value_t test = STACK_POP(&frame->stack);
         if (kokos_value_to_bool(test)) {
-            vm->ip += (int32_t)instruction.operand;
+            VM_CTX(vm).ip += (int32_t)instruction.operand;
             break;
         }
 
-        vm->ip++;
+        VM_CTX(vm).ip++;
         break;
     }
     case I_CMP: {
@@ -475,21 +479,21 @@ static bool exec(kokos_vm_t* vm)
 
         TRY(kokos_cmp_values(vm, lhs, rhs));
 
-        vm->ip++;
+        VM_CTX(vm).ip++;
         break;
     }
     case I_EQ: {
         kokos_value_t top = STACK_POP(&frame->stack);
         STACK_PUSH(&frame->stack, TO_BOOL(top.as_int == instruction.operand));
 
-        vm->ip++;
+        VM_CTX(vm).ip++;
         break;
     }
     case I_NEQ: {
         kokos_value_t top = STACK_POP(&frame->stack);
         STACK_PUSH(&frame->stack, TO_BOOL(top.as_int != instruction.operand));
 
-        vm->ip++;
+        VM_CTX(vm).ip++;
         break;
     }
     case I_CALL_NATIVE: {
@@ -497,13 +501,13 @@ static bool exec(kokos_vm_t* vm)
         kokos_native_proc_t native
             = (kokos_native_proc_t)(instruction.operand & ~((uint64_t)0xFFFF << 48));
         TRY(native(vm, nargs));
-        vm->ip++;
+        VM_CTX(vm).ip++;
         break;
     }
     case I_ALLOC: {
         kokos_value_t value = kokos_alloc_value(vm, instruction.operand);
         STACK_PUSH(&frame->stack, value);
-        vm->ip++;
+        VM_CTX(vm).ip++;
         break;
     }
     default: {
@@ -517,7 +521,7 @@ static bool exec(kokos_vm_t* vm)
     return true;
 }
 
-static char const* tag_str(uint16_t tag)
+static char const* kokos_tag_str(uint16_t tag)
 {
     switch (tag) {
     case STRING_TAG: return "string";
@@ -531,55 +535,76 @@ static char const* tag_str(uint16_t tag)
     KOKOS_VERIFY(false);
 }
 
-static void vm_dump_stack_trace(kokos_vm_t* vm)
+static void kokos_vm_dump_stack_trace(kokos_vm_t* vm)
 {
-    while (vm->frames.sp != 1) {
-        kokos_frame_t* frame = STACK_POP(&vm->frames);
+    while (VM_CTX(vm).frames.sp != 1) {
+        kokos_frame_t* frame = STACK_POP(&VM_CTX(vm).frames);
         kokos_location_t where = frame->where.location;
         printf("%s:%lu:%lu\n", where.filename, where.row, where.col);
     }
 }
 
-static void report_exception(kokos_vm_t* vm)
+static void kokos_vm_report_exception(kokos_vm_t* vm)
 {
-    switch (vm->exception_reg.type) {
+    switch (VM_CTX(vm).registers.exception.type) {
     case EX_TYPE_MISMATCH: {
-        char const* expected = tag_str(vm->exception_reg.type_mismatch.expected);
-        char const* got = tag_str(vm->exception_reg.type_mismatch.got);
+        char const* expected = kokos_tag_str(VM_CTX(vm).registers.exception.type_mismatch.expected);
+        char const* got = kokos_tag_str(VM_CTX(vm).registers.exception.type_mismatch.got);
         fprintf(stderr, "type mismatch: expected %s, but got %s\n", expected, got);
         break;
     }
     case EX_ARITY_MISMATCH: {
         fprintf(stderr, "arity mismatch: expected %lu arguments, but got %lu\n",
-            vm->exception_reg.arity_mismatch.expected, vm->exception_reg.arity_mismatch.got);
+            VM_CTX(vm).registers.exception.arity_mismatch.expected,
+            VM_CTX(vm).registers.exception.arity_mismatch.got);
         break;
     }
     case EX_CUSTOM: {
-        fprintf(stderr, "error: %s\n", vm->exception_reg.custom);
+        fprintf(stderr, "error: %s\n", VM_CTX(vm).registers.exception.custom);
         break;
     }
     }
 
-    vm_dump_stack_trace(vm);
+    kokos_vm_dump_stack_trace(vm);
 }
 
-void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code)
+static void kokos_vm_push_context(
+    kokos_vm_t* vm, size_t ip, size_t proc_ip, kokos_code_t instructions)
 {
-    vm->instructions = code;
-    vm->current_instructions = &vm->instructions;
+    DA_ADD(&vm->contexes, (kokos_vm_context_t) { 0 });
 
-    kokos_frame_t* frame = alloc_frame(0);
-    STACK_PUSH(&vm->frames, frame);
+    kokos_vm_context_t* ctx = &VM_CTX(vm);
+    ctx->ip = ip;
+    ctx->top_level_ip = proc_ip;
+    ctx->instructions = instructions;
+}
 
-    while (vm->ip < vm->current_instructions->len) {
-        if (!exec(vm)) {
+// TODO: setup a new context for each loaded module
+void kokos_vm_load_module(kokos_vm_t* vm, kokos_compiled_module_t const* module)
+{
+    for (size_t i = 0; i < module->string_store.length; i++) {
+        kokos_runtime_string_t const* cur = module->string_store.items[i];
+        if (!cur) {
+            continue;
+        }
+
+        kokos_string_store_add(&vm->store.strings, cur);
+    }
+
+    kokos_vm_push_context(
+        vm, module->top_level_code_start, module->top_level_code_start, module->instructions);
+    kokos_vm_context_t* ctx = &VM_CTX(vm);
+
+    kokos_frame_t* frame = alloc_frame(ctx->instructions.len);
+    STACK_PUSH(&VM_CTX(vm).frames, frame);
+
+    while (ctx->ip < ctx->instructions.len) {
+        if (!kokos_vm_exec_cur(vm)) {
             kokos_vm_dump(vm);
-            report_exception(vm);
+            kokos_vm_report_exception(vm);
             exit(1);
         }
     }
-
-    // NOTE: we do not pop the frame here after the vm has ran
 }
 
 void kokos_vm_dump(kokos_vm_t* vm)
@@ -600,17 +625,15 @@ void kokos_vm_dump(kokos_vm_t* vm)
 kokos_vm_t kokos_vm_create(kokos_scope_t* ctx)
 {
     kokos_vm_t vm = { 0 };
-    vm.store = (kokos_runtime_store_t) { .procedures = ctx->procs,
-        .string_store = *ctx->string_store,
-        .procedure_code = *ctx->code,
+    vm.store = (kokos_runtime_store_t) { .strings = *ctx->string_store,
         .call_locations = *ctx->call_locations };
-    vm.frames.sp = 0;
+    DA_INIT(&vm.contexes, 0, 5);
 
     vm.gc = kokos_gc_new(GC_INITIAL_CAP);
     return vm;
 }
 
-static void mark_obj(kokos_gc_t* gc, kokos_gc_obj_t* obj)
+static void kokos_gc_mark_obj(kokos_gc_t* gc, kokos_gc_obj_t* obj)
 {
     obj->flags |= OBJ_FLAG_MARKED;
 
@@ -624,7 +647,7 @@ static void mark_obj(kokos_gc_t* gc, kokos_gc_obj_t* obj)
                 continue;
             }
 
-            mark_obj(gc, gobj);
+            kokos_gc_mark_obj(gc, gobj);
         }
 
         break;
@@ -636,11 +659,11 @@ static void mark_obj(kokos_gc_t* gc, kokos_gc_obj_t* obj)
             kokos_gc_obj_t* value = kokos_gc_find(gc, TO_VALUE((uint64_t)kv.value));
 
             if (key) {
-                mark_obj(gc, key);
+                kokos_gc_mark_obj(gc, key);
             }
 
             if (value) {
-                mark_obj(gc, value);
+                kokos_gc_mark_obj(gc, value);
             }
         });
 
@@ -654,7 +677,7 @@ static void mark_obj(kokos_gc_t* gc, kokos_gc_obj_t* obj)
     }
 }
 
-static void gc_mark_frame(kokos_gc_t* gc, kokos_frame_t const* frame)
+static void kokos_gc_mark_frame(kokos_gc_t* gc, kokos_frame_t const* frame)
 {
     for (size_t i = 0; i < MAX_LOCALS; i++) {
         kokos_value_t local = frame->locals[i];
@@ -662,7 +685,7 @@ static void gc_mark_frame(kokos_gc_t* gc, kokos_frame_t const* frame)
 
         if (obj) {
             KOKOS_ASSERT(IS_OCCUPIED(*obj));
-            mark_obj(gc, obj);
+            kokos_gc_mark_obj(gc, obj);
         }
     }
 
@@ -672,12 +695,12 @@ static void gc_mark_frame(kokos_gc_t* gc, kokos_frame_t const* frame)
 
         if (obj) {
             KOKOS_ASSERT(IS_OCCUPIED(*obj));
-            mark_obj(gc, obj);
+            kokos_gc_mark_obj(gc, obj);
         }
     }
 }
 
-static void obj_free(kokos_gc_obj_t* obj)
+static void kokos_obj_free(kokos_gc_obj_t* obj)
 {
     switch (GET_TAG(obj->value.as_int)) {
     case STRING_TAG: {
@@ -694,9 +717,9 @@ static void obj_free(kokos_gc_obj_t* obj)
 
 static void kokos_gc_collect(kokos_vm_t* vm)
 {
-    for (size_t i = 0; i < vm->frames.sp; i++) {
-        kokos_frame_t const* frame = vm->frames.data[i];
-        gc_mark_frame(&vm->gc, frame);
+    for (size_t i = 0; i < VM_CTX(vm).frames.sp; i++) {
+        kokos_frame_t const* frame = VM_CTX(vm).frames.data[i];
+        kokos_gc_mark_frame(&vm->gc, frame);
     }
 
     for (size_t i = 0; i < vm->gc.objects.cap; i++) {
@@ -707,7 +730,7 @@ static void kokos_gc_collect(kokos_vm_t* vm)
 
         obj->flags = 0;
 
-        obj_free(obj);
+        kokos_obj_free(obj);
 
         vm->gc.objects.len--;
     }
@@ -756,25 +779,25 @@ void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag, size_t cap)
 
 void kokos_vm_ex_set_type_mismatch(kokos_vm_t* vm, uint16_t expected, uint16_t got)
 {
-    vm->exception_reg = (kokos_exception_t) {
+    VM_CTX(vm).registers.exception = (kokos_exception_t) {
         .type = EX_TYPE_MISMATCH,
     };
-    vm->exception_reg.type_mismatch.expected = expected;
-    vm->exception_reg.type_mismatch.got = got;
+    VM_CTX(vm).registers.exception.type_mismatch.expected = expected;
+    VM_CTX(vm).registers.exception.type_mismatch.got = got;
 }
 
 void kokos_vm_ex_set_arity_mismatch(kokos_vm_t* vm, size_t expected, size_t got)
 {
-    vm->exception_reg = (kokos_exception_t) {
+    VM_CTX(vm).registers.exception = (kokos_exception_t) {
         .type = EX_ARITY_MISMATCH,
     };
-    vm->exception_reg.arity_mismatch.expected = expected;
-    vm->exception_reg.arity_mismatch.got = got;
+    VM_CTX(vm).registers.exception.arity_mismatch.expected = expected;
+    VM_CTX(vm).registers.exception.arity_mismatch.got = got;
 }
 
 void kokos_vm_ex_custom_printf(kokos_vm_t* vm, const char* fmt, ...)
 {
-    vm->exception_reg = (kokos_exception_t) {
+    VM_CTX(vm).registers.exception = (kokos_exception_t) {
         .type = EX_CUSTOM,
     };
 
@@ -785,5 +808,5 @@ void kokos_vm_ex_custom_printf(kokos_vm_t* vm, const char* fmt, ...)
     sb_sprintf(&sb, fmt, args);
     va_end(args);
 
-    vm->exception_reg.custom = sb_to_cstr(&sb);
+    VM_CTX(vm).registers.exception.custom = sb_to_cstr(&sb);
 }

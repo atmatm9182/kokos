@@ -19,6 +19,8 @@
 
 #define TO_BOOL(b) (TO_VALUE(b ? TRUE_BITS : FALSE_BITS))
 
+#define VM_CTX(vm) ((vm)->contexes.items[(vm)->ctx_idx])
+
 // use this only for macros and exceptions below
 #define DOUBLE_TAG 0
 
@@ -63,10 +65,8 @@
     } while (0)
 
 typedef struct {
-    hash_table procedures;
     hash_table call_locations;
-    kokos_code_t procedure_code;
-    kokos_string_store_t string_store;
+    kokos_string_store_t strings;
 } kokos_runtime_store_t;
 
 typedef struct {
@@ -113,19 +113,37 @@ typedef struct kokos_exception {
     };
 } kokos_exception_t;
 
+typedef struct {
+    kokos_frame_stack_t frames;
+
+    struct {
+        kokos_exception_t exception;
+    } registers;
+
+    size_t ip;
+    size_t top_level_ip;
+    kokos_code_t instructions;
+} kokos_vm_context_t;
+
+typedef struct {
+    kokos_vm_context_t* items;
+    size_t len;
+    size_t cap;
+} kokos_vm_context_stack_t;
+
 typedef struct kokos_vm {
     kokos_gc_t gc;
     kokos_runtime_store_t store;
-    kokos_frame_stack_t frames;
-    kokos_exception_t exception_reg;
 
-    kokos_code_t instructions;
-    kokos_code_t* current_instructions;
-    size_t ip;
+    kokos_vm_context_stack_t contexes;
+    size_t ctx_idx;
 } kokos_vm_t;
 
 kokos_vm_t kokos_vm_create(kokos_scope_t* ctx);
-void kokos_vm_run(kokos_vm_t* vm, kokos_code_t code);
+
+/// Load the module, adding it's strings to the runtime store, and execute it's code
+void kokos_vm_load_module(kokos_vm_t* vm, kokos_compiled_module_t const* module);
+
 void kokos_vm_dump(kokos_vm_t* vm);
 
 /// Allocates a new value of the provided tag on the heap and returns a pointer to it

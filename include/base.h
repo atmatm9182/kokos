@@ -58,6 +58,11 @@
         (arr)->items[(arr)->len++] = (elem); \
     } while (0)
 
+#define DA_POP(arr, elem) \
+    do {                  \
+        (arr)->len--;     \
+    } while (0)
+
 #define DA_FREE(arr)        \
     do {                    \
         free((arr)->items); \

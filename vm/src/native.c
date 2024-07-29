@@ -16,7 +16,7 @@ static bool native_print(kokos_vm_t* vm, uint16_t nargs)
         return true;
     }
 
-    kokos_frame_t* frame = STACK_PEEK(&vm->frames);
+    kokos_frame_t* frame = STACK_PEEK(&VM_CTX(vm).frames);
 
     for (uint16_t i = 0; i < nargs; i++) {
         kokos_value_t value = STACK_POP(&frame->stack);
@@ -33,7 +33,7 @@ static bool native_print(kokos_vm_t* vm, uint16_t nargs)
 
 static bool native_make_vec(kokos_vm_t* vm, uint16_t nargs)
 {
-    kokos_frame_t* frame = STACK_PEEK(&vm->frames);
+    kokos_frame_t* frame = STACK_PEEK(&VM_CTX(vm).frames);
 
     kokos_runtime_vector_t* vector = kokos_vm_gc_alloc(vm, VECTOR_TAG, nargs);
 
@@ -50,7 +50,7 @@ static bool native_make_map(kokos_vm_t* vm, uint16_t nargs)
 {
     CHECK_CUSTOM(nargs % 2 == 0, "expected the number of arguments to be even");
 
-    kokos_frame_t* frame = STACK_PEEK(&vm->frames);
+    kokos_frame_t* frame = STACK_PEEK(&VM_CTX(vm).frames);
 
     kokos_runtime_map_t* map = kokos_vm_gc_alloc(vm, MAP_TAG, nargs);
 
@@ -70,7 +70,7 @@ static bool native_read_file(kokos_vm_t* vm, uint16_t nargs)
 {
     CHECK_ARITY(1, nargs);
 
-    kokos_frame_t* frame = STACK_PEEK(&vm->frames);
+    kokos_frame_t* frame = STACK_PEEK(&VM_CTX(vm).frames);
     kokos_value_t filename = STACK_POP(&frame->stack);
     CHECK_TYPE(filename, STRING_TAG);
 
@@ -113,7 +113,7 @@ static bool native_write_file(kokos_vm_t* vm, uint16_t nargs)
 {
     CHECK_ARITY(2, nargs);
 
-    kokos_frame_t* frame = STACK_PEEK(&vm->frames);
+    kokos_frame_t* frame = STACK_PEEK(&VM_CTX(vm).frames);
     kokos_value_t filename = STACK_POP(&frame->stack);
     CHECK_TYPE(filename, STRING_TAG);
 
