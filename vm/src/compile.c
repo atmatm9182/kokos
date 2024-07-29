@@ -130,11 +130,8 @@ static kokos_label_t kokos_scope_make_label(kokos_scope_t* scope)
     return scope->proc_code->len;
 }
 
-static bool compile_procedure_def(
-    const kokos_expr_t* expr, kokos_scope_t* scope, kokos_code_t* code)
+static bool compile_procedure_def(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
-    (void)code;
-
     kokos_list_t list = expr->list;
     if (list.len < 3) {
         set_error(expr->token.location,
@@ -228,39 +225,44 @@ static bool compile_all_args(const kokos_expr_t* expr, kokos_scope_t* scope, kok
     return true;
 }
 
-static bool compile_mul(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_code_t* code)
+static bool compile_mul(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
+    kokos_code_t* code = scope->current_code;
     TRY(compile_all_args(expr, scope, code));
 
     DA_ADD(code, INSTR_MUL(expr->list.len - 1));
     return true;
 }
 
-static bool compile_div(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_code_t* code)
+static bool compile_div(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
+    kokos_code_t* code = scope->current_code;
     TRY(compile_all_args(expr, scope, code));
 
     DA_ADD(code, INSTR_DIV(expr->list.len - 1));
     return true;
 }
-static bool compile_sub(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_code_t* code)
+static bool compile_sub(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
+    kokos_code_t* code = scope->current_code;
     TRY(compile_all_args(expr, scope, code));
 
     DA_ADD(code, INSTR_SUB(expr->list.len - 1));
     return true;
 }
 
-static bool compile_add(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_code_t* code)
+static bool compile_add(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
+    kokos_code_t* code = scope->current_code;
     TRY(compile_all_args(expr, scope, code));
 
     DA_ADD(code, INSTR_ADD(expr->list.len - 1));
     return true;
 }
 
-static bool compile_if(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_code_t* code)
+static bool compile_if(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
+    kokos_code_t* code = scope->current_code;
     if (expr->list.len < 3 || expr->list.len > 4) {
         set_error(expr->token.location, "badly formed 'if' expression");
         return false;
@@ -303,8 +305,9 @@ static bool compile_if(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_cod
     return false;
 }
 
-static bool compile_eq(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_code_t* code)
+static bool compile_eq(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
+    kokos_code_t* code = scope->current_code;
     TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
 
     TRY(compile_all_args(expr, scope, code));
@@ -317,8 +320,9 @@ static bool compile_eq(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_cod
     return true;
 }
 
-static bool compile_neq(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_code_t* code)
+static bool compile_neq(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
+    kokos_code_t* code = scope->current_code;
     TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
 
     TRY(compile_all_args(expr, scope, code));
@@ -329,8 +333,9 @@ static bool compile_neq(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_co
     return true;
 }
 
-static bool compile_lte(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_code_t* code)
+static bool compile_lte(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
+    kokos_code_t* code = scope->current_code;
     TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
 
     TRY(compile_all_args(expr, scope, code));
@@ -341,8 +346,9 @@ static bool compile_lte(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_co
     return true;
 }
 
-static bool compile_gte(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_code_t* code)
+static bool compile_gte(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
+    kokos_code_t* code = scope->current_code;
     TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
 
     TRY(compile_all_args(expr, scope, code));
@@ -353,8 +359,9 @@ static bool compile_gte(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_co
     return true;
 }
 
-static bool compile_gt(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_code_t* code)
+static bool compile_gt(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
+    kokos_code_t* code = scope->current_code;
     TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
 
     TRY(compile_all_args(expr, scope, code));
@@ -365,8 +372,9 @@ static bool compile_gt(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_cod
     return true;
 }
 
-static bool compile_lt(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_code_t* code)
+static bool compile_lt(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
+    kokos_code_t* code = scope->current_code;
     TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
 
     TRY(compile_all_args(expr, scope, code));
@@ -377,7 +385,7 @@ static bool compile_lt(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_cod
     return true;
 }
 
-bool compile_let(kokos_expr_t const* expr, kokos_scope_t* scope, kokos_code_t* code)
+bool compile_let(kokos_expr_t const* expr, kokos_scope_t* scope)
 {
     KOKOS_ASSERT(expr->type == EXPR_LIST);
 
@@ -397,7 +405,7 @@ bool compile_let(kokos_expr_t const* expr, kokos_scope_t* scope, kokos_code_t* c
         TRY(kokos_expr_compile(value, scope));
 
         DA_ADD(&scope->vars, key->token.value);
-        DA_ADD(code, INSTR_STORE_LOCAL(scope->vars.len - 1));
+        DA_ADD(scope->current_code, INSTR_STORE_LOCAL(scope->vars.len - 1));
     }
 
     // compile body with the new bindings
@@ -408,7 +416,7 @@ bool compile_let(kokos_expr_t const* expr, kokos_scope_t* scope, kokos_code_t* c
     return true;
 }
 
-typedef bool (*kokos_sform_t)(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_code_t* code);
+typedef bool (*kokos_sform_t)(kokos_expr_t const* expr, kokos_scope_t* scope);
 
 typedef struct {
     const char* name;
@@ -499,7 +507,7 @@ static bool compile_list(const kokos_expr_t* expr, kokos_scope_t* scope, kokos_c
 
     kokos_sform_t sform = get_sform(head);
     if (sform) {
-        TRY(sform(expr, scope, code));
+        TRY(sform(expr, scope));
         return true;
     }
 
