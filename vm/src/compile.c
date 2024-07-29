@@ -449,7 +449,7 @@ static kokos_sform_pair_t sforms[] = {
     { "<=", compile_lte },
     { ">=", compile_gte },
     { "=", compile_eq },
-    { "!=", compile_neq },
+    { "/=", compile_neq },
 };
 
 #define SFORMS_COUNT (sizeof(sforms) / sizeof(sforms[0]))
