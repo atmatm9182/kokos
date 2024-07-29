@@ -130,6 +130,11 @@ static kokos_label_t kokos_scope_make_label(kokos_scope_t* scope)
     return scope->proc_code->len;
 }
 
+static bool kokos_scope_is_top_level(kokos_scope_t const* scope)
+{
+    return scope->current_code == scope->top_level_code;
+}
+
 static bool compile_procedure_def(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
     kokos_list_t list = expr->list;
@@ -385,12 +390,16 @@ static bool compile_lt(const kokos_expr_t* expr, kokos_scope_t* scope)
     return true;
 }
 
-bool compile_let(kokos_expr_t const* expr, kokos_scope_t* scope)
+// NOTE: this is kinda wierd. `let` creates a new scope, but the locals will still
+// be stored into the `locals` array of the current function frame
+static bool compile_let(kokos_expr_t const* expr, kokos_scope_t* scope)
 {
     KOKOS_ASSERT(expr->type == EXPR_LIST);
 
     VERIFY_TYPE(expr->list.items[1], EXPR_LIST);
     kokos_list_t vars = expr->list.items[1]->list;
+
+    kokos_scope_t let_scope = kokos_scope_empty(scope, kokos_scope_is_top_level(scope));
 
     for (size_t i = 0; i < vars.len; i += 2) {
         if (scope->vars.len >= MAX_LOCALS) {
@@ -402,15 +411,15 @@ bool compile_let(kokos_expr_t const* expr, kokos_scope_t* scope)
         VERIFY_TYPE(key, EXPR_IDENT);
 
         kokos_expr_t const* value = vars.items[i + 1];
-        TRY(kokos_expr_compile(value, scope));
+        TRY(kokos_expr_compile(value, &let_scope));
 
-        DA_ADD(&scope->vars, key->token.value);
-        DA_ADD(scope->current_code, INSTR_STORE_LOCAL(scope->vars.len - 1));
+        DA_ADD(&let_scope.vars, key->token.value);
+        DA_ADD(let_scope.current_code, INSTR_STORE_LOCAL(scope->vars.len - 1));
     }
 
     // compile body with the new bindings
     for (size_t i = 0; i < expr->list.len - 2; i++) {
-        TRY(kokos_expr_compile(expr->list.items[i + 2], scope));
+        TRY(kokos_expr_compile(expr->list.items[i + 2], &let_scope));
     }
 
     return true;
