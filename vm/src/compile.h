@@ -49,15 +49,15 @@ typedef struct {
 } kokos_compiled_module_t;
 
 kokos_scope_t kokos_scope_empty(kokos_scope_t* parent, bool top_level);
-void kokos_scope_add_proc(kokos_scope_t* scope, const char* name, kokos_compiled_proc_t* proc);
-kokos_compiled_proc_t* kokos_scope_get_proc(kokos_scope_t* scope, const char* name);
+void kokos_scope_add_proc(kokos_scope_t* scope, char const* name, kokos_compiled_proc_t* proc);
+kokos_compiled_proc_t* kokos_scope_get_proc(kokos_scope_t* scope, char const* name);
 
 // NOTE: maybe create a compiler structure so we potentially can run it multithreaded
-bool kokos_expr_compile(const kokos_expr_t* expr, kokos_scope_t* context);
+bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* context);
 bool kokos_compile_module(
     kokos_module_t module, kokos_scope_t* scope, kokos_compiled_module_t* compiled_module);
 
 bool kokos_compile_ok(void);
-const char* kokos_compile_get_err(void);
+char const* kokos_compile_get_err(void);
 
 #endif // COMPILE_H_

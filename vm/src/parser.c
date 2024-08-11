@@ -10,13 +10,13 @@
 
 char err_buf[512];
 
-static void set_unterminated_literal_err(const char* what, kokos_token_t token)
+static void set_unterminated_literal_err(char const* what, kokos_token_t token)
 {
     sprintf(err_buf, "unterminated %s literal: '" SV_FMT "' at %s:%zu:%zu", what,
         SV_ARG(token.value), token.location.filename, token.location.row, token.location.col);
 }
 
-static kokos_expr_t* alloc_empty(const kokos_token_t* token, kokos_expr_type_e expr_type)
+static kokos_expr_t* alloc_empty(kokos_token_t const* token, kokos_expr_type_e expr_type)
 {
     kokos_expr_t* ptr = KOKOS_ALLOC(sizeof(kokos_expr_t));
     KOKOS_VERIFY(ptr);
@@ -38,43 +38,43 @@ static void parser_advance(kokos_parser_t* parser)
     }
 }
 
-static kokos_expr_t* alloc_float(const kokos_token_t* token)
+static kokos_expr_t* alloc_float(kokos_token_t const* token)
 {
     kokos_expr_t* expr = alloc_empty(token, EXPR_FLOAT_LIT);
     return expr;
 }
 
-static kokos_expr_t* alloc_int(const kokos_token_t* token)
+static kokos_expr_t* alloc_int(kokos_token_t const* token)
 {
     kokos_expr_t* expr = alloc_empty(token, EXPR_INT_LIT);
     return expr;
 }
 
-static kokos_expr_t* alloc_vec(const kokos_token_t* token, kokos_vec_t vec)
+static kokos_expr_t* alloc_vec(kokos_token_t const* token, kokos_vec_t vec)
 {
     kokos_expr_t* expr = alloc_empty(token, EXPR_VECTOR);
     expr->vec = vec;
     return expr;
 }
 
-static kokos_expr_t* alloc_list(const kokos_token_t* token, kokos_expr_t const** items, size_t len)
+static kokos_expr_t* alloc_list(kokos_token_t const* token, kokos_expr_t const** items, size_t len)
 {
     kokos_expr_t* expr = alloc_empty(token, EXPR_LIST);
     expr->list = (kokos_list_t) { .items = items, .len = len };
     return expr;
 }
 
-static kokos_expr_t* alloc_ident(const kokos_token_t* token)
+static kokos_expr_t* alloc_ident(kokos_token_t const* token)
 {
     return alloc_empty(token, EXPR_IDENT);
 }
 
-static kokos_expr_t* alloc_string(const kokos_token_t* token)
+static kokos_expr_t* alloc_string(kokos_token_t const* token)
 {
     return alloc_empty(token, EXPR_STRING_LIT);
 }
 
-static kokos_expr_t* alloc_map(const kokos_token_t* token, kokos_map_t map)
+static kokos_expr_t* alloc_map(kokos_token_t const* token, kokos_map_t map)
 {
     kokos_expr_t* expr = alloc_empty(token, EXPR_MAP);
     expr->map = map;
@@ -263,13 +263,13 @@ kokos_module_t kokos_parser_parse_module(kokos_parser_t* parser)
     return prog;
 }
 
-bool kokos_parser_ok(const kokos_parser_t* parser)
+bool kokos_parser_ok(kokos_parser_t const* parser)
 {
     (void)parser;
     return strlen(err_buf) == 0;
 }
 
-const char* kokos_parser_get_err(const kokos_parser_t* parser)
+char const* kokos_parser_get_err(kokos_parser_t const* parser)
 {
     (void)parser;
     return err_buf;

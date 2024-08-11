@@ -63,6 +63,6 @@ typedef struct {
 
 void kokos_instruction_dump(kokos_instruction_t instruction);
 void kokos_code_dump(kokos_code_t code);
-const char* kokos_instruction_type_str(kokos_instruction_type_e type);
+char const* kokos_instruction_type_str(kokos_instruction_type_e type);
 
 #endif // INSTRUCTION_H_

@@ -26,7 +26,8 @@ size_t objs_load(kokos_gc_objs_t const* objs)
     return ((float)objs->len / (float)objs->cap) * 100;
 }
 
-size_t value_hash(kokos_value_t value) {
+size_t value_hash(kokos_value_t value)
+{
     return value.as_int;
 }
 
@@ -77,7 +78,7 @@ kokos_gc_obj_t* objs_find(kokos_gc_objs_t* objs, kokos_value_t value)
     return iv;
 }
 
-kokos_gc_obj_t* kokos_gc_find(kokos_gc_t *gc, kokos_value_t value)
+kokos_gc_obj_t* kokos_gc_find(kokos_gc_t* gc, kokos_value_t value)
 {
     return objs_find(&gc->objects, value);
 }

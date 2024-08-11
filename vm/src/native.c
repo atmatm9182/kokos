@@ -145,7 +145,7 @@ fail:
 }
 
 typedef struct {
-    const char* name;
+    char const* name;
     kokos_native_proc_t proc;
 } kokos_named_native_proc_t;
 

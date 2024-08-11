@@ -1,7 +1,7 @@
 #include "instruction.h"
 #include "macros.h"
 
-const char* kokos_instruction_type_str(kokos_instruction_type_e type)
+char const* kokos_instruction_type_str(kokos_instruction_type_e type)
 {
     switch (type) {
     case I_PUSH:        return "push";
@@ -28,7 +28,7 @@ const char* kokos_instruction_type_str(kokos_instruction_type_e type)
 
 void kokos_instruction_dump(kokos_instruction_t instruction)
 {
-    const char* type = kokos_instruction_type_str(instruction.type);
+    char const* type = kokos_instruction_type_str(instruction.type);
 
     switch (instruction.type) {
     case I_PUSH:        printf("%s 0x%lx", type, instruction.operand); break;

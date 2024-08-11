@@ -32,7 +32,7 @@ static kokos_frame_t* current_frame(kokos_vm_t* vm)
     return STACK_PEEK(&VM_CTX(vm).frames);
 }
 
-static kokos_instruction_t current_instruction(const kokos_vm_t* vm)
+static kokos_instruction_t current_instruction(kokos_vm_t const* vm)
 {
     return VM_CTX(vm).instructions.items[VM_CTX(vm).ip];
 }
@@ -795,7 +795,7 @@ void kokos_vm_ex_set_arity_mismatch(kokos_vm_t* vm, size_t expected, size_t got)
     VM_CTX(vm).registers.exception.arity_mismatch.got = got;
 }
 
-void kokos_vm_ex_custom_printf(kokos_vm_t* vm, const char* fmt, ...)
+void kokos_vm_ex_custom_printf(kokos_vm_t* vm, char const* fmt, ...)
 {
     VM_CTX(vm).registers.exception = (kokos_exception_t) {
         .type = EX_CUSTOM,

@@ -1,12 +1,12 @@
 #ifndef HASH_H_
 #define HASH_H_
 
-#include <stdint.h>
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
-uint64_t hash_djb2(const char* str);
-uint64_t hash_djb2_len(const char* str, size_t len);
+uint64_t hash_djb2(char const* str);
+uint64_t hash_djb2_len(char const* str, size_t len);
 
 uint64_t hash_string_func(void const* ptr);
 bool hash_string_eq_func(void const* lhs, void const* rhs);

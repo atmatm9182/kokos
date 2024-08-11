@@ -48,7 +48,7 @@ typedef struct {
     size_t cap;
 } kokos_module_t;
 
-static inline void kokos_expr_dump(const kokos_expr_t* expr)
+static inline void kokos_expr_dump(kokos_expr_t const* expr)
 {
     switch (expr->type) {
     case EXPR_FLOAT_LIT:
@@ -101,7 +101,7 @@ static inline void kokos_expr_dump(const kokos_expr_t* expr)
     }
 }
 
-static inline const char* kokos_expr_type_str(kokos_expr_type_e type)
+static inline char const* kokos_expr_type_str(kokos_expr_type_e type)
 {
     switch (type) {
     case EXPR_INT_LIT:    return "EXPR_INT_LIT";

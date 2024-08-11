@@ -6,7 +6,7 @@
 #include "value.h"
 #include <stdio.h>
 
-uint64_t kokos_djb2(const void* ptr)
+uint64_t kokos_djb2(void const* ptr)
 {
     uint64_t value = (uint64_t)ptr;
     switch (GET_TAG(value)) {
@@ -18,7 +18,7 @@ uint64_t kokos_djb2(const void* ptr)
     }
 }
 
-bool kokos_eq(const void* lhs, const void* rhs)
+bool kokos_eq(void const* lhs, void const* rhs)
 {
     kokos_value_t l = { .as_int = (uintptr_t)lhs };
     kokos_value_t r = { .as_int = (uintptr_t)rhs };

@@ -2,8 +2,8 @@
 #define GC_H_
 
 #include "value.h"
-#include <stdlib.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 typedef struct marked_value {
     kokos_value_t value;

@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-uint64_t hash_djb2_len(const char* str, size_t len)
+uint64_t hash_djb2_len(char const* str, size_t len)
 {
     int64_t hash = 5381;
 
@@ -14,7 +14,7 @@ uint64_t hash_djb2_len(const char* str, size_t len)
     return hash;
 }
 
-uint64_t hash_djb2(const char* str)
+uint64_t hash_djb2(char const* str)
 {
     int64_t hash = 5381;
     int c;
@@ -25,15 +25,15 @@ uint64_t hash_djb2(const char* str)
     return hash;
 }
 
-uint64_t hash_string_func(const void* ptr)
+uint64_t hash_string_func(void const* ptr)
 {
-    return hash_djb2((const char*)ptr);
+    return hash_djb2((char const*)ptr);
 }
 
-bool hash_string_eq_func(const void* lhs, const void* rhs)
+bool hash_string_eq_func(void const* lhs, void const* rhs)
 {
-    const char* ls = (const char*)lhs;
-    const char* rs = (const char*)rhs;
+    char const* ls = (char const*)lhs;
+    char const* rs = (char const*)rhs;
 
     return strcmp(ls, rs) == 0;
 }
