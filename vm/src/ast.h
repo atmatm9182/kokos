@@ -6,6 +6,10 @@
 #include "token.h"
 #include <stdio.h>
 
+#define EXPR_FLAG_QUOTE 1
+
+#define EXPR_QUOTED(e) ((e)->flags & EXPR_FLAG_QUOTE)
+
 typedef enum {
     EXPR_INT_LIT,
     EXPR_FLOAT_LIT,
@@ -35,6 +39,7 @@ typedef struct kokos_map {
 typedef struct kokos_expr {
     kokos_token_t token;
     kokos_expr_type_e type;
+    int flags;
     union {
         kokos_list_t list;
         kokos_vec_t vec;
@@ -50,6 +55,10 @@ typedef struct {
 
 static inline void kokos_expr_dump(kokos_expr_t const* expr)
 {
+    if (EXPR_QUOTED(expr)) {
+        printf("'");
+    }
+
     switch (expr->type) {
     case EXPR_FLOAT_LIT:
     case EXPR_INT_LIT:
@@ -98,6 +107,7 @@ static inline void kokos_expr_dump(kokos_expr_t const* expr)
         printf("}");
         break;
     }
+    default: KOKOS_TODO();
     }
 }
 

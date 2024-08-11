@@ -218,8 +218,7 @@ static bool get_special_value(string_view value, uint64_t* out)
     return false;
 }
 
-static bool compile_all_args_reversed(
-    kokos_expr_t const* expr, kokos_scope_t* scope, kokos_code_t* code)
+static bool compile_all_args_reversed(kokos_expr_t const* expr, kokos_scope_t* scope)
 {
     kokos_list_t elements = expr->list;
     for (size_t i = elements.len - 1; i > 0; i--) {
@@ -520,11 +519,11 @@ end: {
 }
 }
 
-static bool compile_list(kokos_expr_t const* expr, kokos_scope_t* scope, kokos_code_t* code)
+static bool compile_list(kokos_expr_t const* expr, kokos_scope_t* scope)
 {
     kokos_list_t list = expr->list;
     if (list.len == 0) {
-        DA_ADD(code, INSTR_ALLOC(LIST_BITS, 0));
+        DA_ADD(scope->current_code, INSTR_ALLOC(LIST_BITS, 0));
         return true;
     }
 
@@ -538,9 +537,9 @@ static bool compile_list(kokos_expr_t const* expr, kokos_scope_t* scope, kokos_c
 
     kokos_native_proc_t native = kokos_find_native(head);
     if (native) {
-        TRY(compile_all_args_reversed(expr, scope, code));
+        TRY(compile_all_args_reversed(expr, scope));
 
-        DA_ADD(code, INSTR_CALL_NATIVE(list.len - 1, (uint64_t)native));
+        DA_ADD(scope->current_code, INSTR_CALL_NATIVE(list.len - 1, (uint64_t)native));
         return true;
     }
 
@@ -573,7 +572,7 @@ static bool compile_list(kokos_expr_t const* expr, kokos_scope_t* scope, kokos_c
             TRY(kokos_expr_compile(&list.items[j], scope));
         }
 
-        DA_ADD(code, INSTR_ALLOC(VECTOR_BITS, list.len - proc->params.len));
+        DA_ADD(scope->current_code, INSTR_ALLOC(VECTOR_BITS, list.len - proc->params.len));
 
         goto success;
     }
@@ -585,11 +584,24 @@ static bool compile_list(kokos_expr_t const* expr, kokos_scope_t* scope, kokos_c
         return false;
     }
 
-    TRY(compile_all_args_reversed(expr, scope, code));
+    TRY(compile_all_args_reversed(expr, scope));
 
 success:
-    scope_add_call_location(scope, code->len, expr->token);
-    DA_ADD(code, INSTR_CALL(proc->params.len, proc->label));
+    scope_add_call_location(scope, scope->current_code->len, expr->token);
+    DA_ADD(scope->current_code, INSTR_CALL(proc->params.len, proc->label));
+    return true;
+}
+
+bool kokos_expr_compile_quoted(kokos_expr_t const* expr, kokos_scope_t* scope);
+
+bool compile_quoted_list(kokos_expr_t const* expr, kokos_scope_t* scope)
+{
+    kokos_list_t list = expr->list;
+    for (ssize_t i = list.len - 1; i >= 0; i--) {
+        TRY(kokos_expr_compile_quoted(&list.items[i], scope));
+    }
+
+    DA_ADD(scope->current_code, INSTR_ALLOC(LIST_BITS, list.len));
     return true;
 }
 
@@ -609,7 +621,10 @@ bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* scope)
         break;
     }
     case EXPR_LIST: {
-        return compile_list(expr, scope, code);
+        if (EXPR_QUOTED(expr)) {
+            return compile_quoted_list(expr, scope);
+        }
+        return compile_list(expr, scope);
     }
     case EXPR_IDENT: {
         uint64_t special;
@@ -657,6 +672,27 @@ bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* scope)
         sprintf(buf, "compilation of expression %s is not implemented",
             kokos_expr_type_str(expr->type));
         KOKOS_TODO(buf);
+    }
+    }
+
+    return true;
+}
+
+bool kokos_expr_compile_quoted(kokos_expr_t const* expr, kokos_scope_t* scope)
+{
+    switch (expr->type) {
+    case EXPR_INT_LIT:
+    case EXPR_FLOAT_LIT:
+    case EXPR_STRING_LIT:
+    case EXPR_MAP:
+    case EXPR_VECTOR:     {
+        return kokos_expr_compile(expr, scope);
+    }
+    case EXPR_LIST: {
+        return compile_quoted_list(expr, scope);
+    }
+    case EXPR_IDENT: {
+        KOKOS_TODO();
     }
     }
 

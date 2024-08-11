@@ -53,8 +53,7 @@ static bool parse_vec(kokos_parser_t* parser, kokos_token_t start_token, kokos_e
     return true;
 }
 
-static bool parse_list(
-    kokos_parser_t* parser, kokos_token_t start_token, kokos_expr_t* expr)
+static bool parse_list(kokos_parser_t* parser, kokos_token_t start_token, kokos_expr_t* expr)
 {
     parser_advance(parser);
 
@@ -79,8 +78,7 @@ static bool parse_list(
     return true;
 }
 
-static bool parse_map(
-    kokos_parser_t* parser, kokos_token_t start_token, kokos_expr_t* expr)
+static bool parse_map(kokos_parser_t* parser, kokos_token_t start_token, kokos_expr_t* expr)
 {
     parser_advance(parser);
 
@@ -117,6 +115,8 @@ bool kokos_parser_next(kokos_parser_t* parser, kokos_expr_t* expr)
 {
     if (!parser->cur)
         return false;
+
+    memset(expr, 0, sizeof(kokos_expr_t));
 
     kokos_token_t* cur = parser->cur;
 
@@ -162,7 +162,11 @@ bool kokos_parser_next(kokos_parser_t* parser, kokos_expr_t* expr)
             cur->location.filename, cur->location.row, cur->location.col);
         break;
     case TT_QUOTE: {
-        KOKOS_TODO();
+        parser_advance(parser);
+        TRY(kokos_parser_next(parser, expr));
+
+        expr->flags |= EXPR_FLAG_QUOTE;
+        break;
     }
     }
 
