@@ -95,7 +95,7 @@ bool expr_to_params(kokos_expr_t const* expr, kokos_params_t* params)
 
     bool variadic = false;
     for (size_t i = 0; i < list.len; i++) {
-        kokos_expr_t const* param = list.items[i];
+        kokos_expr_t const* param = &list.items[i];
         VERIFY_TYPE(param, EXPR_IDENT);
 
         if (sv_eq_cstr(param->token.value, "&")) {
@@ -144,9 +144,9 @@ static bool compile_procedure_def(kokos_expr_t const* expr, kokos_scope_t* scope
         return false;
     }
 
-    string_view name = list.items[1]->token.value;
+    string_view name = list.items[1].token.value;
 
-    kokos_expr_t const* params_expr = list.items[2];
+    kokos_expr_t const* params_expr = &list.items[2];
     if (params_expr->type != EXPR_LIST) {
         set_error(params_expr->token.location,
             "cannot use value of type %s as an argument list for a procedure",
@@ -171,7 +171,7 @@ static bool compile_procedure_def(kokos_expr_t const* expr, kokos_scope_t* scope
     kokos_scope_add_proc(scope, name_str, proc);
 
     for (size_t i = 3; i < list.len; i++) {
-        TRY(kokos_expr_compile(list.items[i], &proc_scope));
+        TRY(kokos_expr_compile(&list.items[i], &proc_scope));
     }
 
     DA_ADD(proc_scope.current_code, INSTR_RET);
@@ -223,7 +223,7 @@ static bool compile_all_args_reversed(
 {
     kokos_list_t elements = expr->list;
     for (size_t i = elements.len - 1; i > 0; i--) {
-        kokos_expr_t const* elem = elements.items[i];
+        kokos_expr_t const* elem = &elements.items[i];
         TRY(kokos_expr_compile(elem, scope));
     }
 
@@ -234,7 +234,7 @@ static bool compile_all_args(kokos_expr_t const* expr, kokos_scope_t* scope, kok
 {
     kokos_list_t elements = expr->list;
     for (size_t i = 1; i < elements.len; i++) {
-        kokos_expr_t const* elem = elements.items[i];
+        kokos_expr_t const* elem = &elements.items[i];
         TRY(kokos_expr_compile(elem, scope));
     }
 
@@ -286,14 +286,14 @@ static bool compile_if(kokos_expr_t const* expr, kokos_scope_t* scope)
 
     kokos_list_t exprs = expr->list;
 
-    TRY(kokos_expr_compile(exprs.items[1], scope));
+    TRY(kokos_expr_compile(&exprs.items[1], scope));
 
     DA_ADD(code, INSTR_JZ(0));
 
     kokos_scope_t consequence_scope = kokos_scope_empty(scope, kokos_scope_is_top_level(scope));
 
     size_t start_ip = code->len;
-    TRY(kokos_expr_compile(exprs.items[2], &consequence_scope));
+    TRY(kokos_expr_compile(&exprs.items[2], &consequence_scope));
 
     switch (expr->list.len) {
     case 4: {
@@ -302,7 +302,7 @@ static bool compile_if(kokos_expr_t const* expr, kokos_scope_t* scope)
         kokos_scope_t alternative_scope = kokos_scope_empty(scope, kokos_scope_is_top_level(scope));
 
         size_t consequence_ip = code->len - start_ip;
-        TRY(kokos_expr_compile(exprs.items[3], &alternative_scope));
+        TRY(kokos_expr_compile(&exprs.items[3], &alternative_scope));
 
         KOKOS_ASSERT(code->items[start_ip - 1].type == I_JZ);
         code->items[start_ip - 1].operand = consequence_ip + 1; // patch the jump instruction
@@ -411,21 +411,21 @@ static bool compile_let(kokos_expr_t const* expr, kokos_scope_t* scope)
 {
     KOKOS_ASSERT(expr->type == EXPR_LIST);
 
-    VERIFY_TYPE(expr->list.items[1], EXPR_LIST);
-    kokos_list_t vars = expr->list.items[1]->list;
+    VERIFY_TYPE(&expr->list.items[1], EXPR_LIST);
+    kokos_list_t vars = expr->list.items[1].list;
 
     kokos_scope_t let_scope = kokos_scope_empty(scope, kokos_scope_is_top_level(scope));
 
     for (size_t i = 0; i < vars.len; i += 2) {
         if (scope->vars.len >= MAX_LOCALS) {
-            set_error(vars.items[i]->token.location, "local limit exceeded");
+            set_error(vars.items[i].token.location, "local limit exceeded");
             return false;
         }
 
-        kokos_expr_t const* key = vars.items[i];
+        kokos_expr_t const* key = &vars.items[i];
         VERIFY_TYPE(key, EXPR_IDENT);
 
-        kokos_expr_t const* value = vars.items[i + 1];
+        kokos_expr_t const* value = &vars.items[i + 1];
         TRY(kokos_expr_compile(value, &let_scope));
 
         DA_ADD(&let_scope.vars, key->token.value);
@@ -434,7 +434,7 @@ static bool compile_let(kokos_expr_t const* expr, kokos_scope_t* scope)
 
     // compile body with the new bindings
     for (size_t i = 0; i < expr->list.len - 2; i++) {
-        TRY(kokos_expr_compile(expr->list.items[i + 2], &let_scope));
+        TRY(kokos_expr_compile(&expr->list.items[i + 2], &let_scope));
     }
 
     return true;
@@ -528,7 +528,7 @@ static bool compile_list(kokos_expr_t const* expr, kokos_scope_t* scope, kokos_c
         return true;
     }
 
-    string_view head = list.items[0]->token.value;
+    string_view head = list.items[0].token.value;
 
     kokos_sform_t sform = get_sform(head);
     if (sform) {
@@ -552,7 +552,7 @@ static bool compile_list(kokos_expr_t const* expr, kokos_scope_t* scope, kokos_c
 
     kokos_compiled_proc_t* proc = kokos_scope_get_proc(scope, head_buf);
     if (!proc) {
-        set_error(list.items[0]->token.location, "undefined procedure '" SV_FMT "'", SV_ARG(head));
+        set_error(list.items[0].token.location, "undefined procedure '" SV_FMT "'", SV_ARG(head));
         return false;
     }
 
@@ -566,11 +566,11 @@ static bool compile_list(kokos_expr_t const* expr, kokos_scope_t* scope, kokos_c
 
         size_t i;
         for (i = 1; i < proc->params.len; i++) {
-            TRY(kokos_expr_compile(list.items[i], scope));
+            TRY(kokos_expr_compile(&list.items[i], scope));
         }
 
         for (size_t j = list.len - 1; j >= i; j--) {
-            TRY(kokos_expr_compile(list.items[j], scope));
+            TRY(kokos_expr_compile(&list.items[j], scope));
         }
 
         DA_ADD(code, INSTR_ALLOC(VECTOR_BITS, list.len - proc->params.len));
@@ -636,8 +636,8 @@ bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* scope)
     case EXPR_MAP: {
         kokos_map_t map = expr->map;
         for (size_t i = 0; i < map.len; i++) {
-            TRY(kokos_expr_compile(map.keys[i], scope));
-            TRY(kokos_expr_compile(map.values[i], scope));
+            TRY(kokos_expr_compile(&map.keys[i], scope));
+            TRY(kokos_expr_compile(&map.values[i], scope));
         }
 
         DA_ADD(code, INSTR_ALLOC(MAP_BITS, map.len));
@@ -646,7 +646,7 @@ bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* scope)
     case EXPR_VECTOR: {
         kokos_vec_t vec = expr->vec;
         for (ssize_t i = vec.len - 1; i >= 0; i--) {
-            TRY(kokos_expr_compile(vec.items[i], scope));
+            TRY(kokos_expr_compile(&vec.items[i], scope));
         }
 
         DA_ADD(code, INSTR_ALLOC(VECTOR_BITS, vec.len));
@@ -684,7 +684,7 @@ bool kokos_compile_module(
     kokos_module_t module, kokos_scope_t* scope, kokos_compiled_module_t* compiled_module)
 {
     for (size_t i = 0; i < module.len; i++) {
-        TRY(kokos_expr_compile(module.items[i], scope));
+        TRY(kokos_expr_compile(&module.items[i], scope));
     }
 
     kokos_compiled_module_init_from_scope(compiled_module, scope);

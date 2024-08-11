@@ -17,18 +17,18 @@ typedef enum {
 } kokos_expr_type_e;
 
 typedef struct kokos_list {
-    struct kokos_expr const** items;
+    struct kokos_expr* items;
     size_t len;
 } kokos_list_t;
 
 typedef struct {
-    struct kokos_expr const** items;
+    struct kokos_expr* items;
     size_t len, cap;
 } kokos_vec_t;
 
 typedef struct kokos_map {
-    struct kokos_expr const** keys;
-    struct kokos_expr const** values;
+    struct kokos_expr* keys;
+    struct kokos_expr* values;
     size_t len;
 } kokos_map_t;
 
@@ -43,7 +43,7 @@ typedef struct kokos_expr {
 } kokos_expr_t;
 
 typedef struct {
-    kokos_expr_t** items;
+    kokos_expr_t* items;
     size_t len;
     size_t cap;
 } kokos_module_t;
@@ -63,7 +63,7 @@ static inline void kokos_expr_dump(kokos_expr_t const* expr)
         kokos_list_t list = expr->list;
         printf("(");
         for (size_t i = 0; i < list.len; i++) {
-            kokos_expr_dump(list.items[i]);
+            kokos_expr_dump(&list.items[i]);
             if (i != list.len - 1) {
                 printf(" ");
             }
@@ -75,7 +75,7 @@ static inline void kokos_expr_dump(kokos_expr_t const* expr)
         kokos_vec_t vec = expr->vec;
         printf("[");
         for (size_t i = 0; i < vec.len; i++) {
-            kokos_expr_dump(vec.items[i]);
+            kokos_expr_dump(&vec.items[i]);
             if (i != vec.len - 1) {
                 printf(" ");
             }
@@ -87,9 +87,9 @@ static inline void kokos_expr_dump(kokos_expr_t const* expr)
         kokos_map_t map = expr->map;
         printf("{");
         for (size_t i = 0; i < map.len; i++) {
-            kokos_expr_dump(map.keys[i]);
+            kokos_expr_dump(&map.keys[i]);
             printf(" ");
-            kokos_expr_dump(map.values[i]);
+            kokos_expr_dump(&map.values[i]);
 
             if (i != map.len - 1) {
                 printf(" ");
@@ -118,7 +118,7 @@ static inline char const* kokos_expr_type_str(kokos_expr_type_e type)
 static void kokos_module_dump(kokos_module_t module)
 {
     for (size_t i = 0; i < module.len; i++) {
-        kokos_expr_dump(module.items[i]);
+        kokos_expr_dump(&module.items[i]);
         printf("\n");
     }
 }

@@ -16,15 +16,6 @@ static void set_unterminated_literal_err(char const* what, kokos_token_t token)
         SV_ARG(token.value), token.location.filename, token.location.row, token.location.col);
 }
 
-static kokos_expr_t* alloc_empty(kokos_token_t const* token, kokos_expr_type_e expr_type)
-{
-    kokos_expr_t* ptr = KOKOS_ALLOC(sizeof(kokos_expr_t));
-    KOKOS_VERIFY(ptr);
-    ptr->token = *token;
-    ptr->type = expr_type;
-    return ptr;
-}
-
 static void parser_advance(kokos_parser_t* parser)
 {
     if (!parser->peek) {
@@ -38,81 +29,32 @@ static void parser_advance(kokos_parser_t* parser)
     }
 }
 
-static kokos_expr_t* alloc_float(kokos_token_t const* token)
-{
-    kokos_expr_t* expr = alloc_empty(token, EXPR_FLOAT_LIT);
-    return expr;
-}
-
-static kokos_expr_t* alloc_int(kokos_token_t const* token)
-{
-    kokos_expr_t* expr = alloc_empty(token, EXPR_INT_LIT);
-    return expr;
-}
-
-static kokos_expr_t* alloc_vec(kokos_token_t const* token, kokos_vec_t vec)
-{
-    kokos_expr_t* expr = alloc_empty(token, EXPR_VECTOR);
-    expr->vec = vec;
-    return expr;
-}
-
-static kokos_expr_t* alloc_list(kokos_token_t const* token, kokos_expr_t const** items, size_t len)
-{
-    kokos_expr_t* expr = alloc_empty(token, EXPR_LIST);
-    expr->list = (kokos_list_t) { .items = items, .len = len };
-    return expr;
-}
-
-static kokos_expr_t* alloc_ident(kokos_token_t const* token)
-{
-    return alloc_empty(token, EXPR_IDENT);
-}
-
-static kokos_expr_t* alloc_string(kokos_token_t const* token)
-{
-    return alloc_empty(token, EXPR_STRING_LIT);
-}
-
-static kokos_expr_t* alloc_map(kokos_token_t const* token, kokos_map_t map)
-{
-    kokos_expr_t* expr = alloc_empty(token, EXPR_MAP);
-    expr->map = map;
-    return expr;
-}
-
-static kokos_expr_t* parse_vec(kokos_parser_t* parser, kokos_token_t start_token)
+static bool parse_vec(kokos_parser_t* parser, kokos_token_t start_token, kokos_expr_t* expr)
 {
     parser_advance(parser);
 
-    kokos_vec_t vec;
-    DA_INIT(&vec, 0, 3);
+    kokos_vec_t* vec = &expr->vec;
+    DA_INIT(vec, 0, 3);
 
     while (parser->cur && parser->cur->type != TT_RBRACKET) {
-        kokos_expr_t* elem = kokos_parser_next(parser);
-        if (!elem) {
-            goto fail;
-        }
-        DA_ADD(&vec, elem);
+        kokos_expr_t expr;
+        TRY(kokos_parser_next(parser, &expr));
+        DA_ADD(vec, expr);
     }
 
     if (!parser->cur) {
         set_unterminated_literal_err("vec", start_token);
-        goto fail;
+        return false;
     }
 
-    goto success;
-
-fail:
-    DA_FREE(&vec);
-    return NULL;
-
-success:
     parser_advance(parser);
-    return alloc_vec(&start_token, vec);
+    expr->token = start_token;
+    expr->type = EXPR_VECTOR;
+    return true;
 }
 
-static kokos_expr_t* parse_list(kokos_parser_t* parser, kokos_token_t start_token)
+static bool parse_list(
+    kokos_parser_t* parser, kokos_token_t start_token, kokos_expr_t* expr)
 {
     parser_advance(parser);
 
@@ -120,30 +62,25 @@ static kokos_expr_t* parse_list(kokos_parser_t* parser, kokos_token_t start_toke
     DA_INIT(&list, 0, 3);
 
     while (parser->cur && parser->cur->type != TT_RPAREN) {
-        kokos_expr_t* elem = kokos_parser_next(parser);
-        if (!elem) {
-            goto fail;
-        }
-        DA_ADD(&list, elem);
+        kokos_expr_t expr;
+        TRY(kokos_parser_next(parser, &expr));
+        DA_ADD(&list, expr);
     }
 
     if (!parser->cur) {
         set_unterminated_literal_err("list", start_token);
-        goto fail;
+        return false;
     }
 
-    goto success;
-
-fail:
-    DA_FREE(&list);
-    return NULL;
-
-success:
     parser_advance(parser);
-    return alloc_list(&start_token, list.items, list.len);
+    expr->list = (kokos_list_t) { .items = list.items, .len = list.len };
+    expr->type = EXPR_LIST;
+    expr->token = start_token;
+    return true;
 }
 
-static kokos_expr_t* parse_map(kokos_parser_t* parser, kokos_token_t start_token)
+static bool parse_map(
+    kokos_parser_t* parser, kokos_token_t start_token, kokos_expr_t* expr)
 {
     parser_advance(parser);
 
@@ -153,14 +90,11 @@ static kokos_expr_t* parse_map(kokos_parser_t* parser, kokos_token_t start_token
     DA_INIT(&values, 0, 1);
 
     while (parser->cur && parser->cur->type != TT_RBRACE) {
-        kokos_expr_t* key = kokos_parser_next(parser);
-        if (!key) {
-            goto fail;
-        }
-        kokos_expr_t* value = kokos_parser_next(parser);
-        if (!value) {
-            goto fail;
-        }
+        kokos_expr_t key;
+        TRY(kokos_parser_next(parser, &key));
+
+        kokos_expr_t value;
+        TRY(kokos_parser_next(parser, &value));
 
         DA_ADD(&keys, key);
         DA_ADD(&values, value);
@@ -168,59 +102,55 @@ static kokos_expr_t* parse_map(kokos_parser_t* parser, kokos_token_t start_token
 
     if (!parser->cur) {
         set_unterminated_literal_err("map", start_token);
-        goto fail;
+        return false;
     }
 
-    goto success;
-
-fail:
-    DA_FREE(&keys);
-    DA_FREE(&values);
-    return NULL;
-
-success: {
     parser_advance(parser);
 
-    kokos_map_t map = { .keys = keys.items, .values = values.items, .len = values.len };
-    return alloc_map(&start_token, map);
-}
+    expr->map = (kokos_map_t) { .keys = keys.items, .values = values.items, .len = values.len };
+    expr->type = EXPR_MAP;
+    expr->token = start_token;
+    return true;
 }
 
-kokos_expr_t* kokos_parser_next(kokos_parser_t* parser)
+bool kokos_parser_next(kokos_parser_t* parser, kokos_expr_t* expr)
 {
-    kokos_expr_t* result = NULL;
     if (!parser->cur)
-        return result;
+        return false;
 
     kokos_token_t* cur = parser->cur;
 
     switch (cur->type) {
     case TT_INT_LIT:
-        result = alloc_int(cur);
+        expr->type = EXPR_INT_LIT;
+        expr->token = *cur;
         parser_advance(parser);
         break;
     case TT_FLOAT_LIT:
-        result = alloc_float(cur);
+        expr->type = EXPR_FLOAT_LIT;
+        expr->token = *cur;
         parser_advance(parser);
         break;
     case TT_IDENT:
-        result = alloc_ident(cur);
+        expr->type = EXPR_IDENT;
+        expr->token = *cur;
         parser_advance(parser);
         break;
     case TT_STR_LIT:
-        result = alloc_string(cur);
+        expr->type = EXPR_STRING_LIT;
+        expr->token = *cur;
         parser_advance(parser);
         break;
     case TT_LPAREN: {
-        result = parse_list(parser, *cur);
+        parse_list(parser, *cur, expr);
         break;
     }
     case TT_LBRACKET: {
-        result = parse_vec(parser, *cur);
+        parse_vec(parser, *cur, expr);
         break;
     }
     case TT_LBRACE: {
-        result = parse_map(parser, *cur);
+        parse_map(parser, *cur, expr);
         break;
     }
     case TT_RPAREN:
@@ -236,7 +166,7 @@ kokos_expr_t* kokos_parser_next(kokos_parser_t* parser)
     }
     }
 
-    return result;
+    return true;
 }
 
 static kokos_token_t _cur_token;
@@ -255,8 +185,8 @@ kokos_module_t kokos_parser_parse_module(kokos_parser_t* parser)
     kokos_module_t prog;
     DA_INIT(&prog, 0, 0);
 
-    kokos_expr_t* expr;
-    while ((expr = kokos_parser_next(parser))) {
+    kokos_expr_t expr;
+    while (kokos_parser_next(parser, &expr)) {
         DA_ADD(&prog, expr);
     }
 

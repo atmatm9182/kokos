@@ -11,7 +11,7 @@ typedef struct kokos_parser {
 } kokos_parser_t;
 
 kokos_module_t kokos_parser_parse_module(kokos_parser_t* parser);
-kokos_expr_t* kokos_parser_next(kokos_parser_t* parser);
+bool kokos_parser_next(kokos_parser_t* parser, kokos_expr_t* expr);
 kokos_parser_t kokos_parser_init(kokos_lexer_t* lexer);
 
 bool kokos_parser_ok(kokos_parser_t const* parser);

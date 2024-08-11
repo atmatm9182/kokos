@@ -24,6 +24,7 @@ enum kokos_token_type {
 
 typedef enum kokos_token_type kokos_token_type_e;
 
+// TODO: remove this goofy `location` field, we can calculate it later lazily
 struct kokos_token {
     kokos_token_type_e type;
     string_view value;
