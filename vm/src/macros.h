@@ -53,9 +53,11 @@
         exit(1);                                                                                   \
     } while (0)
 
+#define UNLIKELY(x) __builtin_expect(!!(x), 0)
+
 #define TRY(e)                                                                                     \
     do {                                                                                           \
-        if (!(e))                                                                                  \
+        if (UNLIKELY(!(e)))                                                                        \
             return false;                                                                          \
     } while (0)
 

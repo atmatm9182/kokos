@@ -9,7 +9,6 @@ vm_sources = [
   'src/runtime.c',
   'src/hash.c',
   'src/value.c',
-  'src/env.c',
   'src/string-store.c',
 ]
 
