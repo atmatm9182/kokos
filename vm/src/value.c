@@ -88,6 +88,14 @@ void kokos_value_print(kokos_value_t value)
         printf("%d", i);
         break;
     }
+    case PROC_TAG: {
+        kokos_runtime_proc_t* proc = GET_PTR(value);
+        switch (proc->type) {
+        case PROC_KOKOS:  printf("<kokos proc at ip %lu>", proc->kokos.label); break;
+        case PROC_NATIVE: printf("<native proc at address %p>", proc->native); break;
+        }
+        break;
+    }
     default: {
         KOKOS_VERIFY(IS_DOUBLE(value));
         printf("%f", value.as_double);

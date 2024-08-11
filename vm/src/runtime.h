@@ -2,6 +2,7 @@
 #define RUNTIME_H_
 
 #include "base.h"
+#include "native.h"
 #include "value.h"
 #include <stddef.h>
 
@@ -24,6 +25,34 @@ typedef struct {
 typedef struct {
     hash_table table;
 } kokos_runtime_map_t;
+
+typedef struct {
+    string_view* names;
+    size_t len;
+    bool variadic;
+} kokos_params_t;
+
+typedef enum {
+    PROC_KOKOS,
+    PROC_NATIVE,
+} kokos_runtime_proc_type_e;
+
+typedef size_t kokos_label_t;
+
+typedef struct {
+    kokos_label_t label;
+    size_t code_len;
+    kokos_params_t params;
+} kokos_proc_t;
+
+typedef struct {
+    kokos_runtime_proc_type_e type;
+
+    union {
+        kokos_proc_t kokos;
+        kokos_native_proc_t native;
+    };
+} kokos_runtime_proc_t;
 
 typedef kokos_runtime_map_t kokos_runtime_MAP_t;
 typedef kokos_runtime_string_t kokos_runtime_STRING_t;

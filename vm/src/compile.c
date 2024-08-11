@@ -1,8 +1,6 @@
 #include "ast.h"
-#include "hash.h"
 #include "macros.h"
-#include "native.h"
-#include "src/runtime.h"
+#include "runtime.h"
 #include "token.h"
 #include "vmconstants.h"
 
@@ -115,12 +113,7 @@ bool expr_to_params(kokos_expr_t const* expr, kokos_params_t* params)
     return true;
 }
 
-void kokos_scope_add_proc(kokos_scope_t* scope, char const* name, kokos_compiled_proc_t* proc)
-{
-    ht_add(&scope->procs, (void*)name, proc);
-}
-
-void kokos_scope_add_local(kokos_scope_t* scope, string_view local)
+static void kokos_scope_add_local(kokos_scope_t* scope, string_view local)
 {
     DA_ADD(&scope->vars, local);
 }
@@ -163,10 +156,11 @@ static bool compile_procedure_def(kokos_expr_t const* expr, kokos_scope_t* scope
     }
 
     // Add the procedure before the body compilation to allow recursion
-    kokos_compiled_proc_t* proc = KOKOS_ALLOC(sizeof(kokos_compiled_proc_t));
+    kokos_runtime_proc_t* proc = KOKOS_ALLOC(sizeof(kokos_runtime_proc_t));
     char const* name_str = sv_dup(name);
-    proc->params = params;
-    proc->label = kokos_scope_make_label(scope);
+    proc->type = PROC_KOKOS;
+    proc->kokos.params = params;
+    proc->kokos.label = kokos_scope_make_label(scope);
 
     kokos_scope_add_proc(scope, name_str, proc);
 
@@ -535,61 +529,60 @@ static bool compile_list(kokos_expr_t const* expr, kokos_scope_t* scope)
         return true;
     }
 
-    kokos_native_proc_t native = kokos_find_native(head);
-    if (native) {
-        TRY(compile_all_args_reversed(expr, scope));
-
-        DA_ADD(scope->current_code, INSTR_CALL_NATIVE(list.len - 1, (uint64_t)native));
-        return true;
-    }
-
     KOKOS_VERIFY(head.size < 256);
 
-    char head_buf[256];
-    sprintf(head_buf, SV_FMT, SV_ARG(head));
-    head_buf[head.size] = '\0';
-
-    kokos_compiled_proc_t* proc = kokos_scope_get_proc(scope, head_buf);
+    kokos_runtime_proc_t* proc = kokos_scope_get_proc(scope, head);
     if (!proc) {
         set_error(list.items[0].token.location, "undefined procedure '" SV_FMT "'", SV_ARG(head));
         return false;
     }
 
-    if (proc->params.variadic) {
-        if (list.len < proc->params.len) {
+    switch (proc->type) {
+    case PROC_NATIVE: {
+        TRY(compile_all_args_reversed(expr, scope));
+
+        DA_ADD(scope->current_code, INSTR_CALL_NATIVE(list.len - 1, (uint64_t)proc->native));
+        return true;
+    }
+    case PROC_KOKOS: {
+        kokos_proc_t kokos = proc->kokos;
+        if (kokos.params.variadic) {
+            if (list.len < kokos.params.len) {
+                set_error(expr->token.location,
+                    "expected at least %lu arguments for procedure '" SV_FMT "', got %lu instead",
+                    kokos.params.len - 1, SV_ARG(head), list.len - 1);
+                return false;
+            }
+
+            size_t i;
+            for (i = 1; i < kokos.params.len; i++) {
+                TRY(kokos_expr_compile(&list.items[i], scope));
+            }
+
+            for (size_t j = list.len - 1; j >= i; j--) {
+                TRY(kokos_expr_compile(&list.items[j], scope));
+            }
+
+            DA_ADD(scope->current_code, INSTR_ALLOC(VECTOR_BITS, list.len - kokos.params.len));
+            goto success;
+        }
+
+        if (kokos.params.len != list.len - 1) {
             set_error(expr->token.location,
-                "expected at least %lu arguments for procedure '" SV_FMT "', got %lu instead",
-                proc->params.len - 1, SV_ARG(head), list.len - 1);
+                "expected %lu arguments for procedure '" SV_FMT "', got %lu instead",
+                kokos.params.len, SV_ARG(head), list.len - 1);
             return false;
         }
 
-        size_t i;
-        for (i = 1; i < proc->params.len; i++) {
-            TRY(kokos_expr_compile(&list.items[i], scope));
-        }
+        TRY(compile_all_args_reversed(expr, scope));
 
-        for (size_t j = list.len - 1; j >= i; j--) {
-            TRY(kokos_expr_compile(&list.items[j], scope));
-        }
-
-        DA_ADD(scope->current_code, INSTR_ALLOC(VECTOR_BITS, list.len - proc->params.len));
-
-        goto success;
+    success:
+        scope_add_call_location(scope, scope->current_code->len, expr->token);
+        DA_ADD(scope->current_code, INSTR_CALL(kokos.params.len, kokos.label));
+        return true;
     }
-
-    if (proc->params.len != list.len - 1) {
-        set_error(expr->token.location,
-            "expected %lu arguments for procedure '" SV_FMT "', got %lu instead", proc->params.len,
-            SV_ARG(head), list.len - 1);
-        return false;
+    default: KOKOS_TODO();
     }
-
-    TRY(compile_all_args_reversed(expr, scope));
-
-success:
-    scope_add_call_location(scope, scope->current_code->len, expr->token);
-    DA_ADD(scope->current_code, INSTR_CALL(proc->params.len, proc->label));
-    return true;
 }
 
 bool kokos_expr_compile_quoted(kokos_expr_t const* expr, kokos_scope_t* scope);
@@ -634,14 +627,20 @@ bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* scope)
         }
 
         int64_t local_idx = kokos_scope_get_var_idx(scope, expr->token.value);
-        if (local_idx == -1) {
-            set_error(expr->token.location,
-                "could not find variable " SV_FMT " in the current scope",
-                SV_ARG(expr->token.value));
-            return false;
+        if (local_idx != -1) {
+            DA_ADD(code, INSTR_PUSH_LOCAL((uint64_t)local_idx));
+            break;
         }
 
-        DA_ADD(code, INSTR_PUSH_LOCAL((uint64_t)local_idx));
+        kokos_runtime_proc_t* proc = kokos_scope_get_proc(scope, expr->token.value);
+        if (proc) {
+            DA_ADD(scope->current_code, INSTR_PUSH(PROC_BITS | (uintptr_t)proc));
+            break;
+        }
+
+        set_error(expr->token.location, "could not find variable " SV_FMT " in the current scope",
+            SV_ARG(expr->token.value));
+        return false;
         break;
     }
     case EXPR_STRING_LIT: {
@@ -685,14 +684,18 @@ bool kokos_expr_compile_quoted(kokos_expr_t const* expr, kokos_scope_t* scope)
     case EXPR_FLOAT_LIT:
     case EXPR_STRING_LIT:
     case EXPR_MAP:
+    case EXPR_IDENT:
     case EXPR_VECTOR:     {
         return kokos_expr_compile(expr, scope);
     }
     case EXPR_LIST: {
         return compile_quoted_list(expr, scope);
     }
-    case EXPR_IDENT: {
-        KOKOS_TODO();
+    default: {
+        char buf[128] = { 0 };
+        sprintf(buf, "compilation of QUOTED expression %s is not implemented",
+            kokos_expr_type_str(expr->type));
+        KOKOS_TODO(buf);
     }
     }
 
@@ -725,50 +728,4 @@ bool kokos_compile_module(
 
     kokos_compiled_module_init_from_scope(compiled_module, scope);
     return true;
-}
-
-kokos_scope_t kokos_scope_empty(kokos_scope_t* parent, bool top_level)
-{
-    kokos_scope_t scope = { 0 };
-    scope.procs = ht_make(
-        hash_string_func, hash_string_eq_func, 11); // TODO: use actual hash and eq funcs here
-    DA_INIT(&scope.vars, 0, 7); // seven is a lucky number :^)
-
-    if (parent) {
-        scope.parent = parent;
-        scope.proc_code = parent->proc_code;
-        scope.top_level_code = parent->top_level_code;
-        scope.string_store = parent->string_store;
-        scope.call_locations = parent->call_locations;
-        scope.current_code = top_level ? parent->top_level_code : parent->proc_code;
-        return scope;
-    }
-
-    scope.proc_code = KOKOS_ALLOC(sizeof(kokos_code_t));
-    DA_INIT(scope.proc_code, 0, 200);
-
-    scope.top_level_code = KOKOS_ALLOC(sizeof(kokos_code_t));
-    DA_INIT(scope.top_level_code, 0, 30);
-
-    scope.current_code = top_level ? scope.top_level_code : scope.proc_code;
-
-    scope.string_store = KOKOS_ALLOC(sizeof(kokos_string_store_t));
-    kokos_string_store_init(scope.string_store, 17);
-
-    scope.call_locations = KOKOS_ALLOC(sizeof(hash_table));
-    *scope.call_locations = ht_make(hash_sizet_func, hash_sizet_eq_func, 11);
-
-    return scope;
-}
-
-kokos_compiled_proc_t* kokos_scope_get_proc(kokos_scope_t* scope, char const* name)
-{
-    if (!scope)
-        return NULL;
-
-    kokos_compiled_proc_t* proc = ht_find(&scope->procs, name);
-    if (!proc)
-        return kokos_scope_get_proc(scope->parent, name);
-
-    return proc;
 }

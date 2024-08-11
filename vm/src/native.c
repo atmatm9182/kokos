@@ -169,3 +169,16 @@ kokos_native_proc_t kokos_find_native(string_view name)
 
     return NULL;
 }
+
+kokos_native_proc_list_t kokos_natives_get(void)
+{
+    char const** names = KOKOS_CALLOC(NATIVES_COUNT, sizeof(char*));
+    kokos_native_proc_t* procs = KOKOS_CALLOC(NATIVES_COUNT, sizeof(kokos_native_proc_t));
+
+    for (size_t i = 0; i < NATIVES_COUNT; i++) {
+        names[i] = natives[i].name;
+        procs[i] = natives[i].proc;
+    }
+
+    return (kokos_native_proc_list_t) { .procs = procs, .names = names, .count = NATIVES_COUNT };
+}

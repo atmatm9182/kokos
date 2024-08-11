@@ -28,19 +28,22 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
 
 #define ENUMERATE_TAGGED_TYPES                                                                     \
     ENUMERATE_HEAP_TYPES                                                                           \
-    X(INT)
+    X(INT)                                                                                         \
+    X(PROC)
 
 #define STRING_BITS 0x7FFE000000000000
 #define MAP_BITS 0x7FFF000000000000
 #define LIST_BITS 0xFFFC000000000000
 #define VECTOR_BITS 0x7FFD000000000000
 #define INT_BITS 0xFFFE000000000000
+#define PROC_BITS 0xFFFF000000000000
 
 #define STRING_TAG (STRING_BITS >> 48)
 #define MAP_TAG (MAP_BITS >> 48)
 #define LIST_TAG (LIST_BITS >> 48)
 #define VECTOR_TAG (VECTOR_BITS >> 48)
 #define INT_TAG (INT_BITS >> 48)
+#define PROC_TAG (PROC_BITS >> 48)
 
 #define TRUE_BITS (OBJ_BITS | 1)
 #define FALSE_BITS (OBJ_BITS | 2)
@@ -84,7 +87,7 @@ ENUMERATE_HEAP_TYPES
 #define VALUE_TAG(val) (GET_TAG((val).as_int))
 
 #define GET_PTR_INT(i) ((i) & 0x0000FFFFFFFFFFFF)
-#define GET_PTR(v) (GET_PTR_INT((v).as_int))
+#define GET_PTR(v) ((void*)GET_PTR_INT((v).as_int))
 
 void kokos_value_print(kokos_value_t value);
 

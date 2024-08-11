@@ -57,7 +57,7 @@ static int run_file(char const* filename)
     kokos_module_dump(module);
     printf("--------------------------------------------------\n\n");
 
-    kokos_scope_t global_scope = kokos_scope_empty(NULL, true);
+    kokos_scope_t global_scope = kokos_scope_global();
     kokos_compiled_module_t compiled_module;
 
     uint64_t compile_start = get_time_stamp();
