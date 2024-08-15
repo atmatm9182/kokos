@@ -436,7 +436,11 @@ static bool kokos_vm_exec_cur(kokos_vm_t* vm)
         break;
     }
     case I_PUSH_LOCAL: {
-        kokos_value_t local = frame->locals[instruction.operand];
+        uint32_t hops = instruction.operand >> 32;
+        uint32_t local_idx = instruction.operand & 0xFFFFFFFF;
+
+        kokos_frame_t* f = VM_CTX(vm).frames.data[VM_CTX(vm).frames.sp - (1 + hops)];
+        kokos_value_t local = f->locals[local_idx];
         STACK_PUSH(&frame->stack, local);
 
         VM_CTX(vm).ip++;

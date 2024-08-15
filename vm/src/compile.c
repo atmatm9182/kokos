@@ -177,21 +177,38 @@ static bool compile_macro_def(kokos_expr_t const* expr, kokos_scope_t* scope)
     KOKOS_TODO();
 }
 
-// NOTE: this returns just an index and does not indicate in which scope was the variable defined
-static size_t kokos_scope_get_var_idx(kokos_scope_t const* scope, string_view name)
+typedef struct {
+    uint32_t idx;
+    uint32_t hops;
+} kokos_var_lookup_result_t;
+
+static void kokos_scope_get_var_idx_impl(
+    kokos_scope_t const* scope, string_view name, kokos_var_lookup_result_t* result)
 {
     if (!scope) {
-        return (size_t)-1;
+        result->idx = -1;
+        return;
     }
 
     kokos_variable_list_t vars = scope->vars;
     for (size_t i = 0; i < vars.len; i++) {
         if (sv_eq(name, vars.items[i])) {
-            return i;
+            result->idx = i;
+            return;
         }
     }
 
-    return kokos_scope_get_var_idx(scope->parent, name);
+    result->hops++;
+    kokos_scope_get_var_idx_impl(scope->parent, name, result);
+}
+
+// NOTE: this returns just an index and does not indicate in which scope was the variable defined
+static kokos_var_lookup_result_t kokos_scope_get_var_idx(
+    kokos_scope_t const* scope, string_view name)
+{
+    kokos_var_lookup_result_t result = { 0 };
+    kokos_scope_get_var_idx_impl(scope, name, &result);
+    return result;
 }
 
 static bool get_special_value(string_view value, uint64_t* out)
@@ -626,9 +643,9 @@ bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* scope)
             break;
         }
 
-        int64_t local_idx = kokos_scope_get_var_idx(scope, expr->token.value);
-        if (local_idx != -1) {
-            DA_ADD(code, INSTR_PUSH_LOCAL((uint64_t)local_idx));
+        kokos_var_lookup_result_t var_lookup = kokos_scope_get_var_idx(scope, expr->token.value);
+        if (var_lookup.idx != -1) {
+            DA_ADD(code, INSTR_PUSH_LOCAL(var_lookup.hops, var_lookup.idx));
             break;
         }
 
