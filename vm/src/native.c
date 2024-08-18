@@ -1,5 +1,4 @@
 #include "native.h"
-#include "base.h"
 #include "macros.h"
 #include "runtime.h"
 #include "value.h"
@@ -172,11 +171,11 @@ kokos_native_proc_t kokos_find_native(string_view name)
 
 kokos_native_proc_list_t kokos_natives_get(void)
 {
-    char const** names = KOKOS_CALLOC(NATIVES_COUNT, sizeof(char*));
+    string_view* names = KOKOS_CALLOC(NATIVES_COUNT, sizeof(string_view));
     kokos_native_proc_t* procs = KOKOS_CALLOC(NATIVES_COUNT, sizeof(kokos_native_proc_t));
 
     for (size_t i = 0; i < NATIVES_COUNT; i++) {
-        names[i] = natives[i].name;
+        names[i] = sv_make_cstr(natives[i].name);
         procs[i] = natives[i].proc;
     }
 

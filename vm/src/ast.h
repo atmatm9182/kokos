@@ -6,6 +6,7 @@
 #include "token.h"
 #include <stdio.h>
 
+#define EXPR_FLAGS_NONE 0
 #define EXPR_FLAG_QUOTE 1
 
 #define EXPR_QUOTED(e) ((e)->flags & EXPR_FLAG_QUOTE)

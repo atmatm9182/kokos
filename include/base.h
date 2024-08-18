@@ -76,6 +76,13 @@
         }                                                                                  \
     } while (0)
 
+#define DA_EXTEND(lhs, rhs)                       \
+    do {                                          \
+        for (size_t i = 0; i < (rhs)->len; i++) { \
+            DA_ADD((lhs), (rhs)->items[i]);       \
+        }                                         \
+    } while (0)
+
 // HASH TABLE
 #define HT_ITER(ht, body)                              \
     do {                                               \
@@ -117,7 +124,7 @@ typedef struct {
 } hash_table;
 
 BASEDEF hash_table ht_make(ht_hash_func hash_func, ht_eq_func eq_func, size_t cap);
-BASEDEF void ht_add(hash_table* ht, void* key, void* value);
+BASEDEF bool ht_add(hash_table* ht, void* key, void* value);
 BASEDEF void* ht_find(hash_table* ht, const void* key);
 BASEDEF void* ht_delete(hash_table* ht, const void* key);
 BASEDEF void ht_destroy(hash_table* ht);
@@ -133,6 +140,7 @@ typedef struct {
 } string_view;
 
 BASEDEF string_view sv_make(const char* str, size_t size);
+BASEDEF string_view sv_make_cstr(const char* str);
 BASEDEF void sv_print(string_view sv);
 BASEDEF string_view sv_slice(string_view sv, size_t start, size_t len);
 BASEDEF string_view sv_slice_end(string_view sv, size_t start);
@@ -182,6 +190,10 @@ BASEDEF int base_read_whole_file_buf(const char* filepath, char* buf, size_t buf
 // STRING VIEW
 BASEDEF string_view sv_make(const char* str, size_t size) {
     return (string_view){.ptr = str, .size = size};
+}
+
+BASEDEF string_view sv_make_cstr(const char* str) {
+    return (string_view){.ptr = str, .size = strlen(str)};
 }
 
 BASEDEF void sv_print(string_view sv) {
@@ -384,7 +396,7 @@ static inline void __ht_grow(hash_table* ht, size_t size) {
     *ht = new_ht;
 }
 
-BASEDEF void ht_add(hash_table* ht, void* key, void* value) {
+BASEDEF bool ht_add(hash_table* ht, void* key, void* value) {
     if (ht_load(ht) >= 70) {
         __ht_grow(ht, ht->cap * 2);
     }
@@ -399,17 +411,18 @@ BASEDEF void ht_add(hash_table* ht, void* key, void* value) {
         DA_ADD(bucket, pair);
         ht->buckets[idx] = bucket;
         ht->len++;
-        return;
+        return true;
     }
 
     for (size_t i = 0; i < bucket->len; i++) {
         if (ht->equality_function(key, bucket->items[i].key)) {
             bucket->items[i].value = value;
-            return;
+            return false;
         }
     }
 
     DA_ADD(bucket, pair);
+    return true;
 }
 
 BASEDEF void* ht_find(hash_table* ht, const void* key) {

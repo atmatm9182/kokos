@@ -359,7 +359,7 @@ success:
 
 static kokos_token_t get_call_location(kokos_vm_t* vm, size_t ip)
 {
-    kokos_token_t* tok = ht_find(&vm->store.call_locations, (void*)ip);
+    kokos_token_t* tok = ht_find(vm->store.call_locations, (void*)ip);
     KOKOS_ASSERT(tok);
 
     return *tok;
@@ -583,6 +583,21 @@ static void kokos_vm_push_context(
     ctx->instructions = instructions;
 }
 
+static void kokos_vm_run_until_completion(kokos_vm_t* vm)
+{
+    kokos_vm_context_t* ctx = &VM_CTX(vm);
+    kokos_frame_t* frame = alloc_frame(ctx->instructions.len);
+    STACK_PUSH(&ctx->frames, frame);
+
+    while (ctx->ip < ctx->instructions.len) {
+        if (!kokos_vm_exec_cur(vm)) {
+            kokos_vm_dump(vm);
+            kokos_vm_report_exception(vm);
+            exit(1);
+        }
+    }
+}
+
 // TODO: setup a new context for each loaded module
 void kokos_vm_load_module(kokos_vm_t* vm, kokos_compiled_module_t const* module)
 {
@@ -592,23 +607,28 @@ void kokos_vm_load_module(kokos_vm_t* vm, kokos_compiled_module_t const* module)
             continue;
         }
 
-        kokos_string_store_add(&vm->store.strings, cur);
+        kokos_string_store_add(vm->store.strings, cur);
     }
 
     kokos_vm_push_context(
         vm, module->top_level_code_start, module->top_level_code_start, module->instructions);
-    kokos_vm_context_t* ctx = &VM_CTX(vm);
+    kokos_vm_run_until_completion(vm);
+}
 
-    kokos_frame_t* frame = alloc_frame(ctx->instructions.len);
-    STACK_PUSH(&VM_CTX(vm).frames, frame);
-
-    while (ctx->ip < ctx->instructions.len) {
-        if (!kokos_vm_exec_cur(vm)) {
-            kokos_vm_dump(vm);
-            kokos_vm_report_exception(vm);
-            exit(1);
-        }
+void kokos_vm_run_code(kokos_vm_t* vm, kokos_code_t code)
+{
+    if (vm->contexes.len == 0) {
+        // BUG: this is *very* wrong
+        kokos_vm_push_context(vm, 0, 0, code);
+        kokos_vm_run_until_completion(vm);
+        return;
     }
+
+    kokos_vm_context_t* ctx = &VM_CTX(vm);
+    ctx->instructions = code;
+    ctx->ip = 0;
+
+    kokos_vm_run_until_completion(vm);
 }
 
 void kokos_vm_dump(kokos_vm_t* vm)
@@ -626,14 +646,14 @@ void kokos_vm_dump(kokos_vm_t* vm)
     }
 }
 
-kokos_vm_t kokos_vm_create(kokos_scope_t* ctx)
+kokos_vm_t* kokos_vm_create(kokos_scope_t* ctx)
 {
-    kokos_vm_t vm = { 0 };
-    vm.store = (kokos_runtime_store_t) { .strings = *ctx->string_store,
-        .call_locations = *ctx->call_locations };
-    DA_INIT(&vm.contexes, 0, 5);
+    kokos_vm_t* vm = KOKOS_ALLOC(sizeof(kokos_vm_t));
+    vm->store = (kokos_runtime_store_t) { .strings = ctx->string_store,
+        .call_locations = ctx->call_locations };
+    DA_INIT(&vm->contexes, 0, 5);
 
-    vm.gc = kokos_gc_new(GC_INITIAL_CAP);
+    vm->gc = kokos_gc_new(GC_INITIAL_CAP);
     return vm;
 }
 

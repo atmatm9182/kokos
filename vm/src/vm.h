@@ -65,8 +65,8 @@
     } while (0)
 
 typedef struct {
-    hash_table call_locations;
-    kokos_string_store_t strings;
+    hash_table* call_locations;
+    kokos_string_store_t* strings;
 } kokos_runtime_store_t;
 
 typedef struct {
@@ -139,7 +139,7 @@ typedef struct kokos_vm {
     size_t ctx_idx;
 } kokos_vm_t;
 
-kokos_vm_t kokos_vm_create(kokos_scope_t* ctx);
+kokos_vm_t* kokos_vm_create(kokos_scope_t* ctx);
 
 /// Load the module, adding it's strings to the runtime store, and execute it's code
 void kokos_vm_load_module(kokos_vm_t* vm, kokos_compiled_module_t const* module);
@@ -153,5 +153,7 @@ void kokos_vm_ex_set_type_mismatch(kokos_vm_t* vm, uint16_t expected, uint16_t g
 void kokos_vm_ex_set_arity_mismatch(kokos_vm_t* vm, size_t expected, size_t got);
 void kokos_vm_ex_custom_printf(kokos_vm_t* vm, char const* fmt, ...)
     __attribute__((format(printf, 2, 3)));
+
+void kokos_vm_run_code(kokos_vm_t* vm, kokos_code_t code);
 
 #endif // VM_H_

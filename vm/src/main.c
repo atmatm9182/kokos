@@ -57,11 +57,11 @@ static int run_file(char const* filename)
     kokos_module_dump(module);
     printf("--------------------------------------------------\n\n");
 
-    kokos_scope_t global_scope = kokos_scope_global();
+    kokos_scope_t* global_scope = kokos_scope_global();
     kokos_compiled_module_t compiled_module;
 
     uint64_t compile_start = get_time_stamp();
-    bool ok = kokos_compile_module(module, &global_scope, &compiled_module);
+    bool ok = kokos_compile_module(module, global_scope, &compiled_module);
     uint64_t compile_end = get_time_stamp();
 
     if (!ok) {
@@ -77,18 +77,18 @@ static int run_file(char const* filename)
 
     printf("procedure code:\n");
     printf("--------------------------------------------------\n");
-    kokos_code_dump(*global_scope.proc_code);
+    kokos_code_dump(*global_scope->proc_code);
     printf("--------------------------------------------------\n\n");
 
-    kokos_vm_t vm = kokos_vm_create(&global_scope);
+    kokos_vm_t* vm = kokos_vm_create(global_scope);
 
     uint64_t runtime_start = get_time_stamp();
-    kokos_vm_load_module(&vm, &compiled_module);
+    kokos_vm_load_module(vm, &compiled_module); // loading the module also runs it's code
     uint64_t runtime_end = get_time_stamp();
 
     printf("vm state:\n");
     printf("--------------------------------------------------\n");
-    kokos_vm_dump(&vm);
+    kokos_vm_dump(vm);
     printf("--------------------------------------------------\n\n");
 
     printf("parsing took %ld us\n", parser_end - parser_start);

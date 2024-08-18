@@ -1,6 +1,7 @@
 #include "string-store.h"
 #include "hash.h"
 #include "macros.h"
+#include "src/runtime.h"
 #include <string.h>
 
 void kokos_string_store_init(kokos_string_store_t* store, size_t cap)
@@ -46,6 +47,12 @@ kokos_runtime_string_t const* kokos_string_store_add(
 
     store->items[idx] = string;
     return string;
+}
+
+kokos_runtime_string_t const* kokos_string_store_add_cstr(
+    kokos_string_store_t* store, char const* cstr)
+{
+    return kokos_string_store_add(store, kokos_runtime_string_new(cstr, strlen(cstr)));
 }
 
 static inline bool runtime_string_eq_string_view(

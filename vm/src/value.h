@@ -81,7 +81,7 @@ ENUMERATE_HEAP_TYPES
 #define TO_PTR(val) ((void*)(val).as_int)
 
 #define TO_INT(i) ((uint64_t)(i) | INT_BITS)
-#define GET_INT(val) ((val).as_int & ~INT_BITS)
+#define GET_INT(val) ((int32_t)((val).as_int & ~INT_BITS))
 
 #define GET_TAG(i) ((i) >> 48)
 #define VALUE_TAG(val) (GET_TAG((val).as_int))

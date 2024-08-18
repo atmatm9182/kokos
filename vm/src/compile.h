@@ -15,7 +15,7 @@ typedef struct {
 } kokos_compiled_module_t;
 
 // NOTE: maybe create a compiler structure so we potentially can run it multithreaded
-bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* context);
+bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* scope);
 bool kokos_compile_module(
     kokos_module_t module, kokos_scope_t* scope, kokos_compiled_module_t* compiled_module);
 
