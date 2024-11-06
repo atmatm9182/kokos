@@ -22,6 +22,8 @@ typedef enum {
     I_NEQ = 14,
     I_RET = 15,
     I_ALLOC = 16,
+    I_PUSH_SCOPE = 17,
+    I_POP_SCOPE = 18,
 } kokos_instruction_type_e;
 
 typedef struct {
@@ -51,6 +53,9 @@ typedef struct {
 
 #define INSTR_CMP ((kokos_instruction_t) { .type = I_CMP })
 #define INSTR_RET ((kokos_instruction_t) { .type = I_RET })
+
+#define INSTR_PUSH_SCOPE(count) ((kokos_instruction_t) { .type = I_PUSH_SCOPE, .operand = (count) })
+#define INSTR_POP_SCOPE ((kokos_instruction_t) { .type = I_POP_SCOPE })
 
 #define INSTR_ALLOC(t, count) ((kokos_instruction_t) { .type = I_ALLOC, .operand = (t) | (count) })
 

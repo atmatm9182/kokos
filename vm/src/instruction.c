@@ -23,6 +23,8 @@ char const* kokos_instruction_type_str(kokos_instruction_type_e type)
     case I_NEQ:         return "neq";
     case I_RET:         return "ret";
     case I_ALLOC:       return "alloc";
+    case I_PUSH_SCOPE:  return "push_scope";
+    case I_POP_SCOPE:   return "pop_scope";
     default:            {
         char buf[512];
         sprintf(buf, "printing of instruction type %d", type);
@@ -40,6 +42,7 @@ void kokos_instruction_dump(kokos_instruction_t instruction)
     switch (instruction.type) {
     case I_CMP:
     case I_RET:
+    case I_POP_SCOPE:
     case I_POP:       break;
 
     case I_CALL:
@@ -77,6 +80,7 @@ void kokos_instruction_dump(kokos_instruction_t instruction)
     case I_SUB:
     case I_JZ:
     case I_JNZ:
+    case I_PUSH_SCOPE:
     case I_BRANCH:      printf(" %lu", instruction.operand); break;
     default:            {
         char buf[512];

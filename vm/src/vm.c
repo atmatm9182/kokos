@@ -585,6 +585,20 @@ static bool kokos_vm_exec_cur(kokos_vm_t* vm)
         vm->ip++;
         break;
     }
+    case I_PUSH_SCOPE: {
+        kokos_env_t* env = kokos_env_create(frame->env, instruction.operand);
+        frame->env = env;
+        vm->ip++;
+        break;
+    }
+    case I_POP_SCOPE: {
+        KOKOS_ASSERT(frame->env->parent != NULL);
+
+        frame->env = frame->env->parent;
+        kokos_env_destroy(frame->env);
+        vm->ip++;
+        break;
+    }
     default: {
         char buf[128] = { 0 };
         sprintf(buf, "execution of instruction %s is not implemented",
