@@ -5,24 +5,23 @@
 #include <stdint.h>
 
 typedef enum {
-    I_PUSH,
-    I_POP,
-    I_ADD,
-    I_SUB,
-    I_MUL,
-    I_DIV,
-    I_GET_LOCAL,
-    I_ADD_LOCAL,
-    I_CALL,
-    I_JNZ,
-    I_JZ,
-    I_BRANCH,
-    I_CALL_NATIVE,
-    I_CMP,
-    I_EQ,
-    I_NEQ,
-    I_RET,
-    I_ALLOC,
+    I_PUSH = 0,
+    I_POP = 1,
+    I_ADD = 2,
+    I_SUB = 3,
+    I_MUL = 4,
+    I_DIV = 5,
+    I_GET_LOCAL = 6,
+    I_ADD_LOCAL = 7,
+    I_CALL = 8,
+    I_JNZ = 9,
+    I_JZ = 10,
+    I_BRANCH = 11,
+    I_CMP = 12,
+    I_EQ = 13,
+    I_NEQ = 14,
+    I_RET = 15,
+    I_ALLOC = 16,
 } kokos_instruction_type_e;
 
 typedef struct {
@@ -49,8 +48,6 @@ typedef struct {
 #define INSTR_NEQ(op) ((kokos_instruction_t) { .type = I_NEQ, .operand = (op) })
 
 #define INSTR_SFORM(op) ((kokos_instruction_t) { .type = I_SFORM, .operand = (op) })
-#define INSTR_CALL_NATIVE(nargs, op)                                                               \
-    ((kokos_instruction_t) { .type = I_CALL_NATIVE, .operand = (uint64_t)(nargs) << 48 | (op) })
 
 #define INSTR_CMP ((kokos_instruction_t) { .type = I_CMP })
 #define INSTR_RET ((kokos_instruction_t) { .type = I_RET })

@@ -18,7 +18,6 @@ char const* kokos_instruction_type_str(kokos_instruction_type_e type)
     case I_JZ:          return "jz";
     case I_JNZ:         return "jnz";
     case I_BRANCH:      return "branch";
-    case I_CALL_NATIVE: return "call_native";
     case I_CMP:         return "cmp";
     case I_EQ:          return "eq";
     case I_NEQ:         return "neq";
@@ -39,6 +38,7 @@ void kokos_instruction_dump(kokos_instruction_t instruction)
     printf("%s", type);
 
     switch (instruction.type) {
+    case I_CMP:
     case I_RET:
     case I_POP:       break;
 
@@ -57,8 +57,19 @@ void kokos_instruction_dump(kokos_instruction_t instruction)
         break;
     }
 
-    case I_CALL_NATIVE: KOKOS_TODO();
-    case I_ALLOC:       KOKOS_TODO("ALLOC");
+    case I_ALLOC: {
+        switch (GET_TAG(instruction.operand)) {
+        case VECTOR_TAG: printf(" vector"); break;
+        case STRING_TAG: printf(" string"); break;
+        case LIST_TAG: printf(" list"); break;
+        case PROC_TAG: printf(" proc"); break;
+        case MAP_TAG: printf(" map"); break;
+        default:
+            KOKOS_TODO("unknown alloc tag");
+        }
+
+        break;
+    }
 
     case I_ADD:
     case I_MUL:

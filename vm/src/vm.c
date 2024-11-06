@@ -579,14 +579,6 @@ static bool kokos_vm_exec_cur(kokos_vm_t* vm)
         vm->ip++;
         break;
     }
-    case I_CALL_NATIVE: {
-        uint16_t nargs = instruction.operand >> 48;
-        kokos_native_proc_t native
-            = (kokos_native_proc_t)(instruction.operand & ~((uint64_t)0xFFFF << 48));
-        TRY(native(vm, nargs));
-        vm->ip++;
-        break;
-    }
     case I_ALLOC: {
         kokos_value_t value = kokos_alloc_value(vm, instruction.operand);
         STACK_PUSH(&frame->stack, value);
