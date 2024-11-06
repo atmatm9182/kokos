@@ -11,8 +11,8 @@ typedef enum {
     I_SUB,
     I_MUL,
     I_DIV,
-    I_PUSH_LOCAL,
-    I_STORE_LOCAL,
+    I_GET_LOCAL,
+    I_ADD_LOCAL,
     I_CALL,
     I_JNZ,
     I_JZ,
@@ -36,12 +36,12 @@ typedef struct {
 #define INSTR_MUL(op) ((kokos_instruction_t) { .type = I_MUL, .operand = (op) })
 #define INSTR_DIV(op) ((kokos_instruction_t) { .type = I_DIV, .operand = (op) })
 #define INSTR_SUB(op) ((kokos_instruction_t) { .type = I_SUB, .operand = (op) })
-#define INSTR_PUSH_LOCAL(hops, idx)                                                                \
-    ((kokos_instruction_t) {                                                                       \
-        .type = I_PUSH_LOCAL, .operand = ((uint64_t)(hops) << 32) | (uint64_t)(idx) })
-#define INSTR_STORE_LOCAL(op) ((kokos_instruction_t) { .type = I_STORE_LOCAL, .operand = (op) })
-#define INSTR_CALL(arity, proc)                                                                    \
-    ((kokos_instruction_t) { .type = I_CALL, .operand = ((arity) << 32 | (proc)) })
+#define INSTR_GET_LOCAL(name)                                                                      \
+    ((kokos_instruction_t) { .type = I_GET_LOCAL, .operand = (uintptr_t)(name) })
+#define INSTR_ADD_LOCAL(name)                                                                      \
+    ((kokos_instruction_t) { .type = I_ADD_LOCAL, .operand = (uintptr_t)(name) })
+#define INSTR_CALL(name, nargs)                                                                    \
+    ((kokos_instruction_t) { .type = I_CALL, .operand = (nargs) << 48 | (uintptr_t)name })
 #define INSTR_JZ(op) ((kokos_instruction_t) { .type = I_JZ, .operand = (op) })
 #define INSTR_JNZ(op) ((kokos_instruction_t) { .type = I_JNZ, .operand = (op) })
 #define INSTR_BRANCH(op) ((kokos_instruction_t) { .type = I_BRANCH, .operand = (op) })

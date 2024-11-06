@@ -14,11 +14,13 @@
 
 #ifndef KOKOS_REALLOC
 #define KOKOS_REALLOC realloc
-#endif
+#endif // KOKOS_REALLOC
 
 #ifndef KOKOS_CALLOC
 #define KOKOS_CALLOC calloc
-#endif
+#endif // KOKOS_CALLOC
+
+#define KOKOS_ZALLOC(size) (KOKOS_CALLOC((size), 1))
 
 #define __ESC_RED "\e[31m"
 #define __ESC_RESET "\e[39;49m"

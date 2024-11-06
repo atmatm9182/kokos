@@ -16,5 +16,6 @@ typedef struct {
 } kokos_native_proc_list_t;
 
 kokos_native_proc_list_t kokos_natives_get(void);
+void kokos_natives_free(kokos_native_proc_list_t*);
 
 #endif // NATIVE_H_

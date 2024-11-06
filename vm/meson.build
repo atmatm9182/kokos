@@ -11,6 +11,7 @@ vm_sources = [
   'src/value.c',
   'src/string-store.c',
   'src/scope.c',
+  'src/env.c',
 ]
 
 kokosvm_cargs = ['-Wno-unused-value', '-DBASE_IMPLEMENTATION', '-DBASE_STATIC']

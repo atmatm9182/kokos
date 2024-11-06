@@ -3,6 +3,7 @@
 #include "instruction.h"
 #include "lexer.h"
 #include "parser.h"
+#include "src/runtime.h"
 #include "vm.h"
 
 #include <stdio.h>
@@ -57,7 +58,7 @@ static int run_file(char const* filename)
     kokos_module_dump(module);
     printf("--------------------------------------------------\n\n");
 
-    kokos_scope_t* global_scope = kokos_scope_global();
+    kokos_scope_t* global_scope = kokos_scope_root();
     kokos_compiled_module_t compiled_module;
 
     uint64_t compile_start = get_time_stamp();
@@ -77,7 +78,7 @@ static int run_file(char const* filename)
 
     printf("procedure code:\n");
     printf("--------------------------------------------------\n");
-    kokos_code_dump(*global_scope->proc_code);
+    printf("TBD...");
     printf("--------------------------------------------------\n\n");
 
     kokos_vm_t* vm = kokos_vm_create(global_scope);

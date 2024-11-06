@@ -49,10 +49,71 @@ kokos_runtime_string_t const* kokos_string_store_add(
     return string;
 }
 
+kokos_runtime_string_t const* kokos_string_store_add_sv(kokos_string_store_t* store, string_view sv)
+{
+    if (kokos_string_store_load(store) >= 70) {
+        kokos_string_store_t new_store;
+        kokos_string_store_init(&new_store, store->capacity * 2);
+
+        for (size_t i = 0; i < store->capacity; i++) {
+            kokos_runtime_string_t const* str = store->items[i];
+            if (!str)
+                continue;
+
+            kokos_string_store_add(&new_store, str);
+        }
+
+        *store = new_store;
+    }
+
+    uint64_t idx = hash_djb2_len(sv.ptr, sv.size) % store->capacity;
+    kokos_runtime_string_t const* cur;
+
+    while ((cur = store->items[idx])) {
+        if (cur->len == sv.size && strncmp(cur->ptr, sv.ptr, cur->len) == 0) {
+            return cur; // our set already contains this string
+        }
+
+        idx = (idx + 1) % store->capacity;
+    }
+
+    store->items[idx] = kokos_runtime_string_from_sv(sv);
+    return store->items[idx];
+}
+
 kokos_runtime_string_t const* kokos_string_store_add_cstr(
     kokos_string_store_t* store, char const* cstr)
 {
-    return kokos_string_store_add(store, kokos_runtime_string_new(cstr, strlen(cstr)));
+    if (kokos_string_store_load(store) >= 70) {
+        kokos_string_store_t new_store;
+        kokos_string_store_init(&new_store, store->capacity * 2);
+
+        for (size_t i = 0; i < store->capacity; i++) {
+            kokos_runtime_string_t const* str = store->items[i];
+            if (!str)
+                continue;
+
+            kokos_string_store_add(&new_store, str);
+        }
+
+        *store = new_store;
+    }
+
+    size_t len = strlen(cstr);
+
+    uint64_t idx = hash_djb2_len(cstr, len) % store->capacity;
+    kokos_runtime_string_t const* cur;
+
+    while ((cur = store->items[idx])) {
+        if (cur->len == len && strncmp(cur->ptr, cstr, cur->len) == 0) {
+            return cur; // our set already contains this string
+        }
+
+        idx = (idx + 1) % store->capacity;
+    }
+
+    store->items[idx] = kokos_runtime_string_new(cstr, len);
+    return store->items[idx];
 }
 
 static inline bool runtime_string_eq_string_view(
