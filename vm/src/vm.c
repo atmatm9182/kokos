@@ -865,8 +865,6 @@ static void kokos_gc_collect(kokos_vm_t* vm)
 void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag, size_t cap)
 {
 #define DEFAULT_CAP 11
-    cap = cap || DEFAULT_CAP;
-#undef DEFAULT_CAP
 
     kokos_gc_t* gc = &vm->gc;
 
@@ -883,7 +881,7 @@ void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag, size_t cap)
         break;
     }
     case MAP_TAG: {
-        hash_table table = ht_make(kokos_default_map_hash_func, kokos_default_map_eq_func, cap);
+        hash_table table = ht_make(kokos_default_map_hash_func, kokos_default_map_eq_func, cap || DEFAULT_CAP);
         kokos_runtime_map_t* map = KOKOS_ALLOC(sizeof(kokos_runtime_map_t));
         map->table = table;
         addr = map;
@@ -905,6 +903,8 @@ void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag, size_t cap)
 
     kokos_gc_add_obj(gc, TO_VALUE((uint64_t)addr | (tag << 48)));
     return addr;
+
+#undef DEFAULT_CAP
 }
 
 void kokos_vm_ex_set_type_mismatch(kokos_vm_t* vm, uint16_t expected, uint16_t got)

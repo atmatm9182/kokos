@@ -165,6 +165,7 @@ static inline void kokos_expr_destroy(kokos_expr_t* expr)
 
         KOKOS_FREE(expr->map.keys);
         KOKOS_FREE(expr->map.values);
+        break;
     default: {
         char buf[512] = {0};
         sprintf(buf, "freeing of expressions with type %s", kokos_expr_type_str(expr->type));
