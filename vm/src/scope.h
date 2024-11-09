@@ -15,6 +15,7 @@ typedef struct scope {
     kokos_string_store_t* string_store;
     kokos_code_t code;
     hash_table call_locations;
+    hash_table procs;
     kokos_vm_t* macro_vm;
 
     struct scope* parent;

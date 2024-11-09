@@ -78,7 +78,15 @@ static int run_file(char const* filename)
 
     printf("procedure code:\n");
     printf("--------------------------------------------------\n");
-    printf("TBD...");
+    HT_ITER(compiled_module.procs, {
+        kokos_runtime_string_t* name = GET_STRING_PTR(kv.key);
+        printf(RT_STRING_FMT ":\n", RT_STRING_ARG(*name));
+
+        kokos_runtime_proc_t* proc = GET_PROC_PTR(kv.value);
+        KOKOS_ASSERT(proc->type == PROC_KOKOS);
+
+        kokos_code_dump(proc->kokos.code);
+    });
     printf("--------------------------------------------------\n\n");
 
     kokos_vm_t* vm = kokos_vm_create(global_scope);

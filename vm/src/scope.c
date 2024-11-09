@@ -65,7 +65,7 @@ kokos_scope_t* kokos_scope_derived(kokos_scope_t* parent)
     scope->parent = parent;
     scope->macro_vm = parent->macro_vm;
     scope->string_store = parent->string_store;
-    /*scope->procs = ht_make(hash_cstring_func, hash_cstring_eq_func, 5);*/
+    scope->procs = ht_make(hash_runtime_string_func, hash_runtime_string_eq_func, 53);
     /*scope->macros = ht_make(hash_cstring_func, hash_cstring_eq_func, 5);*/
     scope->call_locations = ht_make(hash_sizet_func, hash_sizet_eq_func, 5);
 
@@ -81,7 +81,7 @@ kokos_scope_t* kokos_scope_root(void)
     scope->macro_vm = kokos_vm_create(scope);
     scope->string_store = KOKOS_ALLOC(sizeof(*scope->string_store));
     kokos_string_store_init(scope->string_store, 89);
-    /*scope->procs = ht_make(hash_cstring_func, hash_cstring_eq_func, 53);*/
+    scope->procs = ht_make(hash_runtime_string_func, hash_runtime_string_eq_func, 53);
     /*scope->macros = ht_make(hash_cstring_func, hash_cstring_eq_func, 53);*/
     scope->call_locations = ht_make(hash_sizet_func, hash_sizet_eq_func, 53);
 

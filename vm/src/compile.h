@@ -11,6 +11,7 @@ typedef struct {
     kokos_string_store_t string_store;
     kokos_code_t instructions;
     hash_table call_locations;
+    hash_table procs;
     size_t top_level_code_start;
 } kokos_compiled_module_t;
 

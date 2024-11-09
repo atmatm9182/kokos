@@ -152,8 +152,12 @@ static bool compile_procedure_def(kokos_expr_t const* expr, kokos_scope_t* scope
     DA_ADD(&proc_scope->code, INSTR_RET);
     proc->kokos.code = proc_scope->code;
 
+    const kokos_runtime_string_t* rt_name = kokos_string_store_add_sv(scope->string_store, name);
+
     DA_ADD(&scope->code, INSTR_PUSH(TO_PROC(proc).as_int));
-    DA_ADD(&scope->code, INSTR_ADD_LOCAL(kokos_string_store_add_sv(scope->string_store, name)));
+    DA_ADD(&scope->code, INSTR_ADD_LOCAL(rt_name));
+
+    ht_add(&scope->procs, (kokos_runtime_string_t*)rt_name, proc);
 
     return true;
 }
@@ -756,7 +760,7 @@ static void kokos_compiled_module_init_from_scope(
 
     module->call_locations = scope->call_locations;
     module->string_store = *scope->string_store;
-    /*module->procs = scope->procs;*/
+    module->procs = scope->procs;
     /*module->macros = scope->macros;*/
     module->instructions = scope->code;
     module->top_level_code_start = module->instructions.len;
