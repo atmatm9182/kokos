@@ -460,25 +460,48 @@ static bool kokos_vm_exec_cur(kokos_vm_t* vm)
         }
 
         kokos_proc_t kokos = proc->kokos;
-        if (kokos.params.variadic) {
-            KOKOS_TODO("VARIADIC PROC CALL!!");
-        }
-
-        if (kokos.params.len != nargs) {
-            kokos_vm_ex_set_arity_mismatch(vm, kokos.params.len, nargs);
-            return false;
-        }
-
         size_t ret_location = vm->ip + 1;
 
         kokos_frame_t* bot_frame = bottom_frame(vm);
-        kokos_env_t* parent_env = bot_frame == frame ? NULL : bot_frame->env;
-        kokos_frame_t* new_frame = kokos_make_frame(vm, proc, ret_location, (kokos_token_t) { 0 }, parent_env);
+        kokos_frame_t* new_frame = kokos_make_frame(vm, proc, ret_location, (kokos_token_t) { 0 }, bot_frame->env);
 
-        for (size_t i = 0; i < nargs; i++) {
-            kokos_value_t value;
-            STACK_POP(&frame->stack, &value);
-            kokos_env_add(new_frame->env, proc->kokos.params.names[i], value);
+        if (!kokos.params.variadic) {
+            if (kokos.params.len != nargs) {
+                kokos_vm_ex_set_arity_mismatch(vm, kokos.params.len, nargs);
+                return false;
+            }
+
+            for (size_t i = 0; i < nargs; i++) {
+                kokos_value_t value;
+                STACK_POP(&frame->stack, &value);
+                kokos_env_add(new_frame->env, proc->kokos.params.names[i], value);
+            }
+        } else {
+            size_t reg_count = kokos.params.len - 1;
+
+            if (nargs < reg_count) {
+                kokos_vm_ex_set_arity_mismatch(vm, reg_count, nargs);
+                return false;
+            }
+
+            // push all non-variadic args
+            for (size_t i = 0; i < reg_count; i++) {
+                kokos_value_t value;
+                STACK_POP(&frame->stack, &value);
+                kokos_env_add(new_frame->env, kokos.params.names[i], value);
+            }
+
+            size_t var_count = nargs - reg_count;
+
+            kokos_runtime_vector_t* variadics = kokos_vm_gc_alloc(vm, VECTOR_TAG, var_count);
+
+            for (size_t i = 0; i < var_count; i++) {
+                kokos_value_t value;
+                STACK_POP(&frame->stack, &value);
+                DA_ADD(variadics, value);
+            }
+
+            kokos_env_add(new_frame->env, kokos.params.names[kokos.params.len - 1], TO_VECTOR(variadics));
         }
 
         // set this to 0 so it points to the first instruction of the called procedure
@@ -493,7 +516,7 @@ static bool kokos_vm_exec_cur(kokos_vm_t* vm)
         vm->ip = proc_frame->ret_location;
 
         if (vm->frames.sp == 1) {
-            return true;
+            break;
         }
 
         kokos_frame_t* _foo;
@@ -503,6 +526,7 @@ static bool kokos_vm_exec_cur(kokos_vm_t* vm)
             = proc_frame->stack.sp == 0 ? TO_VALUE(NIL_BITS) : STACK_PEEK(&proc_frame->stack);
 
         STACK_PUSH(&current_frame(vm)->stack, ret_value);
+
         break;
     }
     case I_ADD_LOCAL: {
@@ -672,7 +696,7 @@ static void kokos_vm_run_until_completion(kokos_vm_t* vm, kokos_code_t instructi
         STACK_PUSH(&vm->frames, frame);
     }
 
-    while (vm->ip < instructions.len) {
+    while (vm->ip < current_frame(vm)->instructions.len) {
         if (!kokos_vm_exec_cur(vm)) {
             kokos_vm_dump(vm);
             kokos_vm_report_exception(vm);
@@ -827,6 +851,10 @@ static void kokos_gc_collect(kokos_vm_t* vm)
 
 void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag, size_t cap)
 {
+#define DEFAULT_CAP 11
+    cap = cap || DEFAULT_CAP;
+#undef DEFAULT_CAP
+
     kokos_gc_t* gc = &vm->gc;
 
     if (gc->objects.len >= gc->max_objs) {
