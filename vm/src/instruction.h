@@ -59,6 +59,8 @@ typedef struct {
 
 #define INSTR_ALLOC(t, count) ((kokos_instruction_t) { .type = I_ALLOC, .operand = (t) | (count) })
 
+#define INSTR_ALLOC_ARG_MASK 0xFFFFFFFF
+
 typedef struct {
     kokos_instruction_t* items;
     size_t len;

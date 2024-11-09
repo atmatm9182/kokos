@@ -13,8 +13,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define INSTR_OP_ARG_MASK 0xFFFFFFFF
-
 static bool kokos_vm_exec_cur(kokos_vm_t* vm);
 
 static kokos_frame_t* alloc_frame(
@@ -99,7 +97,7 @@ kokos_value_t kokos_alloc_value(kokos_vm_t* vm, uint64_t params)
 
     switch (GET_TAG(params)) {
     case VECTOR_TAG: {
-        uint32_t count = params & INSTR_OP_ARG_MASK;
+        uint32_t count = params & INSTR_ALLOC_ARG_MASK;
         kokos_runtime_vector_t* vec
             = (kokos_runtime_vector_t*)kokos_vm_gc_alloc(vm, VECTOR_TAG, count);
 
@@ -112,7 +110,7 @@ kokos_value_t kokos_alloc_value(kokos_vm_t* vm, uint64_t params)
         return TO_VECTOR(vec);
     }
     case MAP_TAG: {
-        uint32_t count = params & INSTR_OP_ARG_MASK;
+        uint32_t count = params & INSTR_ALLOC_ARG_MASK;
         kokos_runtime_map_t* map = (kokos_runtime_map_t*)kokos_vm_gc_alloc(vm, MAP_TAG, count);
 
         for (size_t i = 0; i < count; i++) {
@@ -125,7 +123,7 @@ kokos_value_t kokos_alloc_value(kokos_vm_t* vm, uint64_t params)
         return TO_MAP(map);
     }
     case LIST_TAG: {
-        uint32_t count = params & INSTR_OP_ARG_MASK;
+        uint32_t count = params & INSTR_ALLOC_ARG_MASK;
         kokos_runtime_list_t* list = (kokos_runtime_list_t*)kokos_vm_gc_alloc(vm, LIST_TAG, count);
 
         for (size_t i = 0; i < count; i++) {
@@ -620,8 +618,10 @@ static bool kokos_vm_exec_cur(kokos_vm_t* vm)
     case I_POP_SCOPE: {
         KOKOS_ASSERT(frame->env->parent != NULL);
 
+        kokos_env_t* env = frame->env;
+
         frame->env = frame->env->parent;
-        kokos_env_destroy(frame->env);
+        kokos_env_destroy(env);
         vm->ip++;
         break;
     }

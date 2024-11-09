@@ -71,6 +71,9 @@ void kokos_instruction_dump(kokos_instruction_t instruction)
             KOKOS_TODO("unknown alloc tag");
         }
 
+        uint32_t arg = instruction.operand & INSTR_ALLOC_ARG_MASK;
+        printf(" %d", arg);
+
         break;
     }
 
