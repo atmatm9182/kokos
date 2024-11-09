@@ -1293,7 +1293,7 @@ static kokos_env_t default_env(kokos_interp_t* interp)
     kokos_obj_t* or = make_special_form(interp, sform_or);
     kokos_env_add(&env, "or", or);
 
-    kokos_obj_t*and = make_special_form(interp, sform_and);
+    kokos_obj_t* and = make_special_form(interp, sform_and);
     kokos_env_add(&env, "and", and);
 
     return env;
