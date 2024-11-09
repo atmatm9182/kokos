@@ -127,7 +127,7 @@ typedef struct kokos_vm {
     kokos_runtime_store_t store;
     size_t ip;
     kokos_frame_stack_t frames;
-    kokos_scope_t root_scope;
+    kokos_scope_t* root_scope;
 
     struct {
         kokos_exception_t exception;
@@ -135,6 +135,7 @@ typedef struct kokos_vm {
 } kokos_vm_t;
 
 kokos_vm_t* kokos_vm_create(kokos_scope_t* scope);
+void kokos_vm_destroy(kokos_vm_t* vm);
 
 /// Load the module, adding it's strings to the runtime store, and execute it's code
 void kokos_vm_load_module(kokos_vm_t* vm, kokos_compiled_module_t const* module);

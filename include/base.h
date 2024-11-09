@@ -63,9 +63,9 @@
         (arr)->len--;     \
     } while (0)
 
-#define DA_FREE(arr)        \
-    do {                    \
-        free((arr)->items); \
+#define DA_FREE(arr)           \
+    do {                       \
+        free((arr)->items);    \
     } while (0)
 
 #define DA_REMOVE(arr, idx)                                                                \
@@ -392,6 +392,8 @@ static inline void __ht_grow(hash_table* ht, size_t size) {
     HT_ITER(*ht, {
         ht_add(&new_ht, kv.key, kv.value);
     });
+
+    ht_destroy(ht);
 
     *ht = new_ht;
 }

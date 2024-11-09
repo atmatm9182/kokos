@@ -420,7 +420,7 @@ static bool compile_let(kokos_expr_t const* expr, kokos_scope_t* scope)
         kokos_expr_t const* value = &vars.items[i + 1];
         TRY(kokos_expr_compile(value, scope));
 
-        kokos_runtime_string_t* var_name = kokos_runtime_string_from_sv(key->token.value);
+        kokos_runtime_string_t* var_name = (void*)kokos_string_store_add_sv(scope->string_store, key->token.value);
         DA_ADD(&scope->code, INSTR_ADD_LOCAL(var_name));
     }
 
@@ -647,7 +647,7 @@ static bool compile_list(kokos_expr_t const* expr, kokos_scope_t* scope)
     /*}*/
     /**/
     TRY(compile_all_args_reversed(expr, scope, kokos_expr_compile));
-    DA_ADD(&scope->code, INSTR_CALL(kokos_runtime_string_from_sv(head), list.len - 1));
+    DA_ADD(&scope->code, INSTR_CALL(kokos_string_store_add_sv(scope->string_store, head), list.len - 1));
 
     return true;
 }
@@ -691,7 +691,7 @@ bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* scope)
             break;
         }
 
-        DA_ADD(code, INSTR_GET_LOCAL(kokos_runtime_string_from_sv(expr->token.value)));
+        DA_ADD(code, INSTR_GET_LOCAL(kokos_string_store_add_sv(scope->string_store, expr->token.value)));
         break;
     }
     case EXPR_STRING_LIT: {

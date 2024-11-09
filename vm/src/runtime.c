@@ -105,6 +105,12 @@ inline kokos_runtime_string_t* kokos_runtime_string_from_sv(string_view sv)
     return kokos_runtime_string_new(sv.ptr, sv.size);
 }
 
+void kokos_runtime_string_destroy(kokos_runtime_string_t* string)
+{
+    KOKOS_FREE(string->ptr);
+    KOKOS_FREE(string);
+}
+
 size_t kokos_runtime_proc_locals_count(kokos_runtime_proc_t const* proc)
 {
     switch (proc->type) {
@@ -112,4 +118,19 @@ size_t kokos_runtime_proc_locals_count(kokos_runtime_proc_t const* proc)
     case PROC_KOKOS:  return proc->kokos.params.len;
     default:          KOKOS_TODO();
     }
+}
+
+void kokos_runtime_proc_destroy(kokos_runtime_proc_t* proc)
+{
+    if (proc->type != PROC_KOKOS) {
+        return;
+    }
+
+    kokos_proc_t kokos = proc->kokos;
+
+    for (size_t i = 0; i < kokos.params.len; i++) {
+        kokos_runtime_string_destroy(kokos.params.names[i]);
+    }
+
+    KOKOS_FREE(kokos.params.names);
 }

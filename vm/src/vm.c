@@ -454,7 +454,9 @@ static bool kokos_vm_exec_cur(kokos_vm_t* vm)
         kokos_runtime_proc_t* proc = GET_PROC(local);
 
         if (proc->type == PROC_NATIVE) {
-            proc->native(vm, nargs);
+            kokos_value_t ret = KOKOS_NIL;
+            proc->native(vm, nargs, &ret);
+            STACK_PUSH(&frame->stack, ret);
             vm->ip++;
             break;
         }
@@ -693,6 +695,7 @@ static void kokos_vm_run_until_completion(kokos_vm_t* vm, kokos_code_t instructi
 {
     if (vm->frames.sp == 0) {
         kokos_frame_t* frame = alloc_frame(instructions.len, 79, instructions, NULL);
+        vm->frames.cap++;
         STACK_PUSH(&vm->frames, frame);
     }
 
@@ -741,9 +744,19 @@ kokos_vm_t* kokos_vm_create(kokos_scope_t* scope)
     vm->store = (kokos_runtime_store_t) { .strings = scope->string_store,
         .call_locations = scope->call_locations };
 
-    vm->root_scope = *scope;
+    vm->root_scope = scope;
     vm->gc = kokos_gc_new(GC_INITIAL_CAP);
     return vm;
+}
+
+void kokos_vm_destroy(kokos_vm_t* vm)
+{
+    for (size_t i = 0; i < vm->frames.cap; i++) {
+        kokos_env_destroy(vm->frames.data[i]->env);
+        KOKOS_FREE(vm->frames.data[i]);
+    }
+
+    KOKOS_FREE(vm);
 }
 
 static void kokos_gc_mark_obj(kokos_gc_t* gc, kokos_gc_obj_t* obj)

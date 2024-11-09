@@ -57,6 +57,8 @@ typedef struct {
     };
 } kokos_runtime_proc_t;
 
+void kokos_runtime_proc_destroy(kokos_runtime_proc_t*);
+
 typedef kokos_runtime_map_t kokos_runtime_MAP_t;
 typedef kokos_runtime_string_t kokos_runtime_STRING_t;
 typedef kokos_runtime_vector_t kokos_runtime_VECTOR_t;
@@ -89,6 +91,8 @@ kokos_value_t kokos_runtime_map_find(kokos_runtime_map_t* map, kokos_value_t key
 
 kokos_runtime_string_t* kokos_runtime_string_new(char const* data, size_t len);
 kokos_runtime_string_t* kokos_runtime_string_from_sv(string_view);
+
+void kokos_runtime_string_destroy(kokos_runtime_string_t*);
 
 size_t kokos_runtime_proc_locals_count(kokos_runtime_proc_t const*);
 

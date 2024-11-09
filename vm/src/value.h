@@ -49,6 +49,10 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
 #define FALSE_BITS (OBJ_BITS | 2)
 #define NIL_BITS (OBJ_BITS | 4)
 
+#define KOKOS_TRUE (TO_VALUE(TRUE_BITS))
+#define KOKOS_FALSE (TO_VALUE(FALSE_BITS))
+#define KOKOS_NIL (TO_VALUE(NIL_BITS))
+
 #define IS_DOUBLE_INT(i) (((i) & OBJ_BITS) != OBJ_BITS)
 #define IS_DOUBLE(val) (IS_DOUBLE_INT((val).as_int))
 

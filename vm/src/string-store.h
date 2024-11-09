@@ -11,6 +11,8 @@ typedef struct {
 } kokos_string_store_t;
 
 void kokos_string_store_init(kokos_string_store_t* store, size_t cap);
+void kokos_string_store_destroy(kokos_string_store_t*);
+
 kokos_runtime_string_t const* kokos_string_store_add(
     kokos_string_store_t* store, kokos_runtime_string_t const* string);
 kokos_runtime_string_t const* kokos_string_store_add_sv(kokos_string_store_t* store, string_view sv);

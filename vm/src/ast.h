@@ -4,7 +4,9 @@
 #include "base.h"
 #include "macros.h"
 #include "token.h"
+
 #include <stdio.h>
+#include <stddef.h>
 
 #define EXPR_FLAGS_NONE 0
 #define EXPR_FLAG_QUOTE 1
@@ -28,7 +30,8 @@ typedef struct kokos_list {
 
 typedef struct {
     struct kokos_expr* items;
-    size_t len, cap;
+    size_t len;
+    size_t cap;
 } kokos_vec_t;
 
 typedef struct kokos_map {
@@ -132,6 +135,51 @@ static void kokos_module_dump(kokos_module_t module)
         kokos_expr_dump(&module.items[i]);
         printf("\n");
     }
+}
+
+static inline void kokos_expr_destroy(kokos_expr_t* expr)
+{
+    switch (expr->type) {
+    case EXPR_INT_LIT:
+    case EXPR_FLOAT_LIT:
+    case EXPR_STRING_LIT:
+    case EXPR_IDENT: break;
+
+    case EXPR_VECTOR:
+        break;
+    case EXPR_LIST:
+        _Static_assert(offsetof(kokos_list_t, items) == offsetof(kokos_vec_t, items));
+
+        for (size_t i = 0; i < expr->list.len; i++) {
+            kokos_expr_destroy(&expr->list.items[i]);
+        }
+
+        KOKOS_FREE(expr->list.items);
+        break;
+
+    case EXPR_MAP:
+        for (size_t i = 0; i < expr->map.len; i++) {
+            kokos_expr_destroy(&expr->map.keys[i]);
+            kokos_expr_destroy(&expr->map.values[i]);
+        }
+
+        KOKOS_FREE(expr->map.keys);
+        KOKOS_FREE(expr->map.values);
+    default: {
+        char buf[512] = {0};
+        sprintf(buf, "freeing of expressions with type %s", kokos_expr_type_str(expr->type));
+        KOKOS_TODO(buf);
+    }
+    }
+}
+
+static void kokos_module_destroy(kokos_module_t module)
+{
+    for (size_t i = 0; i < module.len; i++) {
+        kokos_expr_destroy(&module.items[i]);
+    }
+
+    KOKOS_FREE(module.items);
 }
 
 #endif // AST_H_

@@ -21,7 +21,7 @@ char* read_file(char const* filename)
     long fsize = ftell(f);
     rewind(f);
 
-    char* data = KOKOS_ALLOC(sizeof(char) * (fsize + 1));
+    char* data = KOKOS_CALLOC(sizeof(char), fsize + 1);
     fread(data, sizeof(char), fsize, f);
     data[fsize] = '\0';
 
@@ -79,10 +79,15 @@ static int run_file(char const* filename)
     printf("procedure code:\n");
     printf("--------------------------------------------------\n");
     HT_ITER(compiled_module.procs, {
+        kokos_runtime_proc_t* proc = GET_PROC_PTR(kv.value);
+
+        if (proc->type == PROC_NATIVE) {
+            continue;
+        }
+
         kokos_runtime_string_t* name = GET_STRING_PTR(kv.key);
         printf(RT_STRING_FMT ":\n", RT_STRING_ARG(*name));
 
-        kokos_runtime_proc_t* proc = GET_PROC_PTR(kv.value);
         KOKOS_ASSERT(proc->type == PROC_KOKOS);
 
         kokos_code_dump(proc->kokos.code);
@@ -103,6 +108,11 @@ static int run_file(char const* filename)
     printf("parsing took %ld us\n", parser_end - parser_start);
     printf("compiling took %ld us\n", compile_end - compile_start);
     printf("runtime took %ld us\n", runtime_end - runtime_start);
+
+    KOKOS_FREE(data);
+    kokos_module_destroy(module);
+    kokos_scope_destroy(global_scope);
+    kokos_vm_destroy(vm);
 
     return 0;
 }

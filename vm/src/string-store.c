@@ -11,27 +11,48 @@ void kokos_string_store_init(kokos_string_store_t* store, size_t cap)
     store->capacity = cap;
 }
 
+void kokos_string_store_destroy(kokos_string_store_t* store)
+{
+    for (size_t i = 0; i < store->capacity; i++) {
+        kokos_runtime_string_t* str = (void*)store->items[i];
+        if (!str) {
+            continue;
+        }
+
+        kokos_runtime_string_destroy((kokos_runtime_string_t*)store->items[i]);
+    }
+
+    KOKOS_FREE(store->items);
+}
+
 static inline float kokos_string_store_load(kokos_string_store_t const* store)
 {
     return (float)store->length / (float)store->capacity * 100;
+}
+
+static inline void kokos_string_store_grow(kokos_string_store_t* store)
+{
+    kokos_string_store_t new_store;
+    kokos_string_store_init(&new_store, store->capacity * 2);
+
+    for (size_t i = 0; i < store->capacity; i++) {
+        kokos_runtime_string_t const* str = store->items[i];
+        if (!str)
+            continue;
+
+        kokos_string_store_add(&new_store, str);
+    }
+
+    KOKOS_FREE(store->items);
+
+    *store = new_store;
 }
 
 kokos_runtime_string_t const* kokos_string_store_add(
     kokos_string_store_t* store, kokos_runtime_string_t const* string)
 {
     if (kokos_string_store_load(store) >= 70) {
-        kokos_string_store_t new_store;
-        kokos_string_store_init(&new_store, store->capacity * 2);
-
-        for (size_t i = 0; i < store->capacity; i++) {
-            kokos_runtime_string_t const* str = store->items[i];
-            if (!str)
-                continue;
-
-            kokos_string_store_add(&new_store, str);
-        }
-
-        *store = new_store;
+        kokos_string_store_grow(store);
     }
 
     uint64_t idx = hash_djb2_len(string->ptr, string->len) % store->capacity;
@@ -46,24 +67,14 @@ kokos_runtime_string_t const* kokos_string_store_add(
     }
 
     store->items[idx] = string;
+    store->length++;
     return string;
 }
 
 kokos_runtime_string_t const* kokos_string_store_add_sv(kokos_string_store_t* store, string_view sv)
 {
     if (kokos_string_store_load(store) >= 70) {
-        kokos_string_store_t new_store;
-        kokos_string_store_init(&new_store, store->capacity * 2);
-
-        for (size_t i = 0; i < store->capacity; i++) {
-            kokos_runtime_string_t const* str = store->items[i];
-            if (!str)
-                continue;
-
-            kokos_string_store_add(&new_store, str);
-        }
-
-        *store = new_store;
+        kokos_string_store_grow(store);
     }
 
     uint64_t idx = hash_djb2_len(sv.ptr, sv.size) % store->capacity;
@@ -78,6 +89,7 @@ kokos_runtime_string_t const* kokos_string_store_add_sv(kokos_string_store_t* st
     }
 
     store->items[idx] = kokos_runtime_string_from_sv(sv);
+    store->length++;
     return store->items[idx];
 }
 
@@ -85,18 +97,7 @@ kokos_runtime_string_t const* kokos_string_store_add_cstr(
     kokos_string_store_t* store, char const* cstr)
 {
     if (kokos_string_store_load(store) >= 70) {
-        kokos_string_store_t new_store;
-        kokos_string_store_init(&new_store, store->capacity * 2);
-
-        for (size_t i = 0; i < store->capacity; i++) {
-            kokos_runtime_string_t const* str = store->items[i];
-            if (!str)
-                continue;
-
-            kokos_string_store_add(&new_store, str);
-        }
-
-        *store = new_store;
+        kokos_string_store_grow(store);
     }
 
     size_t len = strlen(cstr);
@@ -113,6 +114,7 @@ kokos_runtime_string_t const* kokos_string_store_add_cstr(
     }
 
     store->items[idx] = kokos_runtime_string_new(cstr, len);
+    store->length++;
     return store->items[idx];
 }
 

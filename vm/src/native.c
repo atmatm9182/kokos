@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static bool native_print(kokos_vm_t* vm, uint16_t nargs)
+static bool native_print(kokos_vm_t* vm, uint16_t nargs, kokos_value_t* ret)
 {
     // do this so we don't peek an empty stack
     if (nargs == 0) {
@@ -31,7 +31,7 @@ static bool native_print(kokos_vm_t* vm, uint16_t nargs)
     return true;
 }
 
-static bool native_make_vec(kokos_vm_t* vm, uint16_t nargs)
+static bool native_make_vec(kokos_vm_t* vm, uint16_t nargs, kokos_value_t* ret)
 {
     kokos_frame_t* frame = STACK_PEEK(&vm->frames);
 
@@ -43,12 +43,12 @@ static bool native_make_vec(kokos_vm_t* vm, uint16_t nargs)
         DA_ADD(vector, elem);
     }
 
-    STACK_PUSH(&frame->stack, TO_VECTOR(vector));
+    *ret = TO_VECTOR(vector);
 
     return true;
 }
 
-static bool native_make_map(kokos_vm_t* vm, uint16_t nargs)
+static bool native_make_map(kokos_vm_t* vm, uint16_t nargs, kokos_value_t* ret)
 {
     CHECK_CUSTOM(nargs % 2 == 0, "expected the number of arguments to be even");
 
@@ -64,13 +64,13 @@ static bool native_make_map(kokos_vm_t* vm, uint16_t nargs)
         kokos_runtime_map_add(map, key, value);
     }
 
-    STACK_PUSH(&frame->stack, TO_MAP(map));
+    *ret = TO_MAP(map);
 
     return true;
 }
 
 // TODO: handle relative filepaths
-static bool native_read_file(kokos_vm_t* vm, uint16_t nargs)
+static bool native_read_file(kokos_vm_t* vm, uint16_t nargs, kokos_value_t* ret)
 {
     CHECK_ARITY(1, nargs);
 
@@ -99,7 +99,8 @@ static bool native_read_file(kokos_vm_t* vm, uint16_t nargs)
     kokos_runtime_string_t* str = kokos_vm_gc_alloc(vm, STRING_TAG, fsize);
     str->ptr = buf;
     str->len = fsize;
-    STACK_PUSH(&frame->stack, TO_VALUE((uint64_t)str | STRING_BITS));
+
+    *ret = TO_STRING(str);
 
     fclose(f);
     return true;
@@ -108,13 +109,12 @@ fail:
     if (f) {
         fclose(f);
     }
-    STACK_PUSH(&frame->stack, TO_VALUE(NIL_BITS));
 
     return true;
 }
 
 // TODO: handle relative filepaths
-static bool native_write_file(kokos_vm_t* vm, uint16_t nargs)
+static bool native_write_file(kokos_vm_t* vm, uint16_t nargs, kokos_value_t* ret)
 {
     CHECK_ARITY(2, nargs);
 
@@ -138,7 +138,7 @@ static bool native_write_file(kokos_vm_t* vm, uint16_t nargs)
 
     kokos_runtime_string_t* data_str = (kokos_runtime_string_t*)GET_PTR(data);
     fwrite(data_str->ptr, sizeof(char), data_str->len, f);
-    STACK_PUSH(&frame->stack, TO_VALUE(TRUE_BITS));
+    *ret = KOKOS_TRUE;
 
     fclose(f);
     return true;
@@ -147,7 +147,7 @@ fail:
     if (f) {
         fclose(f);
     }
-    STACK_PUSH(&frame->stack, TO_VALUE(FALSE_BITS));
+    *ret = KOKOS_FALSE;
     return true;
 }
 
