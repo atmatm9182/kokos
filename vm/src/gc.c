@@ -16,11 +16,6 @@ kokos_gc_t kokos_gc_new(size_t max_objs)
     };
 }
 
-void objs_free(kokos_gc_objs_t* objs)
-{
-    KOKOS_FREE(objs->values);
-}
-
 size_t objs_load(kokos_gc_objs_t const* objs)
 {
     return ((float)objs->len / (float)objs->cap) * 100;
@@ -42,7 +37,7 @@ void objs_add(kokos_gc_objs_t* objs, kokos_gc_obj_t obj)
             }
         }
 
-        objs_free(objs);
+        KOKOS_FREE(objs->values);
         *objs = new_objs;
     }
 

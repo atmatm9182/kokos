@@ -493,25 +493,8 @@ static void scope_add_call_location(kokos_scope_t* scope, size_t ip, kokos_token
 static void kokos_compile_string_lit(
     kokos_expr_t const* expr, kokos_scope_t* scope, kokos_code_t* code)
 {
-    string_view value = expr->token.value;
-
-    kokos_runtime_string_t const* string;
-    kokos_runtime_string_t const* existing = kokos_string_store_find(scope->string_store, value);
-    if (existing) {
-        string = existing;
-        goto end;
-    }
-
-    char* str = KOKOS_ALLOC(sizeof(char) * value.size);
-    memcpy(str, value.ptr, value.size * sizeof(char));
-
-    kokos_runtime_string_t* s = kokos_runtime_string_new(str, value.size);
-    string = kokos_string_store_add(scope->string_store, s);
-
-end: {
-    uint64_t string_value = STRING_BITS | (uint64_t)string;
-    DA_ADD(code, INSTR_PUSH(string_value));
-}
+    kokos_runtime_string_t* string = (void*)kokos_string_store_add_sv(scope->string_store, expr->token.value);
+    DA_ADD(code, INSTR_PUSH(TO_STRING(string).as_int));
 }
 
 typedef struct {
