@@ -140,6 +140,8 @@ void kokos_vm_destroy(kokos_vm_t* vm);
 /// Load the module, adding it's strings to the runtime store, and execute it's code
 void kokos_vm_load_module(kokos_vm_t* vm, kokos_compiled_module_t const* module);
 
+bool kokos_vm_run_code(kokos_vm_t* vm, kokos_code_t code);
+
 void kokos_vm_dump(kokos_vm_t* vm);
 
 /// Allocates a new value of the provided tag on the heap and returns a pointer to it

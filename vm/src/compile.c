@@ -1,8 +1,8 @@
 #include "ast.h"
 #include "macros.h"
 #include "runtime.h"
-#include "src/macro.h"
-#include "src/scope.h"
+#include "macro.h"
+#include "scope.h"
 #include "token.h"
 
 #include "base.h"
@@ -10,6 +10,8 @@
 #include "compile.h"
 #include "instruction.h"
 #include "value.h"
+
+#include "vm.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -81,7 +83,7 @@ static uint64_t to_double_bytes(kokos_expr_t const* expr)
     return TO_VALUE(parsed).as_int;
 }
 
-bool expr_to_params(kokos_expr_t const* expr, kokos_params_t* params)
+bool expr_to_params(kokos_expr_t const* expr, kokos_params_t* params, kokos_scope_t* scope)
 {
     kokos_list_t list = expr->list;
 
@@ -107,7 +109,7 @@ bool expr_to_params(kokos_expr_t const* expr, kokos_params_t* params)
             continue;
         }
 
-        DA_ADD(&names, kokos_runtime_string_from_sv(param->token.value));
+        DA_ADD(&names, (void*)kokos_string_store_add_sv(scope->string_store, param->token.value));
     }
 
     *params = (kokos_params_t) { .names = names.items, .len = names.len, .variadic = variadic };
@@ -134,7 +136,7 @@ static bool compile_procedure_def(kokos_expr_t const* expr, kokos_scope_t* scope
     }
 
     kokos_params_t params;
-    TRY(expr_to_params(params_expr, &params));
+    TRY(expr_to_params(params_expr, &params, scope));
 
     kokos_scope_t* proc_scope = kokos_scope_derived(scope);
 
@@ -164,45 +166,41 @@ static bool compile_procedure_def(kokos_expr_t const* expr, kokos_scope_t* scope
 
 static bool compile_macro_def(kokos_expr_t const* expr, kokos_scope_t* scope)
 {
-    KOKOS_TODO("MACRO COMPILATION");
-    /*kokos_list_t list = expr->list;*/
-    /*if (list.len < 3) {*/
-    /*    set_error(expr->token.location,*/
-    /*        "procedure definition must have at least a name and an argument list");*/
-    /*    return false;*/
-    /*}*/
-    /**/
-    /*string_view name = list.items[1].token.value;*/
-    /**/
-    /*kokos_expr_t const* params_expr = &list.items[2];*/
-    /*if (params_expr->type != EXPR_LIST) {*/
-    /*    set_error(params_expr->token.location,*/
-    /*        "cannot use value of type %s as an argument list for a procedure",*/
-    /*        kokos_expr_type_str(params_expr->type));*/
-    /*    return false;*/
-    /*}*/
-    /**/
-    /*kokos_params_t params;*/
-    /*TRY(expr_to_params(params_expr, &params));*/
-    /**/
-    /*kokos_scope_t* macro_scope = kokos_scope_derived(scope);*/
-    /*kokos_code_t code;*/
-    /*DA_INIT(&code, 0, 7);*/
-    /**/
-    /*// Add the procedure before the body compilation to allow recursion*/
-    /*kokos_macro_t* macro = KOKOS_ALLOC(sizeof(kokos_macro_t));*/
-    /*macro->params = params;*/
-    /**/
-    /*kokos_scope_add_macro(scope, name, macro);*/
-    /**/
-    /*for (size_t i = 3; i < list.len; i++) {*/
-    /*    TRY(kokos_expr_compile(&list.items[i], macro_scope));*/
-    /*}*/
-    /**/
-    /*DA_ADD(&macro_scope->code, INSTR_RET);*/
-    /*macro->instructions = macro_scope->code;*/
-    /**/
-    /*return true;*/
+    kokos_list_t list = expr->list;
+    if (list.len < 3) {
+       set_error(expr->token.location,
+           "procedure definition must have at least a name and an argument list");
+       return false;
+    }
+
+    kokos_expr_t const* params_expr = &list.items[2];
+    if (params_expr->type != EXPR_LIST) {
+       set_error(params_expr->token.location,
+           "cannot use value of type %s as an argument list for a procedure",
+           kokos_expr_type_str(params_expr->type));
+       return false;
+    }
+
+    kokos_params_t params;
+    TRY(expr_to_params(params_expr, &params, scope));
+
+    kokos_scope_t* macro_scope = kokos_scope_derived(scope);
+
+    // Add the macro before the body compilation to allow recursion
+    kokos_macro_t* macro = KOKOS_ALLOC(sizeof(kokos_macro_t));
+    macro->params = params;
+    macro->name = (void*)kokos_string_store_add_sv(scope->string_store, list.items[1].token.value);
+
+    ht_add(&scope->macros, macro->name, macro);
+
+    for (size_t i = 3; i < list.len; i++) {
+       TRY(kokos_expr_compile(&list.items[i], macro_scope));
+    }
+
+    DA_ADD(&macro_scope->code, INSTR_RET);
+    macro->instructions = macro_scope->code;
+
+    return true;
 }
 
 typedef struct {
@@ -565,47 +563,42 @@ bool kokos_expr_compile_quoted(kokos_expr_t const* expr, kokos_scope_t* scope);
 static bool kokos_eval_macro(
     kokos_macro_t const* macro, kokos_expr_t const* expr, kokos_scope_t* scope)
 {
-    KOKOS_TODO("MACRO EVALUATION");
-    /**/
-    /*kokos_list_t args = expr->list;*/
-    /*string_view head = args.items[0].token.value;*/
-    /**/
-    /*if (macro->params.variadic) {*/
-    /*    KOKOS_TODO();*/
-    /*}*/
-    /**/
-    /*if (macro->params.len != args.len - 1) {*/
-    /*    set_error(expr->token.location,*/
-    /*        "expected %lu arguments for procedure '" SV_FMT "', got %lu instead",
-     * macro->params.len,*/
-    /*        SV_ARG(head), args.len - 1);*/
-    /*    return false;*/
-    /*}*/
-    /**/
-    /*kokos_code_t macro_code;*/
-    /*DA_INIT(&macro_code, 0, macro->instructions.len);*/
-    /**/
-    /*kokos_scope_t* dumb_scope = kokos_scope_derived(scope);*/
-    /*dumb_scope->current_code = &macro_code;*/
-    /*TRY(compile_all_args_reversed(expr, dumb_scope, kokos_expr_compile_quoted));*/
-    /**/
-    /*for (size_t i = 0; i < macro->params.len; i++) {*/
-    /*    DA_ADD(dumb_scope->current_code, INSTR_STORE_LOCAL(i));*/
-    /*}*/
-    /**/
-    /*DA_EXTEND(&macro_code, &macro->instructions);*/
-    /*kokos_vm_t* vm = scope->macro_vm;*/
-    /*kokos_vm_run_code(vm, macro_code);*/
-    /**/
-    /*kokos_frame_t* f = VM_CTX(vm).frames.data[0];*/
-    /*kokos_expr_list_t exprs = kokos_values_to_exprs(f->stack.data, f->stack.sp, scope);*/
-    /*for (size_t i = 0; i < exprs.len; i++) {*/
-    /*    kokos_expr_dump(&exprs.exprs[i]);*/
-    /**/
-    /*    TRY(kokos_expr_compile(&exprs.exprs[i], scope));*/
-    /*}*/
-    /**/
-    /*return true;*/
+    kokos_list_t args = expr->list;
+    string_view head = args.items[0].token.value;
+
+    if (macro->params.variadic) {
+       KOKOS_TODO();
+    }
+
+    if (macro->params.len != args.len - 1) {
+       set_error(expr->token.location,
+           "expected %lu arguments for procedure '" SV_FMT "', got %lu instead",
+    macro->params.len,
+           SV_ARG(head), args.len - 1);
+       return false;
+    }
+
+    kokos_scope_t* dumb_scope = kokos_scope_derived(scope);
+
+    for (size_t i = 0; i < args.len - 1; i++) {
+        TRY(kokos_expr_compile_quoted(&args.items[i + 1], dumb_scope));
+        DA_ADD(&dumb_scope->code, INSTR_ADD_LOCAL(macro->params.names[i]));
+    }
+
+    DA_EXTEND(&dumb_scope->code, &macro->instructions);
+
+    kokos_vm_t* vm = scope->macro_vm;
+    kokos_vm_run_code(vm, dumb_scope->code);
+
+    kokos_frame_t* f = vm->frames.data[0];
+    kokos_expr_list_t exprs = kokos_values_to_exprs(f->stack.data, f->stack.sp, scope);
+    for (size_t i = 0; i < exprs.len; i++) {
+       TRY(kokos_expr_compile(&exprs.exprs[i], scope));
+    }
+
+    KOKOS_FREE(exprs.exprs);
+
+    return true;
 }
 
 static bool compile_list(kokos_expr_t const* expr, kokos_scope_t* scope)
@@ -621,6 +614,12 @@ static bool compile_list(kokos_expr_t const* expr, kokos_scope_t* scope)
     kokos_sform_t sform = get_sform(head);
     if (sform) {
         TRY(sform(expr, scope));
+        return true;
+    }
+
+    kokos_macro_t* macro = kokos_scope_get_macro(scope, head);
+    if (macro) {
+        TRY(kokos_eval_macro(macro, expr, scope));
         return true;
     }
 

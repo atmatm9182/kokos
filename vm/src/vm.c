@@ -403,8 +403,8 @@ static bool kokos_vm_exec_cur(kokos_vm_t* vm)
     kokos_frame_t* frame = current_frame(vm);
     kokos_instruction_t instruction = current_instruction(vm);
 
-    /* kokos_instruction_dump(instruction); */
-    /* printf("\n"); */
+    kokos_instruction_dump(instruction);
+    printf("\n");
 
     switch (instruction.type) {
     case I_PUSH: {
@@ -721,6 +721,21 @@ void kokos_vm_load_module(kokos_vm_t* vm, kokos_compiled_module_t const* module)
     }
 
     kokos_vm_run_until_completion(vm, module->instructions);
+}
+
+bool kokos_vm_run_code(kokos_vm_t* vm, kokos_code_t code)
+{
+    if (vm->frames.sp == 0) {
+        kokos_frame_t* frame = alloc_frame(code.len, 79, code, NULL);
+        vm->frames.cap++;
+        STACK_PUSH(&vm->frames, frame);
+    }
+
+    while (vm->ip < current_frame(vm)->instructions.len) {
+        TRY(kokos_vm_exec_cur(vm));
+    }
+
+    return true;
 }
 
 void kokos_vm_dump(kokos_vm_t* vm)

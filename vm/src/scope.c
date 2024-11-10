@@ -30,32 +30,26 @@ void kokos_scope_add_proc(kokos_scope_t* scope, kokos_runtime_string_t* name, ko
     ht_add(&scope->procs, name, proc);
 }
 
-/*static kokos_macro_t* kokos_scope_get_macro_cstr(kokos_scope_t* scope, char const* name)*/
-/*{*/
-/*    if (!scope)*/
-/*        return NULL;*/
-/**/
-/*    kokos_macro_t* macro = ht_find(&scope->macros, name);*/
-/*    if (!macro)*/
-/*        return kokos_scope_get_macro_cstr(scope->parent, name);*/
-/**/
-/*    return macro;*/
-/*}*/
-/**/
-/*kokos_macro_t* kokos_scope_get_macro(kokos_scope_t* scope, string_view name)*/
-/*{*/
-/*    KOKOS_VERIFY(name.size < 256);*/
-/*    char name_cstr[256];*/
-/*    sprintf(name_cstr, SV_FMT, SV_ARG(name));*/
-/**/
-/*    return kokos_scope_get_macro_cstr(scope, name_cstr);*/
-/*}*/
-/**/
-/*void kokos_scope_add_macro(kokos_scope_t* scope, string_view name, kokos_macro_t* macro)*/
-/*{*/
-/*    KOKOS_ASSERT(ht_add(&scope->macros, (void*)sv_dup(name), macro));*/
-/*}*/
-/**/
+static inline kokos_macro_t* kokos_scope_get_macro_impl(kokos_scope_t* scope, kokos_runtime_string_t* name)
+{
+    if (!scope) {
+        return NULL;
+    }
+
+    kokos_macro_t* macro = ht_find(&scope->macros, name);
+    if (macro) {
+        return macro;
+    }
+
+    return kokos_scope_get_macro_impl(scope->parent, name);
+}
+
+inline kokos_macro_t* kokos_scope_get_macro(kokos_scope_t* scope, string_view name)
+{
+    kokos_runtime_string_t* rt_name = (void*)kokos_string_store_add_sv(scope->string_store, name);
+    return kokos_scope_get_macro_impl(scope, rt_name);
+}
+
 kokos_vm_t* kokos_vm_create(kokos_scope_t* scope);
 
 kokos_scope_t* kokos_scope_derived(kokos_scope_t* parent)
@@ -66,8 +60,8 @@ kokos_scope_t* kokos_scope_derived(kokos_scope_t* parent)
     scope->parent = parent;
     scope->macro_vm = parent->macro_vm;
     scope->string_store = parent->string_store;
-    scope->procs = ht_make(hash_runtime_string_func, hash_runtime_string_eq_func, 53);
-    /*scope->macros = ht_make(hash_cstring_func, hash_cstring_eq_func, 5);*/
+    scope->procs = ht_make(hash_runtime_string_func, hash_runtime_string_eq_func, 17);
+    scope->macros = ht_make(hash_cstring_func, hash_cstring_eq_func, 5);
     scope->call_locations = ht_make(hash_sizet_func, hash_sizet_eq_func, 5);
 
     DA_INIT(&scope->derived, 0, 3);
@@ -86,7 +80,7 @@ kokos_scope_t* kokos_scope_root(void)
     scope->string_store = KOKOS_ALLOC(sizeof(*scope->string_store));
     kokos_string_store_init(scope->string_store, 89);
     scope->procs = ht_make(hash_runtime_string_func, hash_runtime_string_eq_func, 53);
-    /*scope->macros = ht_make(hash_cstring_func, hash_cstring_eq_func, 53);*/
+    scope->macros = ht_make(hash_cstring_func, hash_cstring_eq_func, 53);
     scope->call_locations = ht_make(hash_sizet_func, hash_sizet_eq_func, 53);
 
     DA_INIT(&scope->derived, 0, 53);
@@ -129,14 +123,23 @@ void kokos_scope_destroy(kokos_scope_t* scope)
         KOKOS_FREE(kv.value);
     });
 
+    // WARN: don't free the names, because the string store owns them
+    HT_ITER(scope->macros, {
+        kokos_macro_destroy(kv.value);
+    });
+
     for (size_t i = 0; i < scope->derived.len; i++) {
         kokos_scope_destroy(scope->derived.items[i]);
     }
 
     DA_FREE(&scope->derived);
+
     ht_destroy(&scope->procs);
+    ht_destroy(&scope->macros);
+
     DA_FREE(&scope->code);
     ht_destroy(&scope->call_locations);
+
     KOKOS_FREE(scope);
 }
 

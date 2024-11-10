@@ -4,6 +4,7 @@
 #include "base.h"
 #include "instruction.h"
 #include "string-store.h"
+#include "macro.h"
 
 typedef struct {
     string_view* items;
@@ -24,6 +25,7 @@ typedef struct scope {
     kokos_code_t code;
     hash_table call_locations;
     hash_table procs;
+    hash_table macros;
     kokos_vm_t* macro_vm;
     kokos_scope_list_t derived;
 
@@ -34,10 +36,7 @@ kokos_scope_t* kokos_scope_derived(kokos_scope_t* parent);
 kokos_scope_t* kokos_scope_root(void);
 void kokos_scope_destroy(kokos_scope_t*);
 
-/*void kokos_scope_add_proc(kokos_scope_t* scope, string_view name, kokos_runtime_proc_t* proc);*/
-/*void kokos_scope_add_macro(kokos_scope_t* scope, string_view name, kokos_macro_t* macro);*/
-/*kokos_runtime_proc_t* kokos_scope_get_proc(kokos_scope_t* scope, string_view name);*/
-/*kokos_macro_t* kokos_scope_get_macro(kokos_scope_t* scope, string_view name);*/
+kokos_macro_t* kokos_scope_get_macro(kokos_scope_t* scope, string_view name);
 
 void kokos_scope_dump(kokos_scope_t const* scope);
 
