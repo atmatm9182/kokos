@@ -16,6 +16,20 @@ kokos_gc_t kokos_gc_new(size_t max_objs)
     };
 }
 
+void kokos_gc_destroy(kokos_gc_t* gc)
+{
+    for (size_t i = 0; i < gc->objects.cap; i++) {
+        kokos_gc_obj_t obj = gc->objects.values[i];
+        if (!IS_OCCUPIED(obj)) {
+            continue;
+        }
+
+        kokos_gc_obj_free(&obj);
+    }
+
+    KOKOS_FREE(gc->objects.values);
+}
+
 size_t objs_load(kokos_gc_objs_t const* objs)
 {
     return ((float)objs->len / (float)objs->cap) * 100;

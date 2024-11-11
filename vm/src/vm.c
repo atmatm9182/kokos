@@ -791,6 +791,8 @@ kokos_vm_t* kokos_vm_create(kokos_scope_t* scope)
 
 void kokos_vm_destroy(kokos_vm_t* vm)
 {
+    kokos_gc_destroy(&vm->gc);
+
     for (size_t i = 0; i < vm->frames.cap; i++) {
         kokos_env_destroy(vm->frames.data[i]->env);
         KOKOS_FREE(vm->frames.data[i]);
@@ -866,21 +868,6 @@ static void kokos_gc_mark_frame(kokos_gc_t* gc, kokos_frame_t const* frame)
     }
 }
 
-static void kokos_obj_free(kokos_gc_obj_t* obj)
-{
-    switch (GET_TAG(obj->value.as_int)) {
-    case STRING_TAG: {
-        kokos_runtime_string_t* str = (void*)GET_PTR(obj->value);
-        KOKOS_FREE(str->ptr);
-        break;
-    }
-    default: {
-    }
-    }
-
-    KOKOS_FREE((void*)GET_PTR(obj->value));
-}
-
 static void kokos_gc_collect(kokos_vm_t* vm)
 {
     for (size_t i = 0; i < vm->frames.sp; i++) {
@@ -896,7 +883,7 @@ static void kokos_gc_collect(kokos_vm_t* vm)
 
         obj->flags = 0;
 
-        kokos_obj_free(obj);
+        kokos_gc_obj_free(obj);
 
         vm->gc.objects.len--;
     }
