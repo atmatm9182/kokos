@@ -6,5 +6,13 @@
 - [ ] UTF-8 strings
 - [ ] Module system
 - [ ] Tail call optimizations
-- [X] Add integers to the VM
-- [X] Better error reporting in the VM
+- [x] Add integers to the VM
+- [x] Better error reporting in the VM
+- [ ] Utilize different memory allocation strategies
+- [ ] Local environment variable caching
+- [ ] Generational GC | RC
+- [ ] Find a way for this thing to work on 32-bit systems
+- [ ] Support other systems besides Linux
+- [ ] AOT
+- [ ] JIT
+- [ ] Control flow graph builder
