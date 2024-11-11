@@ -95,10 +95,22 @@ void kokos_instruction_dump(kokos_instruction_t instruction)
 
 void kokos_code_dump(kokos_code_t code)
 {
+    size_t len = code.len;
+    size_t chars = 1;
+    while (len > 10) {
+        chars++;
+        len /= 10;
+    }
+
     for (size_t i = 0; i < code.len; i++) {
         kokos_instruction_t instr = code.items[i];
+        size_t count = printf("[%lu] ", i) - 3;
 
-        printf("[%lu] ", i);
+        // padding from [%lu] to the instruction representation
+        for (; count < chars; count++) {
+            printf(" ");
+        }
+
         kokos_instruction_dump(instr);
         printf("\n");
     }
