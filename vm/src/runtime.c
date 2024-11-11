@@ -126,11 +126,5 @@ void kokos_runtime_proc_destroy(kokos_runtime_proc_t* proc)
         return;
     }
 
-    kokos_proc_t kokos = proc->kokos;
-
-    for (size_t i = 0; i < kokos.params.len; i++) {
-        kokos_runtime_string_destroy(kokos.params.names[i]);
-    }
-
-    KOKOS_FREE(kokos.params.names);
+    KOKOS_FREE(proc->kokos.params.names);
 }
