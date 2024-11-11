@@ -20,15 +20,16 @@ typedef union {
 _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
     "kokos_value_t shoud have the size of platform's pointer");
 
-#define ENUMERATE_HEAP_TYPES                                                                       \
-    X(STRING)                                                                                      \
-    X(VECTOR)                                                                                      \
-    X(LIST)                                                                                        \
-    X(MAP)                                                                                         \
-    X(PROC)
+#define ENUMERATE_HEAP_TYPES   \
+    X(STRING)                  \
+    X(VECTOR)                  \
+    X(LIST)                    \
+    X(MAP)                     \
+    X(PROC)                    \
+    X(SYM)
 
-#define ENUMERATE_TAGGED_TYPES                                                                     \
-    ENUMERATE_HEAP_TYPES                                                                           \
+#define ENUMERATE_TAGGED_TYPES \
+    ENUMERATE_HEAP_TYPES       \
     X(INT)
 
 #define STRING_BITS 0x7FFE000000000000
@@ -37,13 +38,16 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
 #define VECTOR_BITS 0x7FFD000000000000
 #define INT_BITS 0xFFFE000000000000
 #define PROC_BITS 0xFFFF000000000000
+#define SYM_BITS 0xFFFD000000000000
 
+// NOTE: we can't generate these using X-macros, since you can't use the preprocessor inside the preprocessor
 #define STRING_TAG (STRING_BITS >> 48)
 #define MAP_TAG (MAP_BITS >> 48)
 #define LIST_TAG (LIST_BITS >> 48)
 #define VECTOR_TAG (VECTOR_BITS >> 48)
 #define INT_TAG (INT_BITS >> 48)
 #define PROC_TAG (PROC_BITS >> 48)
+#define SYM_TAG (SYM_BITS >> 48)
 
 #define TRUE_BITS (OBJ_BITS | 1)
 #define FALSE_BITS (OBJ_BITS | 2)

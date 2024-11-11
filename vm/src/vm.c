@@ -645,6 +645,7 @@ static char const* kokos_tag_str(uint16_t tag)
     case LIST_TAG:   return "list";
     case DOUBLE_TAG: return "double";
     case INT_TAG:    return "int";
+    case SYM_TAG:    return "symbol";
     default:
         KOKOS_VERIFY(tag == OBJ_BITS >> 48);
         return "bool (or nil)";

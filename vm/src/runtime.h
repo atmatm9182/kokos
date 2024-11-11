@@ -59,11 +59,15 @@ typedef struct {
 
 void kokos_runtime_proc_destroy(kokos_runtime_proc_t*);
 
+// symbols have the same runtime representation as strings just for conveneince
+typedef kokos_runtime_string_t kokos_runtime_sym_t;
+
 typedef kokos_runtime_map_t kokos_runtime_MAP_t;
 typedef kokos_runtime_string_t kokos_runtime_STRING_t;
 typedef kokos_runtime_vector_t kokos_runtime_VECTOR_t;
 typedef kokos_runtime_list_t kokos_runtime_LIST_t;
 typedef kokos_runtime_proc_t kokos_runtime_PROC_t;
+typedef kokos_runtime_sym_t kokos_runtime_SYM_t;
 
 #define X(t)                                                                                       \
     static inline kokos_runtime_##t##_t* GET_##t##_INT(uintptr_t ptr)                              \

@@ -96,6 +96,11 @@ void kokos_value_print(kokos_value_t value)
         }
         break;
     }
+    case SYM_TAG: {
+        kokos_runtime_sym_t* sym = GET_SYM(value);
+        printf(RT_STRING_FMT, RT_STRING_ARG(*sym));
+        break;
+    }
     default: {
         KOKOS_VERIFY(IS_DOUBLE(value));
         printf("%f", value.as_double);
