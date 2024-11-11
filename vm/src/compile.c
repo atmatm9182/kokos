@@ -83,6 +83,20 @@ static uint64_t to_double_bytes(kokos_expr_t const* expr)
     return TO_VALUE(parsed).as_int;
 }
 
+static kokos_expr_t empty_exprs[0] = {};
+
+static kokos_list_t empty_list = { .items = empty_exprs, .len = 0 };
+
+static inline kokos_list_t list_slice(kokos_list_t list, size_t idx)
+{
+    ssize_t count = list.len - idx;
+    if (count <= 0) {
+        return empty_list;
+    }
+
+    return (kokos_list_t) { .items = list.items + idx, .len = count };
+}
+
 bool expr_to_params(kokos_expr_t const* expr, kokos_params_t* params, kokos_scope_t* scope)
 {
     kokos_list_t list = expr->list;
@@ -563,25 +577,27 @@ bool kokos_expr_compile_quoted(kokos_expr_t const* expr, kokos_scope_t* scope);
 static bool kokos_eval_macro(
     kokos_macro_t const* macro, kokos_expr_t const* expr, kokos_scope_t* scope)
 {
-    kokos_list_t args = expr->list;
+    KOKOS_ASSERT(expr->type == EXPR_LIST);
+
+    kokos_list_t args = list_slice(expr->list, 1);
     string_view head = args.items[0].token.value;
 
     if (macro->params.variadic) {
        KOKOS_TODO();
     }
 
-    if (macro->params.len != args.len - 1) {
+    if (macro->params.len != args.len) {
        set_error(expr->token.location,
            "expected %lu arguments for procedure '" SV_FMT "', got %lu instead",
     macro->params.len,
-           SV_ARG(head), args.len - 1);
+           SV_ARG(head), args.len);
        return false;
     }
 
     kokos_scope_t* dumb_scope = kokos_scope_derived(scope);
 
-    for (size_t i = 0; i < args.len - 1; i++) {
-        TRY(kokos_expr_compile_quoted(&args.items[i + 1], dumb_scope));
+    for (size_t i = 0; i < args.len; i++) {
+        TRY(kokos_expr_compile_quoted(&args.items[i], dumb_scope));
         DA_ADD(&dumb_scope->code, INSTR_ADD_LOCAL(macro->params.names[i]));
     }
 
