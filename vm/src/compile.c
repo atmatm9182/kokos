@@ -180,6 +180,9 @@ static bool compile_procedure_def(kokos_expr_t const* expr, kokos_scope_t* scope
 
 static bool compile_macro_def(kokos_expr_t const* expr, kokos_scope_t* scope)
 {
+    KOKOS_ASSERT(expr->type == EXPR_LIST);
+    KOKOS_ASSERT(expr->list.len >= 1);
+
     kokos_list_t list = expr->list;
     if (list.len < 3) {
        set_error(expr->token.location,
@@ -578,9 +581,10 @@ static bool kokos_eval_macro(
     kokos_macro_t const* macro, kokos_expr_t const* expr, kokos_scope_t* scope)
 {
     KOKOS_ASSERT(expr->type == EXPR_LIST);
+    KOKOS_ASSERT(expr->list.len >= 1);
 
     kokos_list_t args = list_slice(expr->list, 1);
-    string_view head = args.items[0].token.value;
+    string_view head = expr->list.items[0].token.value;
 
     if (macro->params.variadic) {
        KOKOS_TODO();
@@ -588,9 +592,9 @@ static bool kokos_eval_macro(
 
     if (macro->params.len != args.len) {
        set_error(expr->token.location,
-           "expected %lu arguments for procedure '" SV_FMT "', got %lu instead",
-    macro->params.len,
-           SV_ARG(head), args.len);
+                 "expected %lu arguments for procedure '" SV_FMT "', got %lu instead",
+                 macro->params.len,
+                 SV_ARG(head), args.len);
        return false;
     }
 
@@ -604,7 +608,13 @@ static bool kokos_eval_macro(
     DA_EXTEND(&dumb_scope->code, &macro->instructions);
 
     kokos_vm_t* vm = scope->macro_vm;
-    kokos_vm_run_code(vm, dumb_scope->code);
+    if (!kokos_vm_run_code(vm, dumb_scope->code)) {
+        const char* ex = kokos_exception_to_string(&vm->registers.exception);
+        set_error(expr->token.location,
+                  "macro evaluation has produced an exception: %s",
+                  ex);
+        return false;
+    }
 
     kokos_frame_t* f = vm->frames.data[0];
     kokos_expr_list_t exprs = kokos_values_to_exprs(f->stack.data, f->stack.sp, scope);

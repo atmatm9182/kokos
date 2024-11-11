@@ -663,31 +663,43 @@ static void kokos_vm_dump_stack_trace(kokos_vm_t* vm)
     }
 }
 
-static void kokos_vm_report_exception(kokos_vm_t* vm)
+const char* kokos_exception_to_string(const kokos_exception_t* ex)
 {
-    switch (vm->registers.exception.type) {
+    char* buf = KOKOS_CALLOC(sizeof(char), 512);
+
+    switch (ex->type) {
     case EX_TYPE_MISMATCH: {
-        char const* expected = kokos_tag_str(vm->registers.exception.type_mismatch.expected);
-        char const* got = kokos_tag_str(vm->registers.exception.type_mismatch.got);
-        fprintf(stderr, "type mismatch: expected %s, but got %s\n", expected, got);
+        char const* expected = kokos_tag_str(ex->type_mismatch.expected);
+        char const* got = kokos_tag_str(ex->type_mismatch.got);
+        sprintf(buf, "type mismatch: expected %s, but got %s\n", expected, got);
         break;
     }
     case EX_ARITY_MISMATCH: {
-        fprintf(stderr, "arity mismatch: expected %lu arguments, but got %lu\n",
-            vm->registers.exception.arity_mismatch.expected,
-            vm->registers.exception.arity_mismatch.got);
+        sprintf(buf, "arity mismatch: expected %lu arguments, but got %lu\n",
+                ex->arity_mismatch.expected,
+                ex->arity_mismatch.got);
         break;
     }
     case EX_CUSTOM: {
-        fprintf(stderr, "error: %s\n", vm->registers.exception.custom);
+        sprintf(buf, "error: %s\n", ex->custom);
         break;
     }
     case EX_UNDEFINED_VARIABLE: {
-        kokos_runtime_string_t* name = vm->registers.exception.undefined_variable.name;
-        fprintf(stderr, "undefined variable " SV_FMT, (int)name->len, name->ptr);
+        kokos_runtime_string_t* name = ex->undefined_variable.name;
+        sprintf(buf, "undefined variable " SV_FMT, (int)name->len, name->ptr);
+        break;
     }
+    default:
+        KOKOS_TODO("unknown exception type");
     }
 
+    return buf;
+}
+
+static void kokos_vm_report_exception(kokos_vm_t* vm)
+{
+    const char* msg = kokos_exception_to_string(&vm->registers.exception);
+    fprintf(stderr, "%s\n", msg);
     kokos_vm_dump_stack_trace(vm);
 }
 
@@ -729,11 +741,23 @@ bool kokos_vm_run_code(kokos_vm_t* vm, kokos_code_t code)
         kokos_frame_t* frame = alloc_frame(code.len, 79, code, NULL);
         vm->frames.cap++;
         STACK_PUSH(&vm->frames, frame);
+    } else {
+        kokos_frame_t* f = STACK_PEEK(&vm->frames);
+
+        kokos_env_destroy(f->env);
+        f->env = kokos_env_create(NULL, 79);
+
+        f->stack.sp = 0;
+        f->ret_location = code.len;
+        f->instructions = code;
     }
 
     while (vm->ip < current_frame(vm)->instructions.len) {
         TRY(kokos_vm_exec_cur(vm));
     }
+
+    // reset this so that the subsequent calls to this procedure don't immediately return
+    vm->ip = 0;
 
     return true;
 }

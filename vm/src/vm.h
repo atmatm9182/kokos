@@ -122,6 +122,8 @@ typedef struct kokos_exception {
     };
 } kokos_exception_t;
 
+const char* kokos_exception_to_string(const kokos_exception_t*);
+
 typedef struct kokos_vm {
     kokos_gc_t gc;
     kokos_runtime_store_t store;
