@@ -529,7 +529,7 @@ kokos_expr_list_t kokos_values_to_exprs(
     for (size_t i = 0; i < values_count; i++) {
         kokos_value_t val = values[i];
         kokos_token_t tok;
-        kokos_expr_t expr;
+        kokos_expr_t expr = { .flags = EXPR_FLAGS_NONE };
 
         // do a separate check since the doubles are untagged
         // i could probably come up with a better aproach, but i do not care right now :P
@@ -547,13 +547,40 @@ kokos_expr_list_t kokos_values_to_exprs(
             tok.value = sv_make(string->ptr, string->len);
 
             expr.type = EXPR_FLOAT_LIT;
-            expr.flags = EXPR_FLAGS_NONE;
             goto add_expr;
         }
 
         switch (GET_TAG(val.as_int)) {
+        case STRING_TAG: {
+            kokos_runtime_string_t* str = GET_STRING(val);
+
+            tok.type = TT_STR_LIT;
+            tok.value = sv_make(str->ptr, str->len);
+
+            expr.type = EXPR_STRING_LIT;
+            break;
+        }
+        case LIST_TAG: {
+            tok.type = TT_LPAREN;
+            tok.value = sv_make_cstr("(");
+
+            kokos_runtime_list_t* list = GET_LIST(val);
+            kokos_expr_list_t exprs = kokos_values_to_exprs(list->items, list->len, scope);
+
+            expr.type = EXPR_LIST;
+            expr.list = (kokos_list_t) { .items = exprs.exprs, .len = exprs.len };
+            break;
+        }
+        case SYM_TAG: {
+            kokos_runtime_sym_t* sym = GET_SYM(val);
+            tok.value = sv_make(sym->ptr, sym->len);
+            tok.type = TT_IDENT;
+
+            expr.type = EXPR_IDENT;
+            break;
+        }
         case INT_TAG: {
-            char buf[64];
+            char buf[10];
             sprintf(buf, "%d", GET_INT(val));
             kokos_runtime_string_t const* string
                 = kokos_string_store_add_cstr(scope->string_store, buf);
@@ -563,7 +590,11 @@ kokos_expr_list_t kokos_values_to_exprs(
 
             expr.type = EXPR_INT_LIT;
             break;
-        default: KOKOS_TODO();
+        }
+        default: {
+            char buf[512];
+            sprintf(buf, "value with tag %lx to expr", VALUE_TAG(val));
+            KOKOS_TODO(buf);
         }
         }
 
@@ -622,7 +653,7 @@ static bool kokos_eval_macro(
        TRY(kokos_expr_compile(&exprs.exprs[i], scope));
     }
 
-    KOKOS_FREE(exprs.exprs);
+    kokos_exprs_destroy_recursively(exprs.exprs, exprs.len);
 
     return true;
 }
@@ -743,12 +774,16 @@ bool kokos_expr_compile_quoted(kokos_expr_t const* expr, kokos_scope_t* scope)
     case EXPR_FLOAT_LIT:
     case EXPR_STRING_LIT:
     case EXPR_MAP:
-    case EXPR_IDENT:
     case EXPR_VECTOR:     {
         return kokos_expr_compile(expr, scope);
     }
     case EXPR_LIST: {
         return compile_quoted_list(expr, scope);
+    }
+    case EXPR_IDENT: {
+        kokos_runtime_string_t* sym = (void*)kokos_string_store_add_sv(scope->string_store, expr->token.value);
+        DA_ADD(&scope->code, INSTR_PUSH(TO_SYM(sym).as_int));
+        return true;
     }
     default: {
         char buf[128] = { 0 };

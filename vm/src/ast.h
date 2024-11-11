@@ -146,7 +146,6 @@ static inline void kokos_expr_destroy(kokos_expr_t* expr)
     case EXPR_IDENT: break;
 
     case EXPR_VECTOR:
-        break;
     case EXPR_LIST:
         _Static_assert(offsetof(kokos_list_t, items) == offsetof(kokos_vec_t, items));
 
@@ -172,6 +171,15 @@ static inline void kokos_expr_destroy(kokos_expr_t* expr)
         KOKOS_TODO(buf);
     }
     }
+}
+
+static inline void kokos_exprs_destroy_recursively(kokos_expr_t* exprs, size_t count)
+{
+    for (size_t i = 0; i < count; i++) {
+        kokos_expr_destroy(&exprs[i]);
+    }
+
+    KOKOS_FREE(exprs);
 }
 
 static void kokos_module_destroy(kokos_module_t module)
