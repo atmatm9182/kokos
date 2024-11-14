@@ -41,8 +41,6 @@ typedef enum {
     PROC_NATIVE,
 } kokos_runtime_proc_type_e;
 
-typedef size_t kokos_label_t;
-
 typedef struct {
     kokos_code_t code;
     kokos_params_t params;

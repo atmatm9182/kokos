@@ -81,10 +81,13 @@ void kokos_instruction_dump(kokos_instruction_t instruction)
     case I_MUL:
     case I_DIV:
     case I_SUB:
+    case I_PUSH_SCOPE:
+        printf(" %lu", instruction.operand); break;
+
+    case I_BRANCH:
     case I_JZ:
     case I_JNZ:
-    case I_PUSH_SCOPE:
-    case I_BRANCH:      printf(" %lu", instruction.operand); break;
+        printf(" %lu", *(size_t*)instruction.operand); break;
     default:            {
         char buf[512];
         sprintf(buf, "printing of instruction type %d", instruction.type);

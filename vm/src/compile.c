@@ -97,7 +97,7 @@ static inline kokos_list_t list_slice(kokos_list_t list, size_t idx)
     return (kokos_list_t) { .items = list.items + idx, .len = count };
 }
 
-bool expr_to_params(kokos_expr_t const* expr, kokos_params_t* params, kokos_scope_t* scope)
+bool kokos_expr_to_params(kokos_expr_t const* expr, kokos_params_t* params, kokos_scope_t* scope)
 {
     kokos_list_t list = expr->list;
 
@@ -130,101 +130,6 @@ bool expr_to_params(kokos_expr_t const* expr, kokos_params_t* params, kokos_scop
     return true;
 }
 
-static bool compile_procedure_def(kokos_expr_t const* expr, kokos_scope_t* scope)
-{
-    kokos_list_t list = expr->list;
-    if (list.len < 3) {
-        set_error(expr->token.location,
-            "procedure definition must have at least a name and an argument list");
-        return false;
-    }
-
-    string_view name = list.items[1].token.value;
-
-    kokos_expr_t const* params_expr = &list.items[2];
-    if (params_expr->type != EXPR_LIST) {
-        set_error(params_expr->token.location,
-            "cannot use value of type %s as an argument list for a procedure",
-            kokos_expr_type_str(params_expr->type));
-        return false;
-    }
-
-    kokos_params_t params;
-    TRY(expr_to_params(params_expr, &params, scope));
-
-    kokos_scope_t* proc_scope = kokos_scope_derived(scope);
-
-    // Add the procedure before the body compilation to allow recursion
-    kokos_runtime_proc_t* proc = KOKOS_ZALLOC(sizeof(kokos_runtime_proc_t));
-    proc->type = PROC_KOKOS;
-    proc->kokos.params = params;
-
-    /*kokos_scope_add_proc(scope, name, proc);*/
-
-    for (size_t i = 3; i < list.len; i++) {
-        TRY(kokos_expr_compile(&list.items[i], proc_scope));
-    }
-
-    DA_ADD(&proc_scope->code, INSTR_RET);
-    proc->kokos.code = proc_scope->code;
-
-    const kokos_runtime_string_t* rt_name = kokos_string_store_add_sv(scope->string_store, name);
-
-    DA_ADD(&scope->code, INSTR_PUSH(TO_PROC(proc).as_int));
-    DA_ADD(&scope->code, INSTR_ADD_LOCAL(rt_name));
-
-    ht_add(&scope->procs, (kokos_runtime_string_t*)rt_name, proc);
-
-    return true;
-}
-
-static bool compile_macro_def(kokos_expr_t const* expr, kokos_scope_t* scope)
-{
-    KOKOS_ASSERT(expr->type == EXPR_LIST);
-    KOKOS_ASSERT(expr->list.len >= 1);
-
-    kokos_list_t list = expr->list;
-    if (list.len < 3) {
-       set_error(expr->token.location,
-           "procedure definition must have at least a name and an argument list");
-       return false;
-    }
-
-    kokos_expr_t const* params_expr = &list.items[2];
-    if (params_expr->type != EXPR_LIST) {
-       set_error(params_expr->token.location,
-           "cannot use value of type %s as an argument list for a procedure",
-           kokos_expr_type_str(params_expr->type));
-       return false;
-    }
-
-    kokos_params_t params;
-    TRY(expr_to_params(params_expr, &params, scope));
-
-    kokos_scope_t* macro_scope = kokos_scope_derived(scope);
-
-    // Add the macro before the body compilation to allow recursion
-    kokos_macro_t* macro = KOKOS_ALLOC(sizeof(kokos_macro_t));
-    macro->params = params;
-    macro->name = (void*)kokos_string_store_add_sv(scope->string_store, list.items[1].token.value);
-
-    ht_add(&scope->macros, macro->name, macro);
-
-    for (size_t i = 3; i < list.len; i++) {
-       TRY(kokos_expr_compile(&list.items[i], macro_scope));
-    }
-
-    DA_ADD(&macro_scope->code, INSTR_RET);
-    macro->instructions = macro_scope->code;
-
-    return true;
-}
-
-typedef struct {
-    uint32_t idx;
-    uint32_t hops;
-} kokos_var_lookup_result_t;
-
 static bool get_special_value(string_view value, uint64_t* out)
 {
     if (sv_eq_cstr(value, "true")) {
@@ -243,213 +148,32 @@ static bool get_special_value(string_view value, uint64_t* out)
     return false;
 }
 
-typedef bool (*kokos_expr_compilation_func_t)(kokos_expr_t const*, kokos_scope_t* scope);
+typedef bool (*kokos_compilation_func_t)(kokos_expr_t const*, kokos_scope_t* scope);
 
-static bool compile_all_args_reversed(
-    kokos_expr_t const* expr, kokos_scope_t* scope, kokos_expr_compilation_func_t func)
+static bool kokos_compile_all(kokos_list_t exprs, kokos_scope_t* scope, kokos_compilation_func_t comp)
 {
-    kokos_list_t elements = expr->list;
-    for (size_t i = elements.len - 1; i > 0; i--) {
-        kokos_expr_t const* elem = &elements.items[i];
-        TRY(kokos_expr_compile(elem, scope));
+    for (size_t i = 0; i < exprs.len; i++) {
+        printf("compiling ");
+        kokos_expr_dump(&exprs.items[i]);
+        printf("\n");
+        TRY(comp(&exprs.items[i], scope));
     }
 
     return true;
 }
 
-static bool compile_all_args(kokos_expr_t const* expr, kokos_scope_t* scope)
+static inline bool kokos_compile_all_reversed(kokos_list_t exprs, kokos_scope_t* scope, kokos_compilation_func_t comp)
 {
-    kokos_list_t elements = expr->list;
-    for (size_t i = 1; i < elements.len; i++) {
-        kokos_expr_t const* elem = &elements.items[i];
-        TRY(kokos_expr_compile(elem, scope));
+    for (size_t i = 0; i < exprs.len; i++) {
+        TRY(comp(&exprs.items[exprs.len - 1 - i], scope));
     }
 
     return true;
 }
 
-static bool compile_mul(kokos_expr_t const* expr, kokos_scope_t* scope)
-{
-    TRY(compile_all_args(expr, scope));
+#include "sform.c"
 
-    DA_ADD(&scope->code, INSTR_MUL(expr->list.len - 1));
-    return true;
-}
-
-static bool compile_div(kokos_expr_t const* expr, kokos_scope_t* scope)
-{
-    TRY(compile_all_args(expr, scope));
-
-    DA_ADD(&scope->code, INSTR_DIV(expr->list.len - 1));
-    return true;
-}
-static bool compile_sub(kokos_expr_t const* expr, kokos_scope_t* scope)
-{
-    TRY(compile_all_args(expr, scope));
-
-    DA_ADD(&scope->code, INSTR_SUB(expr->list.len - 1));
-    return true;
-}
-
-static bool compile_add(kokos_expr_t const* expr, kokos_scope_t* scope)
-{
-    TRY(compile_all_args(expr, scope));
-
-    DA_ADD(&scope->code, INSTR_ADD(expr->list.len - 1));
-    return true;
-}
-
-static bool compile_if(kokos_expr_t const* expr, kokos_scope_t* scope)
-{
-    kokos_code_t* code = &scope->code;
-    if (expr->list.len < 3 || expr->list.len > 4) {
-        set_error(expr->token.location, "badly formed 'if' expression");
-        return false;
-    }
-
-    kokos_list_t exprs = expr->list;
-
-    TRY(kokos_expr_compile(&exprs.items[1], scope));
-
-    DA_ADD(code, INSTR_JZ(0));
-
-    size_t start_ip = code->len;
-    // TODO: we should introduce two separate scopes for the true and false branches
-    TRY(kokos_expr_compile(&exprs.items[2], scope));
-
-    switch (expr->list.len) {
-    case 4: {
-        DA_ADD(code, INSTR_BRANCH(0));
-
-        size_t consequence_ip = code->len - start_ip;
-        TRY(kokos_expr_compile(&exprs.items[3], scope));
-
-        KOKOS_ASSERT(code->items[start_ip - 1].type == I_JZ);
-        code->items[start_ip - 1].operand = consequence_ip + 1; // patch the jump instruction
-
-        KOKOS_ASSERT(code->items[consequence_ip + start_ip - 1].type == I_BRANCH);
-        code->items[consequence_ip + start_ip - 1].operand
-            = code->len - (consequence_ip + start_ip) + 1; // patch the branch instruction
-
-        return true;
-    }
-    case 3: {
-        size_t consequence_ip = code->len - start_ip;
-        KOKOS_ASSERT(code->items[start_ip - 1].type == I_JZ);
-        code->items[start_ip - 1].operand = consequence_ip + 1; // patch the jump instruction
-        return true;
-    }
-    default: KOKOS_VERIFY("unreachable");
-    }
-
-    return false;
-}
-
-static bool compile_eq(kokos_expr_t const* expr, kokos_scope_t* scope)
-{
-    TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
-
-    TRY(compile_all_args(expr, scope));
-
-    DA_ADD(&scope->code, INSTR_CMP);
-    DA_ADD(&scope->code, INSTR_EQ(0));
-
-    return true;
-}
-
-static bool compile_neq(kokos_expr_t const* expr, kokos_scope_t* scope)
-{
-    TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
-
-    TRY(compile_all_args(expr, scope));
-
-    DA_ADD(&scope->code, INSTR_CMP);
-    DA_ADD(&scope->code, INSTR_NEQ(0));
-
-    return true;
-}
-
-static bool compile_lte(kokos_expr_t const* expr, kokos_scope_t* scope)
-{
-    TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
-
-    TRY(compile_all_args(expr, scope));
-
-    DA_ADD(&scope->code, INSTR_CMP);
-    DA_ADD(&scope->code, INSTR_NEQ(1));
-
-    return true;
-}
-
-static bool compile_gte(kokos_expr_t const* expr, kokos_scope_t* scope)
-{
-    TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
-
-    TRY(compile_all_args(expr, scope));
-
-    DA_ADD(&scope->code, INSTR_CMP);
-    DA_ADD(&scope->code, INSTR_NEQ((uint64_t)-1));
-
-    return true;
-}
-
-static bool compile_gt(kokos_expr_t const* expr, kokos_scope_t* scope)
-{
-    TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
-
-    TRY(compile_all_args(expr, scope));
-
-    DA_ADD(&scope->code, INSTR_CMP);
-    DA_ADD(&scope->code, INSTR_EQ(1));
-
-    return true;
-}
-
-static bool compile_lt(kokos_expr_t const* expr, kokos_scope_t* scope)
-{
-    TRY(expect_arity(expr->token.location, 3, expr->list.len, P_EQUAL));
-
-    TRY(compile_all_args(expr, scope));
-
-    DA_ADD(&scope->code, INSTR_CMP);
-    DA_ADD(&scope->code, INSTR_EQ((uint64_t)-1));
-
-    return true;
-}
-
-// NOTE: this is kinda weird. `let` creates a new scope, but the locals will still
-// be stored into the `locals` array of the current function frame
-static bool compile_let(kokos_expr_t const* expr, kokos_scope_t* scope)
-{
-    KOKOS_ASSERT(expr->type == EXPR_LIST);
-
-    VERIFY_TYPE(&expr->list.items[1], EXPR_LIST);
-    kokos_list_t vars = expr->list.items[1].list;
-
-    DA_ADD(&scope->code, INSTR_PUSH_SCOPE(vars.len / 2));
-
-    for (size_t i = 0; i < vars.len; i += 2) {
-        kokos_expr_t const* key = &vars.items[i];
-        VERIFY_TYPE(key, EXPR_IDENT);
-
-        kokos_expr_t const* value = &vars.items[i + 1];
-        TRY(kokos_expr_compile(value, scope));
-
-        kokos_runtime_string_t* var_name = (void*)kokos_string_store_add_sv(scope->string_store, key->token.value);
-        DA_ADD(&scope->code, INSTR_ADD_LOCAL(var_name));
-    }
-
-    // compile body with the new bindings
-    for (size_t i = 0; i < expr->list.len - 2; i++) {
-        TRY(kokos_expr_compile(&expr->list.items[i + 2], scope));
-    }
-
-    DA_ADD(&scope->code, INSTR_POP_SCOPE);
-
-    return true;
-}
-
-typedef bool (*kokos_sform_t)(kokos_expr_t const* expr, kokos_scope_t* scope);
+typedef bool (*kokos_sform_t)(const kokos_expr_t* expr, kokos_scope_t* scope);
 
 typedef struct {
     char const* name;
@@ -457,20 +181,9 @@ typedef struct {
 } kokos_sform_pair_t;
 
 static kokos_sform_pair_t sforms[] = {
-    { "proc", compile_procedure_def },
-    { "macro", compile_macro_def },
-    { "let", compile_let },
-    { "+", compile_add },
-    { "-", compile_sub },
-    { "*", compile_mul },
-    { "/", compile_div },
-    { "if", compile_if },
-    { "<", compile_lt },
-    { ">", compile_gt },
-    { "<=", compile_lte },
-    { ">=", compile_gte },
-    { "=", compile_eq },
-    { "/=", compile_neq },
+    #define X(f, name) { #name, kokos_sform_##f },
+    ENUMERATE_SFORMS
+    #undef X
 };
 
 #define SFORMS_COUNT (sizeof(sforms) / sizeof(sforms[0]))
@@ -503,13 +216,6 @@ static void scope_add_call_location(kokos_scope_t* scope, size_t ip, kokos_token
     *tok = where;
 
     ht_add(&scope->call_locations, (void*)ip, tok);
-}
-
-static void kokos_compile_string_lit(
-    kokos_expr_t const* expr, kokos_scope_t* scope, kokos_code_t* code)
-{
-    kokos_runtime_string_t* string = (void*)kokos_string_store_add_sv(scope->string_store, expr->token.value);
-    DA_ADD(code, INSTR_PUSH(TO_STRING(string).as_int));
 }
 
 typedef struct {
@@ -685,7 +391,8 @@ static bool compile_list(kokos_expr_t const* expr, kokos_scope_t* scope)
     /*    return kokos_eval_macro(macro, expr, scope);*/
     /*}*/
     /**/
-    TRY(compile_all_args_reversed(expr, scope, kokos_expr_compile));
+    kokos_list_t args = list_slice(expr->list, 1);
+    TRY(kokos_compile_all_reversed(args, scope, kokos_expr_compile));
     DA_ADD(&scope->code, INSTR_CALL(kokos_string_store_add_sv(scope->string_store, head), list.len - 1));
 
     return true;
@@ -709,12 +416,12 @@ bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* scope)
     switch (expr->type) {
     case EXPR_FLOAT_LIT: {
         uint64_t value = to_double_bytes(expr);
-        DA_ADD(code, INSTR_PUSH(value));
+        DA_ADD(code, INSTR_PUSH(TO_VALUE(value)));
         break;
     }
     case EXPR_INT_LIT: {
         uint64_t value = sv_atoi(expr->token.value);
-        DA_ADD(code, INSTR_PUSH(TO_INT(value)));
+        DA_ADD(code, INSTR_PUSH(TO_INT_INT(value)));
         break;
     }
     case EXPR_LIST: {
@@ -726,7 +433,7 @@ bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* scope)
     case EXPR_IDENT: {
         uint64_t special;
         if (get_special_value(expr->token.value, &special)) {
-            DA_ADD(code, INSTR_PUSH(special));
+            DA_ADD(code, INSTR_PUSH(TO_STRING_INT(special)));
             break;
         }
 
@@ -734,7 +441,7 @@ bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* scope)
         break;
     }
     case EXPR_STRING_LIT: {
-        kokos_compile_string_lit(expr, scope, code);
+        DA_ADD(&scope->code, INSTR_PUSH(TO_STRING((void*)kokos_string_store_add_sv(scope->string_store, expr->token.value))));
         break;
     }
     case EXPR_MAP: {
@@ -782,7 +489,7 @@ bool kokos_expr_compile_quoted(kokos_expr_t const* expr, kokos_scope_t* scope)
     }
     case EXPR_IDENT: {
         kokos_runtime_string_t* sym = (void*)kokos_string_store_add_sv(scope->string_store, expr->token.value);
-        DA_ADD(&scope->code, INSTR_PUSH(TO_SYM(sym).as_int));
+        DA_ADD(&scope->code, INSTR_PUSH(TO_SYM(sym)));
         return true;
     }
     default: {
@@ -797,7 +504,7 @@ bool kokos_expr_compile_quoted(kokos_expr_t const* expr, kokos_scope_t* scope)
 }
 
 static void kokos_compiled_module_init_from_scope(
-    kokos_compiled_module_t* module, kokos_scope_t const* scope)
+    kokos_compiled_module_t* module, kokos_scope_t* scope)
 {
     KOKOS_ASSERT(scope->parent == NULL); // ensuring that the module's scope is toplevel!
 
@@ -805,10 +512,10 @@ static void kokos_compiled_module_init_from_scope(
     module->string_store = *scope->string_store;
     module->procs = scope->procs;
     /*module->macros = scope->macros;*/
-    module->instructions = scope->code;
     module->top_level_code_start = module->instructions.len;
 
-    DA_ADD(&module->instructions, INSTR_RET);
+    DA_ADD(&scope->code, INSTR_RET);
+    module->instructions = scope->code;
 }
 
 bool kokos_compile_module(

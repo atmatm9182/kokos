@@ -94,7 +94,7 @@ kokos_scope_t* kokos_scope_root(void)
         proc->native = natives.procs[i];
         proc->type = PROC_NATIVE;
 
-        DA_ADD(&scope->code, INSTR_PUSH(TO_PROC(proc).as_int));
+        DA_ADD(&scope->code, INSTR_PUSH(TO_PROC(proc)));
 
         kokos_runtime_string_t* name = (kokos_runtime_string_t*)kokos_string_store_add_sv(scope->string_store, natives.names[i]);
         DA_ADD(&scope->code, INSTR_ADD_LOCAL(TO_STRING(name).as_int));

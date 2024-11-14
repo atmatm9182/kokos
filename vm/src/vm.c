@@ -62,6 +62,8 @@ static bool kokos_cmp_values(kokos_vm_t* vm, kokos_value_t lhs, kokos_value_t rh
 {
     kokos_frame_t* frame = current_frame(vm);
 
+    printf("lhs: %lx, rhs: %lx\n", lhs.as_int, rhs.as_int);
+
     if (lhs.as_int == rhs.as_int) {
         STACK_PUSH(&frame->stack, TO_VALUE(0));
         return true;
@@ -551,14 +553,14 @@ static bool kokos_vm_exec_cur(kokos_vm_t* vm)
         break;
     }
     case I_BRANCH: {
-        vm->ip += (int32_t)instruction.operand;
+        vm->ip = *(size_t*)instruction.operand;
         break;
     }
     case I_JZ: {
         kokos_value_t test;
         STACK_POP(&frame->stack, &test);
         if (!kokos_value_to_bool(test)) {
-            vm->ip += (int32_t)instruction.operand;
+            vm->ip = *(size_t*)instruction.operand;
             break;
         }
 
@@ -569,7 +571,7 @@ static bool kokos_vm_exec_cur(kokos_vm_t* vm)
         kokos_value_t test;
         STACK_POP(&frame->stack, &test);
         if (kokos_value_to_bool(test)) {
-            vm->ip += (int32_t)instruction.operand;
+            vm->ip += *(size_t*)instruction.operand;
             break;
         }
 

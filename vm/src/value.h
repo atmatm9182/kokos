@@ -76,12 +76,16 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
 #define FROM_PTR(p) ((kokos_value_t) { .as_int = (uintptr_t)(p) })
 
 #define X(t)                                                                                       \
+    static inline kokos_value_t TO_##t##_INT(uintptr_t ptr) \
+    { \
+    return TO_VALUE(ptr | t##_BITS);\
+    } \
     static inline kokos_value_t TO_##t(void* ptr)                                                  \
     {                                                                                              \
-        return TO_VALUE((uint64_t)ptr | t##_BITS);                                                 \
+    return TO_##t##_INT((uintptr_t)ptr);\
     }
 
-ENUMERATE_HEAP_TYPES
+ENUMERATE_TAGGED_TYPES
 #undef X
 
 #define GET_TAG(i) ((i) >> 48)

@@ -31,7 +31,7 @@ typedef struct {
     uint64_t operand;
 } kokos_instruction_t;
 
-#define INSTR_PUSH(op) ((kokos_instruction_t) { .type = I_PUSH, .operand = (op) })
+#define INSTR_PUSH(op) ((kokos_instruction_t) { .type = I_PUSH, .operand = (op).as_int })
 #define INSTR_POP(op) ((kokos_instruction_t) { .type = I_POP, .operand = (op) })
 #define INSTR_ADD(op) ((kokos_instruction_t) { .type = I_ADD, .operand = (op) })
 #define INSTR_MUL(op) ((kokos_instruction_t) { .type = I_MUL, .operand = (op) })
@@ -43,9 +43,9 @@ typedef struct {
     ((kokos_instruction_t) { .type = I_ADD_LOCAL, .operand = (uintptr_t)(name) })
 #define INSTR_CALL(name, nargs)                                                                    \
     ((kokos_instruction_t) { .type = I_CALL, .operand = (nargs) << 48 | (uintptr_t)name })
-#define INSTR_JZ(op) ((kokos_instruction_t) { .type = I_JZ, .operand = (op) })
-#define INSTR_JNZ(op) ((kokos_instruction_t) { .type = I_JNZ, .operand = (op) })
-#define INSTR_BRANCH(op) ((kokos_instruction_t) { .type = I_BRANCH, .operand = (op) })
+#define INSTR_JZ(op) ((kokos_instruction_t) { .type = I_JZ, .operand = (size_t)(op) })
+#define INSTR_JNZ(op) ((kokos_instruction_t) { .type = I_JNZ, .operand = (size_t)(op) })
+#define INSTR_BRANCH(op) ((kokos_instruction_t) { .type = I_BRANCH, .operand = (size_t)(op) })
 #define INSTR_EQ(op) ((kokos_instruction_t) { .type = I_EQ, .operand = (op) })
 #define INSTR_NEQ(op) ((kokos_instruction_t) { .type = I_NEQ, .operand = (op) })
 
