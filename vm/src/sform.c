@@ -1,10 +1,10 @@
 #include "bytecode-assembler.h"
 
-#define VERIFY_ARGS_COUNT(f, c) \
-    do { \
-if (args.len != (c)) { \
-set_error(where, "expected %d forms for '" #f "'", (c)); \
-} \
+#define VERIFY_ARGS_COUNT(f, c)                                                                    \
+    do {                                                                                           \
+        if (args.len != (c)) {                                                                     \
+            set_error(where, "expected %d forms for '" #f "'", (c));                               \
+        }                                                                                          \
     } while (0);
 
 #define COMP_ARGS() TRY(kokos_compile_all(args, scope, kokos_expr_compile))
@@ -39,7 +39,8 @@ KOKOS_DEFINE_SFORM(var, {
 
     TRY(kokos_expr_compile(&args.items[1], scope));
 
-    kokos_runtime_string_t* name = (void*)kokos_string_store_add_sv(scope->string_store, args.items[0].token.value);
+    kokos_runtime_string_t* name
+        = (void*)kokos_string_store_add_sv(scope->string_store, args.items[0].token.value);
     ADD_LOCAL(name);
 })
 
@@ -72,7 +73,8 @@ KOKOS_DEFINE_SFORM(proc, {
     /* DA_ADD(&proc->kokos.code, INSTR_PUSH(TO_PROC(proc).as_int)); */
     PUSH(TO_PROC(proc));
 
-    kokos_runtime_string_t* name = (void*)kokos_string_store_add_sv(scope->string_store, args.items[0].token.value);
+    kokos_runtime_string_t* name
+        = (void*)kokos_string_store_add_sv(scope->string_store, args.items[0].token.value);
     ADD_LOCAL(name);
 
     ht_add(&scope->procs, name, proc);
@@ -81,15 +83,15 @@ KOKOS_DEFINE_SFORM(proc, {
 KOKOS_DEFINE_SFORM(macro, {
     if (args.len < 2) {
         set_error(expr->token.location,
-                  "macro definition must have at least a name and an argument list");
+            "macro definition must have at least a name and an argument list");
         return false;
     }
 
     kokos_expr_t const* params_expr = &args.items[1];
     if (params_expr->type != EXPR_LIST) {
         set_error(params_expr->token.location,
-                  "cannot use value of type %s as an argument list for a procedure",
-                  kokos_expr_type_str(params_expr->type));
+            "cannot use value of type %s as an argument list for a procedure",
+            kokos_expr_type_str(params_expr->type));
         return false;
     }
 
@@ -128,7 +130,8 @@ KOKOS_DEFINE_SFORM(let, {
         kokos_expr_t const* value = &vars.items[i + 1];
         TRY(kokos_expr_compile(value, scope));
 
-        kokos_runtime_string_t* var_name = (void*)kokos_string_store_add_sv(scope->string_store, key->token.value);
+        kokos_runtime_string_t* var_name
+            = (void*)kokos_string_store_add_sv(scope->string_store, key->token.value);
         ADD_LOCAL(var_name);
     }
 
@@ -164,13 +167,17 @@ KOKOS_DEFINE_SFORM(if, {
     VERIFY_ARGS_COUNT(if, 3);
     TRY(kokos_expr_compile(&args.items[0], scope));
 
-    kokos_label_t end_label = LABEL();
+    kokos_label_t alt_label = LABEL();
 
-    JZ(end_label);
+    JZ(alt_label);
 
     TRY(kokos_expr_compile(&args.items[1], scope));
 
+    kokos_label_t end_label = LABEL();
+
     BRANCH(end_label);
+
+    LINK(alt_label);
 
     TRY(kokos_expr_compile(&args.items[2], scope));
 
