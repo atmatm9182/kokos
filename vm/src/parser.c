@@ -10,7 +10,7 @@
 
 char err_buf[512];
 
-static void set_unterminated_literal_err(char const* what, kokos_token_t token)
+static void set_unterminated_literal_err(const char* what, kokos_token_t token)
 {
     sprintf(err_buf, "unterminated %s literal: '" SV_FMT "' at %s:%zu:%zu", what,
         SV_ARG(token.value), token.location.filename, token.location.row, token.location.col);
@@ -197,13 +197,13 @@ kokos_module_t kokos_parser_parse_module(kokos_parser_t* parser)
     return prog;
 }
 
-bool kokos_parser_ok(kokos_parser_t const* parser)
+bool kokos_parser_ok(const kokos_parser_t* parser)
 {
     (void)parser;
     return strlen(err_buf) == 0;
 }
 
-char const* kokos_parser_get_err(kokos_parser_t const* parser)
+const char* kokos_parser_get_err(const kokos_parser_t* parser)
 {
     (void)parser;
     return err_buf;

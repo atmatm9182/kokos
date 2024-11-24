@@ -1,7 +1,7 @@
 #include "ast.h"
+#include "macro.h"
 #include "macros.h"
 #include "runtime.h"
-#include "macro.h"
 #include "scope.h"
 #include "token.h"
 
@@ -34,15 +34,15 @@ bool kokos_compile_ok(void)
     return strlen(err_buf) == 0;
 }
 
-char const* kokos_compile_get_err(void)
+const char* kokos_compile_get_err(void)
 {
     return err_buf;
 }
 
-static void set_error(kokos_location_t location, char const* fmt, ...)
+static void set_error(kokos_location_t location, const char* fmt, ...)
     __attribute__((format(printf, 2, 3)));
 
-static void set_error(kokos_location_t location, char const* fmt, ...)
+static void set_error(kokos_location_t location, const char* fmt, ...)
 {
     int len = sprintf(err_buf, "%s:%lu:%lu ", location.filename, location.row, location.col);
 
@@ -77,7 +77,7 @@ static bool expect_arity(kokos_location_t location, int expected, int got, arity
     return true;
 }
 
-static uint64_t to_double_bytes(kokos_expr_t const* expr)
+static uint64_t to_double_bytes(const kokos_expr_t* expr)
 {
     double parsed = sv_atof(expr->token.value);
     return TO_VALUE(parsed).as_int;
@@ -97,7 +97,7 @@ static inline kokos_list_t list_slice(kokos_list_t list, size_t idx)
     return (kokos_list_t) { .items = list.items + idx, .len = count };
 }
 
-bool kokos_expr_to_params(kokos_expr_t const* expr, kokos_params_t* params, kokos_scope_t* scope)
+bool kokos_expr_to_params(const kokos_expr_t* expr, kokos_params_t* params, kokos_scope_t* scope)
 {
     kokos_list_t list = expr->list;
 
@@ -110,7 +110,7 @@ bool kokos_expr_to_params(kokos_expr_t const* expr, kokos_params_t* params, koko
 
     bool variadic = false;
     for (size_t i = 0; i < list.len; i++) {
-        kokos_expr_t const* param = &list.items[i];
+        const kokos_expr_t* param = &list.items[i];
         VERIFY_TYPE(param, EXPR_IDENT);
 
         if (sv_eq_cstr(param->token.value, "&")) {
@@ -148,9 +148,10 @@ static bool get_special_value(string_view value, uint64_t* out)
     return false;
 }
 
-typedef bool (*kokos_compilation_func_t)(kokos_expr_t const*, kokos_scope_t* scope);
+typedef bool (*kokos_compilation_func_t)(const kokos_expr_t*, kokos_scope_t* scope);
 
-static bool kokos_compile_all(kokos_list_t exprs, kokos_scope_t* scope, kokos_compilation_func_t comp)
+static bool kokos_compile_all(
+    kokos_list_t exprs, kokos_scope_t* scope, kokos_compilation_func_t comp)
 {
     for (size_t i = 0; i < exprs.len; i++) {
         printf("compiling ");
@@ -162,7 +163,8 @@ static bool kokos_compile_all(kokos_list_t exprs, kokos_scope_t* scope, kokos_co
     return true;
 }
 
-static inline bool kokos_compile_all_reversed(kokos_list_t exprs, kokos_scope_t* scope, kokos_compilation_func_t comp)
+static inline bool kokos_compile_all_reversed(
+    kokos_list_t exprs, kokos_scope_t* scope, kokos_compilation_func_t comp)
 {
     for (size_t i = 0; i < exprs.len; i++) {
         TRY(comp(&exprs.items[exprs.len - 1 - i], scope));
@@ -176,14 +178,14 @@ static inline bool kokos_compile_all_reversed(kokos_list_t exprs, kokos_scope_t*
 typedef bool (*kokos_sform_t)(const kokos_expr_t* expr, kokos_scope_t* scope);
 
 typedef struct {
-    char const* name;
+    const char* name;
     kokos_sform_t sform;
 } kokos_sform_pair_t;
 
 static kokos_sform_pair_t sforms[] = {
-    #define X(f, name) { #name, kokos_sform_##f },
+#define X(f, name) { #name, kokos_sform_##f },
     ENUMERATE_SFORMS
-    #undef X
+#undef X
 };
 
 #define SFORMS_COUNT (sizeof(sforms) / sizeof(sforms[0]))
@@ -191,7 +193,7 @@ static kokos_sform_pair_t sforms[] = {
 static kokos_sform_t get_sform(string_view name)
 {
     for (size_t i = 0; i < SFORMS_COUNT; i++) {
-        char const* sname = sforms[i].name;
+        const char* sname = sforms[i].name;
         if (sv_eq_cstr(name, sname)) {
             return sforms[i].sform;
         }
@@ -224,7 +226,7 @@ typedef struct {
 } kokos_expr_list_t;
 
 kokos_expr_list_t kokos_values_to_exprs(
-    kokos_value_t const* values, size_t values_count, kokos_scope_t* scope)
+    const kokos_value_t* values, size_t values_count, kokos_scope_t* scope)
 {
     struct {
         kokos_expr_t* items;
@@ -242,7 +244,7 @@ kokos_expr_list_t kokos_values_to_exprs(
         if (IS_DOUBLE(val)) {
             char buf[64];
             sprintf(buf, "%f", val.as_double);
-            kokos_runtime_string_t const* string
+            const kokos_runtime_string_t* string
                 = kokos_string_store_add_cstr(scope->string_store, buf);
 
             // TODO: come up with a smart way to add token locations since this function is used to
@@ -288,7 +290,7 @@ kokos_expr_list_t kokos_values_to_exprs(
         case INT_TAG: {
             char buf[10];
             sprintf(buf, "%d", GET_INT(val));
-            kokos_runtime_string_t const* string
+            const kokos_runtime_string_t* string
                 = kokos_string_store_add_cstr(scope->string_store, buf);
 
             tok.value = sv_make(string->ptr, string->len);
@@ -312,10 +314,10 @@ kokos_expr_list_t kokos_values_to_exprs(
     return (kokos_expr_list_t) { .exprs = result.items, .len = result.len };
 }
 
-bool kokos_expr_compile_quoted(kokos_expr_t const* expr, kokos_scope_t* scope);
+bool kokos_expr_compile_quoted(const kokos_expr_t* expr, kokos_scope_t* scope);
 
 static bool kokos_eval_macro(
-    kokos_macro_t const* macro, kokos_expr_t const* expr, kokos_scope_t* scope)
+    const kokos_macro_t* macro, const kokos_expr_t* expr, kokos_scope_t* scope)
 {
     KOKOS_ASSERT(expr->type == EXPR_LIST);
     KOKOS_ASSERT(expr->list.len >= 1);
@@ -324,15 +326,14 @@ static bool kokos_eval_macro(
     string_view head = expr->list.items[0].token.value;
 
     if (macro->params.variadic) {
-       KOKOS_TODO();
+        KOKOS_TODO();
     }
 
     if (macro->params.len != args.len) {
-       set_error(expr->token.location,
-                 "expected %lu arguments for procedure '" SV_FMT "', got %lu instead",
-                 macro->params.len,
-                 SV_ARG(head), args.len);
-       return false;
+        set_error(expr->token.location,
+            "expected %lu arguments for procedure '" SV_FMT "', got %lu instead", macro->params.len,
+            SV_ARG(head), args.len);
+        return false;
     }
 
     kokos_scope_t* dumb_scope = kokos_scope_derived(scope);
@@ -347,16 +348,14 @@ static bool kokos_eval_macro(
     kokos_vm_t* vm = scope->macro_vm;
     if (!kokos_vm_run_code(vm, dumb_scope->code)) {
         const char* ex = kokos_exception_to_string(&vm->registers.exception);
-        set_error(expr->token.location,
-                  "macro evaluation has produced an exception: %s",
-                  ex);
+        set_error(expr->token.location, "macro evaluation has produced an exception: %s", ex);
         return false;
     }
 
     kokos_frame_t* f = vm->frames.data[0];
     kokos_expr_list_t exprs = kokos_values_to_exprs(f->stack.data, f->stack.sp, scope);
     for (size_t i = 0; i < exprs.len; i++) {
-       TRY(kokos_expr_compile(&exprs.exprs[i], scope));
+        TRY(kokos_expr_compile(&exprs.exprs[i], scope));
     }
 
     kokos_exprs_destroy_recursively(exprs.exprs, exprs.len);
@@ -364,7 +363,7 @@ static bool kokos_eval_macro(
     return true;
 }
 
-static bool compile_list(kokos_expr_t const* expr, kokos_scope_t* scope)
+static bool compile_list(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
     kokos_list_t list = expr->list;
     if (list.len == 0) {
@@ -393,12 +392,13 @@ static bool compile_list(kokos_expr_t const* expr, kokos_scope_t* scope)
     /**/
     kokos_list_t args = list_slice(expr->list, 1);
     TRY(kokos_compile_all_reversed(args, scope, kokos_expr_compile));
-    DA_ADD(&scope->code, INSTR_CALL(kokos_string_store_add_sv(scope->string_store, head), list.len - 1));
+    DA_ADD(&scope->code,
+        INSTR_CALL(kokos_string_store_add_sv(scope->string_store, head), list.len - 1));
 
     return true;
 }
 
-bool compile_quoted_list(kokos_expr_t const* expr, kokos_scope_t* scope)
+bool compile_quoted_list(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
     kokos_list_t list = expr->list;
     for (ssize_t i = list.len - 1; i >= 0; i--) {
@@ -409,7 +409,7 @@ bool compile_quoted_list(kokos_expr_t const* expr, kokos_scope_t* scope)
     return true;
 }
 
-bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* scope)
+bool kokos_expr_compile(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
     kokos_code_t* code = &scope->code;
 
@@ -437,11 +437,14 @@ bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* scope)
             break;
         }
 
-        DA_ADD(code, INSTR_GET_LOCAL(kokos_string_store_add_sv(scope->string_store, expr->token.value)));
+        DA_ADD(code,
+            INSTR_GET_LOCAL(kokos_string_store_add_sv(scope->string_store, expr->token.value)));
         break;
     }
     case EXPR_STRING_LIT: {
-        DA_ADD(&scope->code, INSTR_PUSH(TO_STRING((void*)kokos_string_store_add_sv(scope->string_store, expr->token.value))));
+        DA_ADD(&scope->code,
+            INSTR_PUSH(TO_STRING(
+                (void*)kokos_string_store_add_sv(scope->string_store, expr->token.value))));
         break;
     }
     case EXPR_MAP: {
@@ -474,7 +477,7 @@ bool kokos_expr_compile(kokos_expr_t const* expr, kokos_scope_t* scope)
     return true;
 }
 
-bool kokos_expr_compile_quoted(kokos_expr_t const* expr, kokos_scope_t* scope)
+bool kokos_expr_compile_quoted(const kokos_expr_t* expr, kokos_scope_t* scope)
 {
     switch (expr->type) {
     case EXPR_INT_LIT:
@@ -488,7 +491,8 @@ bool kokos_expr_compile_quoted(kokos_expr_t const* expr, kokos_scope_t* scope)
         return compile_quoted_list(expr, scope);
     }
     case EXPR_IDENT: {
-        kokos_runtime_string_t* sym = (void*)kokos_string_store_add_sv(scope->string_store, expr->token.value);
+        kokos_runtime_string_t* sym
+            = (void*)kokos_string_store_add_sv(scope->string_store, expr->token.value);
         DA_ADD(&scope->code, INSTR_PUSH(TO_SYM(sym)));
         return true;
     }

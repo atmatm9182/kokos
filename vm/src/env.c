@@ -1,6 +1,6 @@
 #include "env.h"
-#include "macros.h"
 #include "hash.h"
+#include "macros.h"
 
 kokos_env_t* kokos_env_create(kokos_env_t* parent, size_t cap)
 {

@@ -3,8 +3,8 @@
 
 #include "base.h"
 #include "instruction.h"
-#include "string-store.h"
 #include "macro.h"
+#include "string-store.h"
 
 typedef struct {
     string_view* items;
@@ -38,6 +38,6 @@ void kokos_scope_destroy(kokos_scope_t*);
 
 kokos_macro_t* kokos_scope_get_macro(kokos_scope_t* scope, string_view name);
 
-void kokos_scope_dump(kokos_scope_t const* scope);
+void kokos_scope_dump(const kokos_scope_t* scope);
 
 #endif // SCOPE_H_

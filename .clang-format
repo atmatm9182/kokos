@@ -1,5 +1,5 @@
 BasedOnStyle: WebKit
-QualifierAlignment: Right
+QualifierAlignment: Left
 IndentWidth: 4
 AllowShortFunctionsOnASingleLine: false
 ColumnLimit: 100

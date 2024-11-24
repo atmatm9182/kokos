@@ -10,7 +10,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-char* read_file(char const* filename)
+char* read_file(const char* filename)
 {
     FILE* f = fopen(filename, "r");
     if (!f) {
@@ -35,7 +35,7 @@ uint64_t get_time_stamp(void)
     return val.tv_usec + val.tv_sec * 1000000;
 }
 
-static int run_file(char const* filename)
+static int run_file(const char* filename)
 {
     char* data = read_file(filename);
     KOKOS_VERIFY(data);
@@ -48,7 +48,7 @@ static int run_file(char const* filename)
     uint64_t parser_end = get_time_stamp();
 
     if (!kokos_parser_ok(&parser)) {
-        char const* error_msg = kokos_parser_get_err(&parser);
+        const char* error_msg = kokos_parser_get_err(&parser);
         fprintf(stderr, "Error while parsing the module: %s\n", error_msg);
         return 1;
     }
@@ -66,7 +66,7 @@ static int run_file(char const* filename)
     uint64_t compile_end = get_time_stamp();
 
     if (!ok) {
-        char const* error_msg = kokos_compile_get_err();
+        const char* error_msg = kokos_compile_get_err();
         fprintf(stderr, "Error while compiling the module: %s\n", error_msg);
         return 1;
     }

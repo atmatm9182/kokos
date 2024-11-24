@@ -20,16 +20,16 @@ typedef union {
 _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
     "kokos_value_t shoud have the size of platform's pointer");
 
-#define ENUMERATE_HEAP_TYPES   \
-    X(STRING)                  \
-    X(VECTOR)                  \
-    X(LIST)                    \
-    X(MAP)                     \
-    X(PROC)                    \
+#define ENUMERATE_HEAP_TYPES                                                                       \
+    X(STRING)                                                                                      \
+    X(VECTOR)                                                                                      \
+    X(LIST)                                                                                        \
+    X(MAP)                                                                                         \
+    X(PROC)                                                                                        \
     X(SYM)
 
-#define ENUMERATE_TAGGED_TYPES \
-    ENUMERATE_HEAP_TYPES       \
+#define ENUMERATE_TAGGED_TYPES                                                                     \
+    ENUMERATE_HEAP_TYPES                                                                           \
     X(INT)
 
 #define STRING_BITS 0x7FFE000000000000
@@ -40,7 +40,8 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
 #define PROC_BITS 0xFFFF000000000000
 #define SYM_BITS 0xFFFD000000000000
 
-// NOTE: we can't generate these using X-macros, since you can't use the preprocessor inside the preprocessor
+// NOTE: we can't generate these using X-macros, since you can't use the preprocessor inside the
+// preprocessor
 #define STRING_TAG (STRING_BITS >> 48)
 #define MAP_TAG (MAP_BITS >> 48)
 #define LIST_TAG (LIST_BITS >> 48)
@@ -76,13 +77,13 @@ _Static_assert(sizeof(kokos_value_t) == sizeof(uintptr_t),
 #define FROM_PTR(p) ((kokos_value_t) { .as_int = (uintptr_t)(p) })
 
 #define X(t)                                                                                       \
-    static inline kokos_value_t TO_##t##_INT(uintptr_t ptr) \
-    { \
-    return TO_VALUE(ptr | t##_BITS);\
-    } \
+    static inline kokos_value_t TO_##t##_INT(uintptr_t ptr)                                        \
+    {                                                                                              \
+        return TO_VALUE(ptr | t##_BITS);                                                           \
+    }                                                                                              \
     static inline kokos_value_t TO_##t(void* ptr)                                                  \
     {                                                                                              \
-    return TO_##t##_INT((uintptr_t)ptr);\
+        return TO_##t##_INT((uintptr_t)ptr);                                                       \
     }
 
 ENUMERATE_TAGGED_TYPES

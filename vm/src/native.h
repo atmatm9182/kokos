@@ -1,8 +1,8 @@
 #ifndef NATIVE_H_
 #define NATIVE_H_
 
-#include "value.h"
 #include "base.h"
+#include "value.h"
 
 #include <stdbool.h>
 #include <stdint.h>

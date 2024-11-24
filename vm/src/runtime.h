@@ -91,11 +91,11 @@ extern ht_eq_func kokos_default_map_eq_func;
 void kokos_runtime_map_add(kokos_runtime_map_t* map, kokos_value_t key, kokos_value_t value);
 kokos_value_t kokos_runtime_map_find(kokos_runtime_map_t* map, kokos_value_t key);
 
-kokos_runtime_string_t* kokos_runtime_string_new(char const* data, size_t len);
+kokos_runtime_string_t* kokos_runtime_string_new(const char* data, size_t len);
 kokos_runtime_string_t* kokos_runtime_string_from_sv(string_view);
 
 void kokos_runtime_string_destroy(kokos_runtime_string_t*);
 
-size_t kokos_runtime_proc_locals_count(kokos_runtime_proc_t const*);
+size_t kokos_runtime_proc_locals_count(const kokos_runtime_proc_t*);
 
 #endif // RUNTIME_H_

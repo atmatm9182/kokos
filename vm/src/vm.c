@@ -16,11 +16,7 @@
 static bool kokos_vm_exec_cur(kokos_vm_t* vm);
 
 static kokos_frame_t* alloc_frame(
-                                  size_t ret_location,
-                                  size_t locals_count,
-                                  kokos_code_t instructions,
-                                  kokos_env_t* parent_env
-                                  )
+    size_t ret_location, size_t locals_count, kokos_code_t instructions, kokos_env_t* parent_env)
 {
     kokos_frame_t* frame = KOKOS_ZALLOC(sizeof(kokos_frame_t));
     frame->ret_location = ret_location;
@@ -38,7 +34,7 @@ static kokos_frame_t* current_frame(kokos_vm_t* vm)
     return STACK_PEEK(&vm->frames);
 }
 
-static kokos_instruction_t current_instruction(kokos_vm_t const* vm)
+static kokos_instruction_t current_instruction(const kokos_vm_t* vm)
 {
     return STACK_PEEK(&vm->frames)->instructions.items[vm->ip];
 }
@@ -61,8 +57,6 @@ static int cmp_ints(int32_t lhs, int32_t rhs)
 static bool kokos_cmp_values(kokos_vm_t* vm, kokos_value_t lhs, kokos_value_t rhs)
 {
     kokos_frame_t* frame = current_frame(vm);
-
-    printf("lhs: %lx, rhs: %lx\n", lhs.as_int, rhs.as_int);
 
     if (lhs.as_int == rhs.as_int) {
         STACK_PUSH(&frame->stack, TO_VALUE(0));
@@ -144,8 +138,8 @@ kokos_value_t kokos_alloc_value(kokos_vm_t* vm, uint64_t params)
     }
 }
 
-static kokos_frame_t* kokos_make_frame(
-                                       kokos_vm_t* vm, kokos_runtime_proc_t const* proc, size_t ret_location, kokos_token_t where, kokos_env_t* parent_env)
+static kokos_frame_t* kokos_make_frame(kokos_vm_t* vm, const kokos_runtime_proc_t* proc,
+    size_t ret_location, kokos_token_t where, kokos_env_t* parent_env)
 {
     // if it native, we fucked up
     KOKOS_ASSERT(proc->type == PROC_KOKOS);
@@ -153,7 +147,8 @@ static kokos_frame_t* kokos_make_frame(
     size_t locals_count = kokos_runtime_proc_locals_count(proc) || 1;
 
     if (vm->frames.sp >= vm->frames.cap) {
-        kokos_frame_t* new_frame = alloc_frame(ret_location, locals_count, proc->kokos.code, parent_env);
+        kokos_frame_t* new_frame
+            = alloc_frame(ret_location, locals_count, proc->kokos.code, parent_env);
 
         new_frame->where = where;
         STACK_PUSH(&vm->frames, new_frame);
@@ -465,7 +460,8 @@ static bool kokos_vm_exec_cur(kokos_vm_t* vm)
         size_t ret_location = vm->ip + 1;
 
         kokos_frame_t* bot_frame = bottom_frame(vm);
-        kokos_frame_t* new_frame = kokos_make_frame(vm, proc, ret_location, (kokos_token_t) { 0 }, bot_frame->env);
+        kokos_frame_t* new_frame
+            = kokos_make_frame(vm, proc, ret_location, (kokos_token_t) { 0 }, bot_frame->env);
 
         if (!kokos.params.variadic) {
             if (kokos.params.len != nargs) {
@@ -503,7 +499,8 @@ static bool kokos_vm_exec_cur(kokos_vm_t* vm)
                 DA_ADD(variadics, value);
             }
 
-            kokos_env_add(new_frame->env, kokos.params.names[kokos.params.len - 1], TO_VECTOR(variadics));
+            kokos_env_add(
+                new_frame->env, kokos.params.names[kokos.params.len - 1], TO_VECTOR(variadics));
         }
 
         // set this to 0 so it points to the first instruction of the called procedure
@@ -638,7 +635,7 @@ static bool kokos_vm_exec_cur(kokos_vm_t* vm)
     return true;
 }
 
-static char const* kokos_tag_str(uint16_t tag)
+static const char* kokos_tag_str(uint16_t tag)
 {
     switch (tag) {
     case STRING_TAG: return "string";
@@ -648,9 +645,7 @@ static char const* kokos_tag_str(uint16_t tag)
     case DOUBLE_TAG: return "double";
     case INT_TAG:    return "int";
     case SYM_TAG:    return "symbol";
-    default:
-        KOKOS_VERIFY(tag == OBJ_BITS >> 48);
-        return "bool (or nil)";
+    default:         KOKOS_VERIFY(tag == OBJ_BITS >> 48); return "bool (or nil)";
     }
 
     KOKOS_VERIFY(false);
@@ -672,15 +667,14 @@ const char* kokos_exception_to_string(const kokos_exception_t* ex)
 
     switch (ex->type) {
     case EX_TYPE_MISMATCH: {
-        char const* expected = kokos_tag_str(ex->type_mismatch.expected);
-        char const* got = kokos_tag_str(ex->type_mismatch.got);
+        const char* expected = kokos_tag_str(ex->type_mismatch.expected);
+        const char* got = kokos_tag_str(ex->type_mismatch.got);
         sprintf(buf, "type mismatch: expected %s, but got %s\n", expected, got);
         break;
     }
     case EX_ARITY_MISMATCH: {
         sprintf(buf, "arity mismatch: expected %lu arguments, but got %lu\n",
-                ex->arity_mismatch.expected,
-                ex->arity_mismatch.got);
+            ex->arity_mismatch.expected, ex->arity_mismatch.got);
         break;
     }
     case EX_CUSTOM: {
@@ -692,8 +686,7 @@ const char* kokos_exception_to_string(const kokos_exception_t* ex)
         sprintf(buf, "undefined variable " SV_FMT, (int)name->len, name->ptr);
         break;
     }
-    default:
-        KOKOS_TODO("unknown exception type");
+    default: KOKOS_TODO("unknown exception type");
     }
 
     return buf;
@@ -724,10 +717,10 @@ static void kokos_vm_run_until_completion(kokos_vm_t* vm, kokos_code_t instructi
 }
 
 // TODO: setup a new context for each loaded module
-void kokos_vm_load_module(kokos_vm_t* vm, kokos_compiled_module_t const* module)
+void kokos_vm_load_module(kokos_vm_t* vm, const kokos_compiled_module_t* module)
 {
     for (size_t i = 0; i < module->string_store.length; i++) {
-        kokos_runtime_string_t const* cur = module->string_store.items[i];
+        const kokos_runtime_string_t* cur = module->string_store.items[i];
         if (!cur) {
             continue;
         }
@@ -847,7 +840,7 @@ static void kokos_gc_mark_obj(kokos_gc_t* gc, kokos_gc_obj_t* obj)
     }
 }
 
-static void kokos_gc_mark_frame(kokos_gc_t* gc, kokos_frame_t const* frame)
+static void kokos_gc_mark_frame(kokos_gc_t* gc, const kokos_frame_t* frame)
 {
     HT_ITER(frame->env->vars, {
         kokos_value_t local = FROM_PTR(kv.value);
@@ -873,7 +866,7 @@ static void kokos_gc_mark_frame(kokos_gc_t* gc, kokos_frame_t const* frame)
 static void kokos_gc_collect(kokos_vm_t* vm)
 {
     for (size_t i = 0; i < vm->frames.sp; i++) {
-        kokos_frame_t const* frame = vm->frames.data[i];
+        const kokos_frame_t* frame = vm->frames.data[i];
         kokos_gc_mark_frame(&vm->gc, frame);
     }
 
@@ -910,7 +903,8 @@ void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag, size_t cap)
         break;
     }
     case MAP_TAG: {
-        hash_table table = ht_make(kokos_default_map_hash_func, kokos_default_map_eq_func, cap || DEFAULT_CAP);
+        hash_table table
+            = ht_make(kokos_default_map_hash_func, kokos_default_map_eq_func, cap || DEFAULT_CAP);
         kokos_runtime_map_t* map = KOKOS_ALLOC(sizeof(kokos_runtime_map_t));
         map->table = table;
         addr = map;
@@ -962,7 +956,7 @@ void kokos_vm_ex_set_undefined_variable(kokos_vm_t* vm, kokos_runtime_string_t* 
     vm->registers.exception.undefined_variable.name = name;
 }
 
-void kokos_vm_ex_custom_printf(kokos_vm_t* vm, char const* fmt, ...)
+void kokos_vm_ex_custom_printf(kokos_vm_t* vm, const char* fmt, ...)
 {
     vm->registers.exception = (kokos_exception_t) {
         .type = EX_CUSTOM,

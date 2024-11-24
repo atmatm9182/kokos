@@ -6,7 +6,7 @@
 #include "value.h"
 #include <stdio.h>
 
-uint64_t kokos_djb2(void const* ptr)
+uint64_t kokos_djb2(const void* ptr)
 {
     uint64_t value = (uint64_t)ptr;
     switch (GET_TAG(value)) {
@@ -18,7 +18,7 @@ uint64_t kokos_djb2(void const* ptr)
     }
 }
 
-bool kokos_eq(void const* lhs, void const* rhs)
+bool kokos_eq(const void* lhs, const void* rhs)
 {
     kokos_value_t l = { .as_int = (uintptr_t)lhs };
     kokos_value_t r = { .as_int = (uintptr_t)rhs };
@@ -90,7 +90,7 @@ void kokos_runtime_map_add(kokos_runtime_map_t* map, kokos_value_t key, kokos_va
     ht_add(&map->table, (void*)key.as_int, (void*)value.as_int);
 }
 
-kokos_runtime_string_t* kokos_runtime_string_new(char const* data, size_t len)
+kokos_runtime_string_t* kokos_runtime_string_new(const char* data, size_t len)
 {
     kokos_runtime_string_t* string = KOKOS_ALLOC(sizeof(kokos_runtime_string_t));
     string->ptr = KOKOS_CALLOC(len + 1, sizeof(char));
@@ -111,7 +111,7 @@ void kokos_runtime_string_destroy(kokos_runtime_string_t* string)
     KOKOS_FREE(string);
 }
 
-size_t kokos_runtime_proc_locals_count(kokos_runtime_proc_t const* proc)
+size_t kokos_runtime_proc_locals_count(const kokos_runtime_proc_t* proc)
 {
     switch (proc->type) {
     case PROC_NATIVE: return 0;

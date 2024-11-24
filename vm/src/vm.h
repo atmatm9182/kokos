@@ -3,11 +3,11 @@
 
 #include "base.h"
 #include "compile.h"
+#include "env.h"
 #include "gc.h"
 #include "instruction.h"
 #include "value.h"
 #include "vmconstants.h"
-#include "env.h"
 
 #define STACK_PUSH(stack, value)                                                                   \
     do {                                                                                           \
@@ -118,7 +118,7 @@ typedef struct kokos_exception {
             kokos_runtime_string_t* name;
         } undefined_variable;
 
-        char const* custom;
+        const char* custom;
     };
 } kokos_exception_t;
 
@@ -140,7 +140,7 @@ kokos_vm_t* kokos_vm_create(kokos_scope_t* scope);
 void kokos_vm_destroy(kokos_vm_t* vm);
 
 /// Load the module, adding it's strings to the runtime store, and execute it's code
-void kokos_vm_load_module(kokos_vm_t* vm, kokos_compiled_module_t const* module);
+void kokos_vm_load_module(kokos_vm_t* vm, const kokos_compiled_module_t* module);
 
 bool kokos_vm_run_code(kokos_vm_t* vm, kokos_code_t code);
 
@@ -151,7 +151,7 @@ void* kokos_vm_gc_alloc(kokos_vm_t* vm, uint64_t tag, size_t cap);
 
 void kokos_vm_ex_set_type_mismatch(kokos_vm_t* vm, uint16_t expected, uint16_t got);
 void kokos_vm_ex_set_arity_mismatch(kokos_vm_t* vm, size_t expected, size_t got);
-void kokos_vm_ex_custom_printf(kokos_vm_t* vm, char const* fmt, ...)
+void kokos_vm_ex_custom_printf(kokos_vm_t* vm, const char* fmt, ...)
     __attribute__((format(printf, 2, 3)));
 void kokos_vm_ex_set_undefined_variable(kokos_vm_t* vm, kokos_runtime_string_t* name);
 

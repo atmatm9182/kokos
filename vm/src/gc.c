@@ -30,7 +30,7 @@ void kokos_gc_destroy(kokos_gc_t* gc)
     KOKOS_FREE(gc->objects.values);
 }
 
-size_t objs_load(kokos_gc_objs_t const* objs)
+size_t objs_load(const kokos_gc_objs_t* objs)
 {
     return ((float)objs->len / (float)objs->cap) * 100;
 }

@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-uint64_t hash_djb2_len(char const* str, size_t len)
+uint64_t hash_djb2_len(const char* str, size_t len)
 {
     int64_t hash = 5381;
 
@@ -15,7 +15,7 @@ uint64_t hash_djb2_len(char const* str, size_t len)
     return hash;
 }
 
-uint64_t hash_djb2(char const* str)
+uint64_t hash_djb2(const char* str)
 {
     int64_t hash = 5381;
     int c;
@@ -26,39 +26,39 @@ uint64_t hash_djb2(char const* str)
     return hash;
 }
 
-uint64_t hash_cstring_func(void const* ptr)
+uint64_t hash_cstring_func(const void* ptr)
 {
-    return hash_djb2((char const*)ptr);
+    return hash_djb2((const char*)ptr);
 }
 
-bool hash_cstring_eq_func(void const* lhs, void const* rhs)
+bool hash_cstring_eq_func(const void* lhs, const void* rhs)
 {
-    char const* ls = (char const*)lhs;
-    char const* rs = (char const*)rhs;
+    const char* ls = (const char*)lhs;
+    const char* rs = (const char*)rhs;
 
     return strcmp(ls, rs) == 0;
 }
 
-uint64_t hash_sizet_func(void const* ptr)
+uint64_t hash_sizet_func(const void* ptr)
 {
     return (size_t)ptr;
 }
 
-bool hash_sizet_eq_func(void const* lhs, void const* rhs)
+bool hash_sizet_eq_func(const void* lhs, const void* rhs)
 {
     return (size_t)lhs == (size_t)rhs;
 }
 
-uint64_t hash_runtime_string_func(void const* ptr)
+uint64_t hash_runtime_string_func(const void* ptr)
 {
-    kokos_runtime_string_t const* string = ptr;
+    const kokos_runtime_string_t* string = ptr;
     return hash_djb2_len(string->ptr, string->len);
 }
 
-bool hash_runtime_string_eq_func(void const* lhs, void const* rhs)
+bool hash_runtime_string_eq_func(const void* lhs, const void* rhs)
 {
-    kokos_runtime_string_t const* l = lhs;
-    kokos_runtime_string_t const* r = rhs;
+    const kokos_runtime_string_t* l = lhs;
+    const kokos_runtime_string_t* r = rhs;
 
     if (l->len != r->len) {
         return false;

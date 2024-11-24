@@ -2,8 +2,8 @@
 #define MACRO_H_
 
 #include "instruction.h"
-#include "runtime.h"
 #include "macros.h"
+#include "runtime.h"
 
 typedef struct {
     kokos_runtime_string_t* name;

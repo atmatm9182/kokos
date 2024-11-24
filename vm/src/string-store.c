@@ -25,7 +25,7 @@ void kokos_string_store_destroy(kokos_string_store_t* store)
     KOKOS_FREE(store->items);
 }
 
-static inline float kokos_string_store_load(kokos_string_store_t const* store)
+static inline float kokos_string_store_load(const kokos_string_store_t* store)
 {
     return (float)store->length / (float)store->capacity * 100;
 }
@@ -36,7 +36,7 @@ static inline void kokos_string_store_grow(kokos_string_store_t* store)
     kokos_string_store_init(&new_store, store->capacity * 2);
 
     for (size_t i = 0; i < store->capacity; i++) {
-        kokos_runtime_string_t const* str = store->items[i];
+        const kokos_runtime_string_t* str = store->items[i];
         if (!str)
             continue;
 
@@ -48,15 +48,15 @@ static inline void kokos_string_store_grow(kokos_string_store_t* store)
     *store = new_store;
 }
 
-kokos_runtime_string_t const* kokos_string_store_add(
-    kokos_string_store_t* store, kokos_runtime_string_t const* string)
+const kokos_runtime_string_t* kokos_string_store_add(
+    kokos_string_store_t* store, const kokos_runtime_string_t* string)
 {
     if (kokos_string_store_load(store) >= 70) {
         kokos_string_store_grow(store);
     }
 
     uint64_t idx = hash_djb2_len(string->ptr, string->len) % store->capacity;
-    kokos_runtime_string_t const* cur;
+    const kokos_runtime_string_t* cur;
 
     while ((cur = store->items[idx])) {
         if (cur->len == string->len && strncmp(cur->ptr, string->ptr, cur->len) == 0) {
@@ -71,14 +71,14 @@ kokos_runtime_string_t const* kokos_string_store_add(
     return string;
 }
 
-kokos_runtime_string_t const* kokos_string_store_add_sv(kokos_string_store_t* store, string_view sv)
+const kokos_runtime_string_t* kokos_string_store_add_sv(kokos_string_store_t* store, string_view sv)
 {
     if (kokos_string_store_load(store) >= 70) {
         kokos_string_store_grow(store);
     }
 
     uint64_t idx = hash_djb2_len(sv.ptr, sv.size) % store->capacity;
-    kokos_runtime_string_t const* cur;
+    const kokos_runtime_string_t* cur;
 
     while ((cur = store->items[idx])) {
         if (cur->len == sv.size && strncmp(cur->ptr, sv.ptr, cur->len) == 0) {
@@ -93,8 +93,8 @@ kokos_runtime_string_t const* kokos_string_store_add_sv(kokos_string_store_t* st
     return store->items[idx];
 }
 
-kokos_runtime_string_t const* kokos_string_store_add_cstr(
-    kokos_string_store_t* store, char const* cstr)
+const kokos_runtime_string_t* kokos_string_store_add_cstr(
+    kokos_string_store_t* store, const char* cstr)
 {
     if (kokos_string_store_load(store) >= 70) {
         kokos_string_store_grow(store);
@@ -103,7 +103,7 @@ kokos_runtime_string_t const* kokos_string_store_add_cstr(
     size_t len = strlen(cstr);
 
     uint64_t idx = hash_djb2_len(cstr, len) % store->capacity;
-    kokos_runtime_string_t const* cur;
+    const kokos_runtime_string_t* cur;
 
     while ((cur = store->items[idx])) {
         if (cur->len == len && strncmp(cur->ptr, cstr, cur->len) == 0) {
@@ -119,7 +119,7 @@ kokos_runtime_string_t const* kokos_string_store_add_cstr(
 }
 
 static inline bool runtime_string_eq_string_view(
-    kokos_runtime_string_t const* string, string_view sv)
+    const kokos_runtime_string_t* string, string_view sv)
 {
     if (string->len != sv.size) {
         return false;
@@ -134,8 +134,8 @@ static inline bool runtime_string_eq_string_view(
     return true;
 }
 
-kokos_runtime_string_t const* kokos_string_store_find(
-    kokos_string_store_t const* store, string_view key)
+const kokos_runtime_string_t* kokos_string_store_find(
+    const kokos_string_store_t* store, string_view key)
 {
     uint64_t idx = hash_djb2_len(key.ptr, key.size) % store->capacity;
 

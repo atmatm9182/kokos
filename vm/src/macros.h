@@ -29,8 +29,8 @@
 #define KOKOS_ASSERT(val)                                                                          \
     do {                                                                                           \
         if (!(val)) {                                                                              \
-            fprintf(                                                                               \
-    stderr, __ESC_RED "ASSERTION FAILED:" __ESC_RESET " %s:%d: %s\n", __FILE__, __LINE__, #val); \
+            fprintf(stderr, __ESC_RED "ASSERTION FAILED:" __ESC_RESET " %s:%d: %s\n", __FILE__,    \
+                __LINE__, #val);                                                                   \
             exit(1);                                                                               \
         }                                                                                          \
     } while (0)

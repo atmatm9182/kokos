@@ -25,12 +25,14 @@
 /*}*/
 /**/
 
-void kokos_scope_add_proc(kokos_scope_t* scope, kokos_runtime_string_t* name, kokos_runtime_proc_t* proc)
+void kokos_scope_add_proc(
+    kokos_scope_t* scope, kokos_runtime_string_t* name, kokos_runtime_proc_t* proc)
 {
     ht_add(&scope->procs, name, proc);
 }
 
-static inline kokos_macro_t* kokos_scope_get_macro_impl(kokos_scope_t* scope, kokos_runtime_string_t* name)
+static inline kokos_macro_t* kokos_scope_get_macro_impl(
+    kokos_scope_t* scope, kokos_runtime_string_t* name)
 {
     if (!scope) {
         return NULL;
@@ -96,7 +98,8 @@ kokos_scope_t* kokos_scope_root(void)
 
         DA_ADD(&scope->code, INSTR_PUSH(TO_PROC(proc)));
 
-        kokos_runtime_string_t* name = (kokos_runtime_string_t*)kokos_string_store_add_sv(scope->string_store, natives.names[i]);
+        kokos_runtime_string_t* name = (kokos_runtime_string_t*)kokos_string_store_add_sv(
+            scope->string_store, natives.names[i]);
         DA_ADD(&scope->code, INSTR_ADD_LOCAL(TO_STRING(name).as_int));
 
         kokos_scope_add_proc(scope, name, proc);
@@ -124,9 +127,7 @@ void kokos_scope_destroy(kokos_scope_t* scope)
     });
 
     // WARN: don't free the names, because the string store owns them
-    HT_ITER(scope->macros, {
-        kokos_macro_destroy(kv.value);
-    });
+    HT_ITER(scope->macros, { kokos_macro_destroy(kv.value); });
 
     for (size_t i = 0; i < scope->derived.len; i++) {
         kokos_scope_destroy(scope->derived.items[i]);
@@ -143,7 +144,7 @@ void kokos_scope_destroy(kokos_scope_t* scope)
     KOKOS_FREE(scope);
 }
 
-void kokos_scope_dump(kokos_scope_t const* scope)
+void kokos_scope_dump(const kokos_scope_t* scope)
 {
     printf("Nothing to see here :)");
     /*printf("procedures:\n");*/

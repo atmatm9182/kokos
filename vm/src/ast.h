@@ -5,8 +5,8 @@
 #include "macros.h"
 #include "token.h"
 
-#include <stdio.h>
 #include <stddef.h>
+#include <stdio.h>
 
 #define EXPR_FLAGS_NONE 0
 #define EXPR_FLAG_QUOTE 1
@@ -57,7 +57,7 @@ typedef struct {
     size_t cap;
 } kokos_module_t;
 
-static inline void kokos_expr_dump(kokos_expr_t const* expr)
+static inline void kokos_expr_dump(const kokos_expr_t* expr)
 {
     if (EXPR_QUOTED(expr)) {
         printf("'");
@@ -115,7 +115,7 @@ static inline void kokos_expr_dump(kokos_expr_t const* expr)
     }
 }
 
-static inline char const* kokos_expr_type_str(kokos_expr_type_e type)
+static inline const char* kokos_expr_type_str(kokos_expr_type_e type)
 {
     switch (type) {
     case EXPR_INT_LIT:    return "EXPR_INT_LIT";
@@ -143,7 +143,7 @@ static inline void kokos_expr_destroy(kokos_expr_t* expr)
     case EXPR_INT_LIT:
     case EXPR_FLOAT_LIT:
     case EXPR_STRING_LIT:
-    case EXPR_IDENT: break;
+    case EXPR_IDENT:      break;
 
     case EXPR_VECTOR:
     case EXPR_LIST:
@@ -166,7 +166,7 @@ static inline void kokos_expr_destroy(kokos_expr_t* expr)
         KOKOS_FREE(expr->map.values);
         break;
     default: {
-        char buf[512] = {0};
+        char buf[512] = { 0 };
         sprintf(buf, "freeing of expressions with type %s", kokos_expr_type_str(expr->type));
         KOKOS_TODO(buf);
     }

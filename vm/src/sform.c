@@ -87,7 +87,7 @@ KOKOS_DEFINE_SFORM(macro, {
         return false;
     }
 
-    kokos_expr_t const* params_expr = &args.items[1];
+    const kokos_expr_t* params_expr = &args.items[1];
     if (params_expr->type != EXPR_LIST) {
         set_error(params_expr->token.location,
             "cannot use value of type %s as an argument list for a procedure",
@@ -124,10 +124,10 @@ KOKOS_DEFINE_SFORM(let, {
     PUSH_SCOPE(vars.len / 2);
 
     for (size_t i = 0; i < vars.len; i += 2) {
-        kokos_expr_t const* key = &vars.items[i];
+        const kokos_expr_t* key = &vars.items[i];
         VERIFY_TYPE(key, EXPR_IDENT);
 
-        kokos_expr_t const* value = &vars.items[i + 1];
+        const kokos_expr_t* value = &vars.items[i + 1];
         TRY(kokos_expr_compile(value, scope));
 
         kokos_runtime_string_t* var_name

@@ -1,13 +1,13 @@
 #ifndef GC_H_
 #define GC_H_
 
-#include "value.h"
 #include "macros.h"
 #include "runtime.h"
+#include "value.h"
 
 #include <stdbool.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 typedef struct marked_value {
     kokos_value_t value;
